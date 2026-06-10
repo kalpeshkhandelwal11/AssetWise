@@ -101,6 +101,8 @@ mysql --version
 | [M13](modules/M13-disposal.md) | Disposal & Scrap | Dev 2 | 3 | M03, M08 | M14 |
 | [M14](modules/M14-reports-dashboard.md) | Reports & Dashboard | Dev 2 | 3 | M03+ | M13, M15 |
 | [M15](modules/M15-pwa.md) | PWA (Full Site) | Dev 2 | 3 | M00 UI | M14 |
+| [M16](modules/M16-depreciation.md) | Depreciation | Dev 2 | 2 | M03 | M09, M17 |
+| [M17](modules/M17-asset-kits.md) | Asset Kits & Bundles | Dev 2 | 2 | M03, M08, M09 | M10, M16 |
 
 ---
 
@@ -148,6 +150,9 @@ gantt
 | Blade components (`x-data-table`, `x-dynamic-fields`) | M07 | All UI modules |
 | `tags` pool + `/scan/{tag_number}` + `TagService` | M05 | M08 replacement, M10 audit scan |
 | `tag_replacement` workflow module | M08 | M05 replacement apply |
+| `DepreciationService` + calculators | M16 | M14 depreciation report |
+| `MovementService::applyBulk()` | M09 | M17 kit assignment |
+| `kit_assignment_approval_mode` setting | M17 | M08 approval branching |
 
 ---
 

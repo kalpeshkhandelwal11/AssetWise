@@ -10,11 +10,11 @@
 
 ## Scope
 
-Generic multi-level approval engine for transfers (all movement types), tag replacement, and disposal.
+Generic multi-level approval engine for transfers (all movement types), tag replacement, kit/bundle assignments, and disposal.
 
 ## DB Tables
 
-- `approval_workflows` (name, module enum: transfer/disposal/tag_replacement, is_active)
+- `approval_workflows` (name, module enum: transfer/disposal/tag_replacement/kit_assignment, is_active)
 - `approval_steps` (workflow_id, level, approver_type: role/user, approver_id, escalation_hours)
 - `approval_requests` (workflow_id, approvable morph, status, current_step, submitted_by)
 - `approval_actions` (request_id, step_level, user_id, action enum, comment, acted_at)
@@ -56,3 +56,4 @@ Generic multi-level approval engine for transfers (all movement types), tag repl
 
 - M09 calls `WorkflowService::submit($movement, 'transfer')` on movement submit
 - M05 calls `WorkflowService::submit($replacement, 'tag_replacement')` on tag replace submit
+- M17 calls `WorkflowService::submit($kitAssignment, 'kit_assignment')` when approval mode is `single`; per-asset mode uses `transfer` per item

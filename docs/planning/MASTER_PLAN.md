@@ -66,7 +66,7 @@ isProject: false
 
 | Dev 1 | Dev 2 |
 |-------|-------|
-| M00 Foundation → M01 User Access → M02 Masters → M03 Asset Master → M04 Dynamic Fields ∥ M05 QR → M06 Bulk Import | M11 Maintenance (after M03) ∥ M08 Workflow (after M01) → M09 Movement → M10 Audit → M13 Disposal → M14 Reports → M15 PWA |
+| M00 → M01 → M02 → M03 → M04 ∥ M05 → M06 | M11 (after M03) ∥ M08 (after M01) → M09 + M17 Kits → M16 Depreciation → M10 Audit → M13 Disposal → M14 Reports → M15 PWA |
 | M07 Shared UI (ongoing) | M12 Notifications (stub → complete) |
 
 **Start order:** Install Laragon → M00 → M01 → then both tracks per [MODULES_INDEX.md](MODULES_INDEX.md).
@@ -151,6 +151,10 @@ Cross-functional review of the BRD against the initial schema surfaced gaps in *
 | 5 | Operations | Bulk import with per-category fields? | **Per-category template** — downloadable Excel template matches that category's resolved field set |
 | 6 | Workflow | Transfer approval? | **Always required** — every transfer goes through multi-level approval before taking effect |
 | 7 | Operations | QR/Barcode lifecycle? | **Pre-generate tag pool** — print labels first, assign to assets later; replacement assigns new tag and deactivates old; **replacement requires approval** |
+| 8 | Finance | Depreciation configuration? | **Category default + per-asset override** — method, useful life, salvage value |
+| 9 | Finance | Depreciation methods in MVP? | **Straight-line only** — strategy-pattern architecture ready for more methods later |
+| 10 | Operations | Kit / bundle assignment? | **Both** — saved kit templates AND ad-hoc multi-asset bundles |
+| 11 | Workflow | Kit assignment approval? | **Configurable** — admin setting: one approval for whole kit OR per-asset approvals |
 
 **Schema corrections from initial plan:**
 - Replaced vague `asset_field_values` ("typed or JSON") with explicit **EAV typed columns** for searchability
@@ -159,6 +163,8 @@ Cross-functional review of the BRD against the initial schema surfaced gaps in *
 - Pulled **approval workflow engine** into Phase 2 (needed for all transfers); disposal reuses same engine in Phase 3
 - Clarified `asset_types` and `asset_categories` as orthogonal on `assets`
 - Replaced per-asset auto-generated QR with **`tags` inventory pool** + assignment history; tag replacement is approval-gated (Phase 2)
+- Added **depreciation** tables + calculator strategy pattern (straight-line MVP)
+- Added **asset kits** (templates + ad-hoc bundles) with configurable approval mode
 
 ---
 
@@ -182,7 +188,123 @@ erDiagram
     assets ||--o{ asset_movements : has
     asset_movements ||--o| approval_requests : may_require
     disposal_requests ||--o| approval_requests : requires
+    asset_categories ||--o{ category_depreciation_defaults : depreciates
+    assets ||--o| asset_depreciation_settings : has
+    assets ||--o{ depreciation_schedule_lines : depreciates
+    kits ||--o{ kit_items : contains
+    kits ||--o{ kit_assets : bundles
+    kit_assignments ||--o{ kit_assignment_items : includes
 ```
+
+### Depreciation model (multi-method architecture, straight-line MVP)
+
+**Configuration:** Category sets defaults; each asset may override. Calculator uses **strategy pattern** so additional methods plug in without schema changes.
+
+#### `depreciation_methods` (master)
+| Column | Notes |
+|--------|-------|
+| id | PK |
+| code | `straight_line`, `declining_balance`, `double_declining_balance`, `sum_of_years_digits`, `units_of_production` |
+| name | Display name |
+| calculator_class | PHP class implementing `DepreciationCalculatorInterface` |
+| is_active | Only `straight_line` active in MVP; others seeded inactive |
+
+#### `category_depreciation_defaults`
+| Column | Notes |
+|--------|-------|
+| category_id | FK |
+| depreciation_method_id | FK |
+| useful_life_months | int |
+| salvage_value | decimal nullable |
+| salvage_percent | decimal nullable (alternative to fixed salvage) |
+| start_basis | enum: `purchase_date`, `commission_date` |
+
+#### `asset_depreciation_settings` (per-asset, overrides category default)
+| Column | Notes |
+|--------|-------|
+| asset_id | FK unique |
+| depreciation_method_id | FK override |
+| useful_life_months | override |
+| salvage_value | override |
+| start_date | depreciation start |
+| purchase_cost_basis | decimal (from asset or override) |
+| accumulated_depreciation | decimal cached |
+| current_book_value | decimal cached |
+| is_depreciation_active | boolean |
+
+#### `depreciation_schedule_lines` (append-only schedule)
+| Column | Notes |
+|--------|-------|
+| asset_id | FK |
+| period_year, period_month | int |
+| depreciation_amount | decimal |
+| accumulated_depreciation | decimal |
+| book_value | decimal |
+| status | `scheduled`, `posted` |
+| posted_at | timestamp nullable |
+
+**Service:** `App\Services\Depreciation\DepreciationCalculatorInterface`  
+Implementations: `StraightLineCalculator` (MVP), stubs for future methods.  
+**Scheduler:** monthly job posts current period lines for active assets.
+
+**Straight-line formula:** `(cost_basis - salvage_value) / useful_life_months` per period.
+
+### Asset kits & bundles model
+
+Supports **named kit templates** (e.g. "Developer Workstation") and **ad-hoc bundles** (pick assets at assignment time).
+
+#### `kits` (template master)
+| Column | Notes |
+|--------|-------|
+| id | PK |
+| name, code | unique code |
+| description | text |
+| is_active | boolean |
+| timestamps, soft_deletes | |
+
+#### `kit_items` (template line — what belongs in the kit)
+| Column | Notes |
+|--------|-------|
+| kit_id | FK |
+| label | e.g. "Laptop", "Monitor" |
+| asset_category_id | FK nullable — expected category for slot |
+| quantity | int default 1 |
+| sort_order | int |
+
+#### `kit_assets` (actual assets linked to a kit instance)
+| Column | Notes |
+|--------|-------|
+| kit_id | FK |
+| asset_id | FK |
+| kit_item_id | FK nullable — which template slot this fills |
+| unique(kit_id, asset_id) | |
+
+A kit is **ready to assign** when all required `kit_items` have matching `kit_assets` (or admin confirms partial kit).
+
+#### `kit_assignments` (assignment / movement batch)
+| Column | Notes |
+|--------|-------|
+| id | PK |
+| kit_id | FK nullable — null = ad-hoc bundle |
+| assignment_type | enum: `kit_template`, `ad_hoc_bundle` |
+| movement_type_id | FK |
+| to_custodian_id, to_location_id, etc. | target |
+| status | draft, pending_approval, approved, rejected, completed |
+| approval_mode | `single`, `per_asset` — snapshot of system setting at submit |
+| approval_request_id | FK nullable — used when `single` |
+| requested_by | FK users |
+
+#### `kit_assignment_items`
+| Column | Notes |
+|--------|-------|
+| kit_assignment_id | FK |
+| asset_id | FK |
+| asset_movement_id | FK nullable — created on approval (one per asset) |
+
+**System setting** (`config/assetwise.php`): `kit_assignment_approval_mode` = `single` | `per_asset` (admin UI in M17).
+
+**On approve (single):** one approval → create `asset_movements` for all items, apply atomically.  
+**On approve (per_asset):** each asset has its own `approval_request` / movement chain.
 
 ### Custom fields data model (detailed)
 
@@ -370,6 +492,8 @@ stateDiagram-v2
 | `disposal_requests` | Disposal workflow |
 | `notifications` | In-app alerts |
 | `scan_logs` | QR/barcode scan events (includes inactive-tag scans) |
+| `depreciation_methods`, `category_depreciation_defaults`, `asset_depreciation_settings`, `depreciation_schedule_lines` | Depreciation (M16) |
+| `kits`, `kit_items`, `kit_assets`, `kit_assignments`, `kit_assignment_items` | Kits & bundles (M17) |
 | `import_batches`, `import_batch_rows` | Bulk upload tracking + per-row errors |
 
 **Design rules:**
@@ -765,6 +889,56 @@ stateDiagram-v2
 | 4 | Field User | Use camera scan in audit/movement | `html5-qrcode`; fallback to manual tag entry |
 | 5 | User | Lose connectivity | Offline fallback page; no data writes |
 
+### UF-19: Depreciation Setup & Schedule
+
+```mermaid
+flowchart TD
+    admin([Admin]) --> catDefault[Set category depreciation defaults]
+    catDefault --> assetReg[Asset registered with purchase cost]
+    assetReg --> override{Asset override?}
+    override -->|yes| assetSettings[asset_depreciation_settings]
+    override -->|no| inherit[Inherit category defaults]
+    assetSettings --> schedule[Generate schedule lines]
+    inherit --> schedule
+    schedule --> monthly[Monthly job posts period]
+    monthly --> bookValue[Update book value on asset]
+```
+
+| Step | Actor | Action | System |
+|------|-------|--------|--------|
+| 1 | Admin | Configure category defaults | Method, useful life, salvage, start basis |
+| 2 | System | On asset save | Resolve settings (category or override); generate `depreciation_schedule_lines` |
+| 3 | Asset Manager | Override per asset | Optional different method/life/salvage (MVP: straight-line only selectable) |
+| 4 | System | Monthly scheduler | Post current period; update accumulated + book value |
+| 5 | User | View asset detail | Depreciation tab: schedule, book value, accumulated |
+| 6 | User | Run depreciation report | M14 — by category, department, period |
+
+### UF-20: Kit Template & Bundle Assignment
+
+```mermaid
+flowchart TD
+    mgr([Asset Manager]) --> defineKit[Create kit template + items]
+    defineKit --> linkAssets[Link physical assets to kit slots]
+    linkAssets --> ready[Kit ready to assign]
+    ready --> assign[Assign kit to custodian/location]
+    adhoc[OR select ad-hoc bundle] --> assign
+    assign --> approval{Approval mode?}
+    approval -->|single| oneReq[One approval for all assets]
+    approval -->|per_asset| multiReq[Approval per asset]
+    oneReq --> complete[Apply all movements]
+    multiReq --> complete
+```
+
+| Step | Actor | Action | System |
+|------|-------|--------|--------|
+| 1 | Asset Manager | Create kit template | Name, code, item lines (label, category, qty) |
+| 2 | Asset Manager | Link assets to kit | Map real assets to template slots; validate category match |
+| 3 | Asset Manager | Assign kit | Select movement type, to custodian/location; all kit assets move together |
+| 4 | Asset Manager | Ad-hoc bundle | Select multiple assets without saved kit; same assignment flow |
+| 5 | System | Submit | Apply `kit_assignment_approval_mode` from settings (`single` or `per_asset`) |
+| 6 | Approver(s) | Approve | Single or per-asset per config |
+| 7 | System | On complete | Create `asset_movements` for each item; update custodian/location; notify |
+
 ---
 
 ## Phase 1 — Foundation (MVP Core)
@@ -931,9 +1105,24 @@ Required before movements ship (all transfers need approval).
 **Scheduled jobs (cron):**
 - Daily check for warranty/AMC expiring in 30/7/1 days → email + in-app notification
 
+### 2.4 Depreciation (Developer 2) — Module M16
+- Seed `depreciation_methods` (straight-line active; others inactive stubs)
+- Category depreciation defaults admin UI
+- Per-asset override on asset financial tab
+- `StraightLineCalculator` + `DepreciationService::generateSchedule()`, `postPeriod()`
+- Monthly scheduler job; depreciation tab on asset detail
+
+### 2.5 Asset Kits & Bundles (Developer 2) — Module M17
+- Kit template CRUD + item lines + link assets to slots
+- Kit assignment wizard (template or ad-hoc bundle)
+- Admin setting: `kit_assignment_approval_mode` (single vs per_asset)
+- Integrate with M08/M09 movement + approval flows
+
 ### Phase 2 deliverables checklist
 - [ ] Approval workflow engine with escalation
 - [ ] All movement types approval-gated with immutable history
+- [ ] Kit templates + ad-hoc bundle assignment with configurable approval
+- [ ] Straight-line depreciation with category defaults and asset overrides
 - [ ] Audit campaign lifecycle end-to-end
 - [ ] Maintenance + AMC + warranty with alerts
 - [ ] Notifications wired for movement, approval, and expiry
@@ -973,7 +1162,9 @@ Workflow engine built in Phase 2.0. Phase 3 extends it for disposal:
 - Maintenance Report
 - Disposal Report
 - Asset Aging (by purchase date / useful life)
+- Depreciation Schedule Report (period, accumulated, book value by asset/category)
 - Utilization (assigned vs available)
+- Kit assignment history report
 
 Use queued exports for large datasets; download link when ready.
 

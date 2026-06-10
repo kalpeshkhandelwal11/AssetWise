@@ -18,6 +18,8 @@ Dashboard KPIs, all BRD reports, Excel/PDF export.
 - Maintenance Report
 - Disposal Report
 - Asset Aging
+- Depreciation Schedule (period, accumulated, book value)
+- Kit Assignment History
 - Utilization (assigned vs available)
 
 ## Routes
