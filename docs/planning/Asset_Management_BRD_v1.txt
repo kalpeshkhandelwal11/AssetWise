@@ -1,0 +1,205 @@
+
+ASSET MANAGEMENT SYSTEM - BRD (SINGLE COMPANY DEPLOYMENT)
+=========================================================
+
+PROJECT OVERVIEW
+----------------
+Build an enterprise Asset Management System for a single organization.
+The solution will be hosted on shared hosting using Laravel, MySQL,
+Blade, Alpine.js, Tailwind CSS and PWA support.
+
+MULTI-TENANCY
+-------------
+Not Required.
+This is a single-company deployment.
+
+OBJECTIVES
+----------
+1. Centralized asset repository.
+2. Complete asset lifecycle tracking.
+3. Asset assignment and movement tracking.
+4. QR/Barcode enabled operations.
+5. Audit readiness and traceability.
+6. Maintenance tracking.
+7. Disposal and scrap management.
+8. Reporting and dashboards.
+
+CORE MODULES
+------------
+
+1. USER & ACCESS MANAGEMENT
+- Authentication
+- User Management
+- Role Based Access Control
+- Session Management
+- Login History
+
+Masters:
+- Roles
+- Permissions
+- Departments
+- Branches
+- Designations
+
+2. SHARED MASTERS
+- Asset Statuses
+- Asset Types
+- Locations
+- Buildings
+- Floors
+- Rooms
+- Priorities
+- Movement Types
+- Audit Types
+- Disposal Types
+- Maintenance Types
+
+3. ASSET MASTER
+- Asset Registration
+- Asset Categories
+- Asset Search
+- Asset Filters
+- Bulk Upload
+- Bulk Download
+- Asset Photos
+- Attachments
+- QR / Barcode Tagging
+
+4. DYNAMIC FIELDS & METADATA
+- Category-wise custom fields
+- Dynamic forms
+- Validation rules
+- Dropdown options
+- Searchable custom attributes
+
+5. ASSET MOVEMENT
+- Assignment
+- Return
+- Transfer
+- Custodian Change
+- Verification
+- Location Tracking
+- Movement History
+- Status History
+
+6. AUDIT & VERIFICATION
+- Audit Campaigns
+- Physical Verification
+- QR Verification
+- Manual Verification
+- Missing Asset Tracking
+- Damaged Asset Tracking
+- Compliance Reports
+
+7. MAINTENANCE
+- Preventive Maintenance
+- Corrective Maintenance
+- AMC Tracking
+- Warranty Tracking
+- Service History
+- Repair Cost Tracking
+- End of Life Tracking
+
+8. DISPOSAL & SCRAP
+- Disposal Requests
+- Disposal Approval
+- Write Off
+- Scrap Processing
+- Disposal History
+
+9. QR / BARCODE
+- QR Generation
+- Barcode Generation
+- Bulk Printing
+- Mobile Scanning
+- Scan Logs
+
+10. NOTIFICATIONS
+- Email Notifications
+- In-App Alerts
+- Warranty Expiry Alerts
+- AMC Expiry Alerts
+- Audit Alerts
+
+11. ATTACHMENTS & DOCUMENTS
+- Invoices
+- Warranty Cards
+- Manuals
+- Agreements
+- Document Preview
+
+12. ACTIVITY LOGS & AUDIT TRAIL
+- Create/Edit/Delete Logs
+- Login History
+- Device Logs
+- Before/After Tracking
+- User Timeline
+
+13. REPORTS & DASHBOARDS
+- Asset Register
+- Movement Reports
+- Audit Reports
+- Maintenance Reports
+- Disposal Reports
+- Asset Aging
+- Utilization Reports
+- Dashboard KPIs
+- Excel Export
+- PDF Export
+
+14. APPROVAL WORKFLOW
+- Multi-Level Approvals
+- Escalation Matrix
+- Transfer Approval
+- Disposal Approval
+
+15. PWA SUPPORT
+- Mobile Responsive UI
+- Installable Application
+- Camera Based QR Scanning
+
+TEAM STRUCTURE
+--------------
+
+Developer 1
+- User & Access
+- Shared Masters
+- Asset Master
+- Dynamic Fields
+- Shared Services
+
+Developer 2
+- Asset Movement
+- Audit & Verification
+- Maintenance
+- Disposal
+- Reports
+- Workflow Engine
+
+QA
+- Test Cases
+- API Testing
+- Regression Testing
+- UAT Testing
+
+RECOMMENDED MVP PRIORITY
+------------------------
+Phase 1
+- User & Access
+- Shared Masters
+- Asset Master
+- Dynamic Fields
+- QR / Barcode
+
+Phase 2
+- Asset Movement
+- Audit & Verification
+- Maintenance
+
+Phase 3
+- Disposal
+- Reports
+- Workflow Engine
+- PWA
+
+END OF DOCUMENT
