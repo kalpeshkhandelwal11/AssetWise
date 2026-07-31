@@ -12,8 +12,9 @@ AssetWise is a **greenfield** Enterprise Asset Management System. It is a **sing
 |--------|--------|-------|
 | M00 Foundation | ✅ done | Laravel 13 scaffold, packages, base UI |
 | M01 Auth & RBAC | ✅ done | Session lifetime, force-change, login history, RBAC seed |
-| M02 Shared Masters | 🔄 next | Companies, statuses, locations |
-| M03+ | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
+| M02 Shared Masters | ✅ done | Companies, statuses, locations, masters CRUD |
+| M03 Asset Master | 🔄 next | Categories, assets CRUD, photos, attachments — all decisions confirmed |
+| M04+ | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
 
 For the full developer setup guide see `docs/developer-setup.md`.
 
