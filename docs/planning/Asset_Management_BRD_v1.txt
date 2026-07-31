@@ -10,8 +10,8 @@ Blade, Alpine.js, Tailwind CSS and PWA support.
 
 MULTI-TENANCY
 -------------
-Not Required.
-This is a single-company deployment.
+Instead of multi tenancy we want a comapny id against each of the asset so we cn do asset transfer between comapnies. 
+which will reflect on reports.
 
 OBJECTIVES
 ----------
@@ -23,6 +23,7 @@ OBJECTIVES
 6. Maintenance tracking.
 7. Disposal and scrap management.
 8. Reporting and dashboards.
+9. Deprication calculation
 
 CORE MODULES
 ------------
@@ -63,7 +64,7 @@ Masters:
 - Bulk Download
 - Asset Photos
 - Attachments
-- QR / Barcode Tagging
+- QR / Barcode Tagging / updating
 
 4. DYNAMIC FIELDS & METADATA
 - Category-wise custom fields
@@ -75,7 +76,7 @@ Masters:
 5. ASSET MOVEMENT
 - Assignment
 - Return
-- Transfer
+- Transfer to company / site /Locations /branches etc
 - Custodian Change
 - Verification
 - Location Tracking
@@ -85,7 +86,7 @@ Masters:
 6. AUDIT & VERIFICATION
 - Audit Campaigns
 - Physical Verification
-- QR Verification
+- QR/barcode Verification
 - Manual Verification
 - Missing Asset Tracking
 - Damaged Asset Tracking

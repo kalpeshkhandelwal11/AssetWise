@@ -18,7 +18,7 @@ Scaffold Laravel 11 app in `G:\AssetWise`, install core packages, base layout, r
 - [ ] Spatie Permission + Activity Log
 - [ ] Tailwind + Alpine configured (via Breeze)
 - [ ] App layout: sidebar shell, flash messages, guest layout
-- [ ] `config/assetwise.php` for app-specific settings
+- [ ] `config/assetwise.php` for app-specific settings (includes `kit_assignment_approval_mode`)
 - [ ] Database connected to `assetwise` on Laragon MySQL
 - [ ] Folder structure: `Controllers/Admin`, `Controllers/Assets`, `Services/`, `resources/views/modules/`
 - [ ] Git init + `.gitignore` verified

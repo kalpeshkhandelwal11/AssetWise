@@ -56,7 +56,7 @@ isProject: false
 
 - **Source:** [Asset_Management_BRD_v1.txt](c:\Users\KALPESH\Downloads\Asset_Management_BRD_v1.txt)
 - **Workspace:** [g:\AssetWise](g:\AssetWise) is empty — full greenfield setup
-- **Deployment model:** Single organization, **no multi-tenancy**
+- **Deployment model:** Single system, **no multi-tenancy** — but assets carry a `company_id` so ownership can be tracked per company and assets can be transferred between companies (inter-company transfer). Reports can be filtered and grouped by company.
 - **Target hosting:** Shared hosting (PHP + MySQL, no long-running workers assumed unless cron is available)
 - **Module plans (parallel dev):** [MODULES_INDEX.md](MODULES_INDEX.md) — 16 modules with per-file specs in `modules/`
 
@@ -455,8 +455,9 @@ stateDiagram-v2
 |-------|---------|
 | `users`, `roles`, `permissions` (+ Spatie pivots) | Auth & RBAC |
 | `departments`, `branches`, `designations` | Org masters |
+| `companies` | Company master — owns assets; enables inter-company transfers and company-level reporting |
 | `asset_statuses`, `asset_types`, `locations`, `buildings`, `floors`, `rooms` | Shared masters |
-| `priorities`, `movement_types`, `audit_types`, `disposal_types`, `maintenance_types` | Shared masters |
+| `priorities`, `movement_types`, `audit_types`, `disposal_types`, `maintenance_types` | Shared masters (movement_types includes Inter-Company Transfer) |
 | `asset_categories` | Hierarchical classification; drives custom fields |
 | `category_fields`, `category_field_options`, `category_field_overrides` | Dynamic field system |
 | `assets` | Core record: `category_id` + `asset_type_id` (independent), tag, serial, location, custodian, financials |
@@ -470,6 +471,7 @@ stateDiagram-v2
 |--------|-------|
 | asset_tag | Denormalized copy of active assigned `tags.tag_number` for search; synced on assignment |
 | name, description, serial_number, model, manufacturer | Core identity |
+| company_id | FK `companies` — **required**; tracks current owning company; updated atomically on inter-company transfer approval |
 | category_id | FK — **locked** after custom field data exists |
 | asset_type_id | FK — independent of category |
 | status_id, location_id, building_id, floor_id, room_id | Current state |
@@ -483,7 +485,7 @@ stateDiagram-v2
 
 | Table | Purpose |
 |-------|---------|
-| `asset_movements` | Assignment, return, transfer, custodian change; status `draft/pending_approval/approved/rejected/completed` |
+| `asset_movements` | Assignment, return, transfer, custodian change, **inter-company transfer**; status `draft/pending_approval/approved/rejected/completed`; `from_company_id`/`to_company_id` populated for inter-company type |
 | `asset_status_histories` | Append-only status transitions |
 | `approval_workflows`, `approval_steps` | Workflow definitions per module (transfer, disposal) |
 | `approval_requests`, `approval_actions` | Polymorphic approvals with approve/reject/escalate log |
@@ -769,16 +771,16 @@ stateDiagram-v2
 
 | Step | Actor | Action | System |
 |------|-------|--------|--------|
-| 1 | Asset Manager | Initiate movement | Select type: Assign, Return, Transfer, Custodian Change |
+| 1 | Asset Manager | Initiate movement | Select type: Assign, Return, Transfer, **Inter-Company Transfer**, Custodian Change |
 | 2 | Asset Manager | Select asset(s) | Validate current status/custodian/location |
-| 3 | Asset Manager | Enter from/to details | Location, custodian, department, notes |
+| 3 | Asset Manager | Enter from/to details | Location, custodian, department, notes; **for Inter-Company Transfer: select destination company** |
 | 4 | Asset Manager | Submit | Create `asset_movements` status `pending_approval`; spawn `approval_request` |
 | 5 | Approver(s) | Review queue | Multi-level approve/reject with comments |
-| 6 | System | On full approval | Update asset location/custodian/status; append `asset_status_histories`; notify custodian |
+| 6 | System | On full approval | Update asset location/custodian/status; **if inter-company transfer: update `assets.company_id` to destination company**; append `asset_status_histories`; notify custodian |
 | 7 | System | On reject | Movement stays rejected; asset unchanged; notify requester |
 | 8 | Auditor | Verify completed movement | Mark verified with timestamp (optional post-completion) |
 
-**Note:** Assignment and Return follow the same approval pipeline per confirmed decision (all transfers require approval).
+**Note:** All movement types (including inter-company transfer) require the full approval pipeline.
 
 ### UF-11: Audit Campaign & Verification
 
@@ -1303,6 +1305,6 @@ gantt
 
 ## Out of Scope (per BRD)
 
-- Multi-tenancy / multiple companies
+- Full multi-tenancy / data isolation per company (companies share one DB schema; `company_id` tracks ownership only)
 - Native mobile apps (PWA only)
 - Advanced BI / external analytics warehouses

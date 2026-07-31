@@ -32,16 +32,17 @@ Per-category Excel template download, bulk upload with row validation, filtered 
 
 ## Tasks
 
-- [ ] Template export: core columns + resolved custom columns for selected category
-- [ ] Import parser with row-level validation via `DynamicFieldService`
+- [ ] Template export: core columns (including **`company_code`** column) + resolved custom columns for selected category
+- [ ] Import parser with row-level validation via `DynamicFieldService`; validate `company_code` resolves to an active company
 - [ ] Error report download (failed rows + reasons)
-- [ ] Successful rows create assets + field values + trigger QR generation
-- [ ] Export respects list filters; includes custom fields per asset category
+- [ ] Successful rows create assets + field values (with `company_id` resolved from `company_code`)
+- [ ] Export respects list filters (including company filter); includes **company name/code** column and custom fields per asset category
 - [ ] Permission: `assets.bulk`, `assets.export`
 
 ## Acceptance criteria
 
+- Template includes `company_code` column; invalid codes reported per row
 - Template matches category field schema exactly
 - Invalid rows reported; valid rows imported atomically per row
 - No silent partial failures
-- Export opens in Excel with readable headers
+- Export opens in Excel with readable headers including company column

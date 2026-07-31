@@ -1,0 +1,164 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+AssetWise is a **greenfield** Enterprise Asset Management System. It is a **single-schema system** (not multi-tenant), but each asset carries a `company_id` so ownership is tracked per company and assets can be transferred between companies via an approval-gated **inter-company transfer** flow. Reports can be filtered and grouped by company. As of initial planning, no Laravel application code exists yet — this repo contains planning documentation and will be built out following the module plan in `docs/planning/`.
+
+**Stack:** Laravel 11, MySQL 8, Blade + Alpine.js + Tailwind CSS, PWA (vite-plugin-pwa)
+
+**Key packages:**
+- Laravel Breeze (Blade) — auth scaffold
+- Spatie Laravel Permission — RBAC
+- Spatie Activity Log — audit trail (before/after)
+- simplesoftwareio/simple-qrcode + picqer/php-barcode-generator — QR/barcode generation
+- Maatwebsite Laravel Excel + DomPDF — bulk import/export and PDF reports
+- vite-plugin-pwa — full-site PWA (Phase 3)
+
+## Local Development Setup (Laragon on Windows)
+
+1. Install [Laragon Full](https://laragon.org/download/) with PHP 8.2+, MySQL 8, Composer, Node 20 LTS
+2. Create database: `CREATE DATABASE assetwise CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
+3. Required PHP extensions: `mbstring`, `openssl`, `pdo_mysql`, `gd`, `intl`, `zip`, `exif`, `bcmath`
+4. Site URL: `http://assetwise.test` (Laragon auto virtual host) or `http://localhost/AssetWise/public`
+
+## Common Commands
+
+```powershell
+# Install dependencies
+composer install
+npm install
+
+# Build assets
+npm run dev        # development with hot reload
+npm run build      # production build
+
+# Database
+php artisan migrate
+php artisan migrate:fresh --seed   # reset + seed demo data
+php artisan db:seed
+
+# Storage
+php artisan storage:link
+
+# Queue (database driver — no Redis)
+php artisan queue:work --stop-when-empty
+
+# Scheduler (runs all scheduled jobs)
+php artisan schedule:run
+
+# Tests
+php artisan test
+php artisan test --filter=AssetTest   # single test class
+php artisan test tests/Feature/Assets/  # single directory
+```
+
+## Architecture
+
+### Layering Convention
+
+All modules follow this pattern — keep controllers thin:
+
+```
+app/Http/Controllers/{Module}/   — thin, delegate to services
+app/Services/                    — all business logic lives here
+app/Models/                      — Eloquent models + relationships
+app/Policies/                    — authorization per module
+app/Http/Requests/               — validation (including dynamic field rules)
+app/Exports/ + app/Imports/      — Excel export/import classes
+resources/views/layouts/         — app, guest, print (QR labels)
+resources/views/components/      — x-data-table, x-filter-bar, x-dynamic-fields, x-attachment-uploader
+resources/views/modules/         — per-module screens
+routes/web.php                   — main routes
+routes/api.php                   — scan endpoint + mobile helpers only
+```
+
+### Controller Namespacing
+
+```
+Admin/    — org masters, users, roles, RBAC settings
+Assets/   — asset CRUD, bulk, QR tags
+Movement/ — Phase 2
+Audit/    — Phase 2
+Maintenance/ — Phase 2
+Disposal/ — Phase 3
+Reports/  — Phase 3
+Api/      — minimal JSON for PWA scan endpoints
+```
+
+## Module System
+
+Implementation is split into 17 modules with defined dependencies. See `docs/planning/MODULES_INDEX.md` for full dependency graph. Start order: M00 → M01 → (Dev1: M02→M03→M04→M05→M06 | Dev2: M08→M09→M11→M16→M17→M10→M13→M14→M15).
+
+**Cross-module contracts that must not break:**
+
+| Contract | Owner | Consumers |
+|----------|-------|-----------|
+| `DynamicFieldService::resolveForCategory($id)` | M04 | M03 forms, M06 import, M14 reports |
+| `Asset::hasCustomFieldData()` | M03 | M04 category lock |
+| `WorkflowService::submit/approve/reject` | M08 | M09, M13 |
+| `NotificationService::send($user, $type, $data)` | M12 | M08, M09, M10, M11, M13 |
+| `TagService` + `/scan/{tag_number}` route | M05 | M08 replacement, M10 audit scan |
+| `MovementService::applyBulk()` | M09 | M17 kit assignment |
+
+## Key Design Decisions
+
+### Dynamic Fields (EAV)
+
+Categories form a tree (`parent_id` on `asset_categories`). Fields defined on any ancestor are **inherited with override** — child categories can hide, relabel, or change the `required` flag via `category_field_overrides`. Never hard-code field resolution; always call `DynamicFieldService::resolveForCategory()`.
+
+`asset_field_values` uses typed EAV columns (`value_text`, `value_number`, `value_date`, `value_boolean`) — not a single JSON blob — for searchability. Index exists on `(category_field_id, value_*)` for filtered asset lists.
+
+### Multi-Company Asset Ownership
+
+Each asset has a required `company_id` FK to the `companies` master. This is **not multi-tenancy** — all data lives in one schema. `company_id` reflects the current owning company and is updated atomically when an inter-company transfer approval completes. The `asset_movements` table stores `from_company_id` / `to_company_id` for inter-company transfer rows. Reports and dashboard filters accept a company scope.
+
+### Category Lock
+
+Once `asset_field_values` rows exist for an asset, `category_id` is **immutable** for standard users. Only users with `assets.override_category` can force a change; doing so does NOT migrate existing field values and logs a before/after activity entry.
+
+### Custom Field Soft-Delete
+
+Never hard-delete `category_fields` if any `asset_field_values` reference them. Soft-delete only. Deactivated fields are hidden on new asset forms but shown read-only on existing assets.
+
+### QR/Barcode Tag Pool
+
+Tags are pre-generated into a pool (`tags` table, status `available`), physically printed, then assigned to assets later. Assets are created without a tag by default. Tag replacement requires an approval workflow. Scan route `/scan/{tag_number}` resolves by status: `assigned` → asset detail, `available` → assign UI, `inactive` → retired message. Tag numbers are never reused.
+
+### Approval Workflow
+
+Every asset transfer, tag replacement, and disposal goes through multi-level approval (`approval_requests` + `approval_actions`, append-only). The workflow engine in M08 is polymorphic and supports escalation. Kit assignments are configurable: `single` (one approval for whole kit) or `per_asset` (controlled by `config/assetwise.php` key `kit_assignment_approval_mode`).
+
+### Depreciation (Strategy Pattern)
+
+`DepreciationCalculatorInterface` with `StraightLineCalculator` in MVP. Other methods seeded inactive in `depreciation_methods`. Category sets defaults; per-asset `asset_depreciation_settings` overrides. Monthly scheduler posts `depreciation_schedule_lines` and updates cached `current_book_value` on `asset_depreciation_settings`.
+
+### Queue & Cache (Shared Hosting)
+
+Use `QUEUE_CONNECTION=database` and `CACHE_DRIVER=database` (or file). No Redis assumed. Heavy exports run as queued jobs with download-link notification. Scheduler runs via a single cron entry: `* * * * * php artisan schedule:run`.
+
+## RBAC Permissions (Seeded)
+
+Permissions follow `{module}.{action}` naming. Key non-obvious ones:
+- `assets.override_category` — force category change when field data exists
+- `category_fields.manage` — build/soft-delete dynamic field definitions
+- `workflow.approve` — act on approval steps
+- `imports.manage` — bulk upload per category
+
+Default roles seeded: Super Admin, Asset Manager, Department User, Auditor, Approver, Viewer.
+
+## PWA Scope
+
+The **entire web app** is the PWA (not a scan-only mini-app). `vite-plugin-pwa` generates a service worker that caches static assets only; all Blade pages and API calls use network-first strategy. Creating/editing records requires connectivity. HTTPS is required in production for service worker and camera access (`html5-qrcode` for QR scanning within audit/movement flows).
+
+## Deployment (Shared Hosting)
+
+```bash
+php artisan migrate --force
+php artisan db:seed
+php artisan storage:link
+# Cron: * * * * * php /path/to/artisan schedule:run
+```
+
+Point web root to `/public`. Set `APP_DEBUG=false` in production `.env`.
