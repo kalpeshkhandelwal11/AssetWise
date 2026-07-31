@@ -4,7 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AssetWise is a **greenfield** Enterprise Asset Management System. It is a **single-schema system** (not multi-tenant), but each asset carries a `company_id` so ownership is tracked per company and assets can be transferred between companies via an approval-gated **inter-company transfer** flow. Reports can be filtered and grouped by company. As of initial planning, no Laravel application code exists yet — this repo contains planning documentation and will be built out following the module plan in `docs/planning/`.
+AssetWise is a **greenfield** Enterprise Asset Management System. It is a **single-schema system** (not multi-tenant), but each asset carries a `company_id` so ownership is tracked per company and assets can be transferred between companies via an approval-gated **inter-company transfer** flow. Reports can be filtered and grouped by company.
+
+**Module status:**
+
+| Module | Status | Notes |
+|--------|--------|-------|
+| M00 Foundation | ✅ done | Laravel 13 scaffold, packages, base UI |
+| M01 Auth & RBAC | ✅ done | Session lifetime, force-change, login history, RBAC seed |
+| M02 Shared Masters | 🔄 next | Companies, statuses, locations |
+| M03+ | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
+
+For the full developer setup guide see `docs/developer-setup.md`.
 
 **Stack:** Laravel 11, MySQL 8, Blade + Alpine.js + Tailwind CSS, PWA (vite-plugin-pwa)
 
@@ -53,6 +64,34 @@ php artisan test
 php artisan test --filter=AssetTest   # single test class
 php artisan test tests/Feature/Assets/  # single directory
 ```
+
+## Testing Conventions
+
+Tests use **in-memory SQLite** (`DB_DATABASE=:memory:`) so they never touch the dev database. Each test class gets fresh tables.
+
+**Password policy:** `AppServiceProvider` sets `Password::defaults()` to min 8, mixed case, numbers, symbols. The factory default is `Admin@1234`. Always use this in tests:
+
+```php
+// Current password in tests (factory default)
+$this->post('/login', ['email' => $user->email, 'password' => 'Admin@1234']);
+
+// New password when testing update flows
+'password' => 'NewPass@9876',   // also passes policy
+```
+
+**Session lifetime tests** — `_last_activity_at` is set by the middleware on the **first authenticated GET**, not on the login POST. Correct pattern:
+
+```php
+$this->post('/login', [...]);           // login
+$this->get('/dashboard');               // seeds _last_activity_at
+$this->travel(9)->hours();              // advance time
+$this->get('/dashboard')->assertRedirect('/login'); // now expired
+$this->travelBack();
+```
+
+**Event listeners** — `LogSuccessfulLogin` and `LogFailedLogin` are auto-discovered via their `handle()` type-hints. Do NOT add them to `AppServiceProvider::boot()` or they will fire twice per event.
+
+**Role tests** — always include `use Tests\Concerns\SeedsRolesAndPermissions` and use `$this->createUserWithRole('Super Admin')` etc.
 
 ## Architecture
 

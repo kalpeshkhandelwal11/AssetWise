@@ -1,22 +1,19 @@
 @php
     $currentRoute = request()->route()?->getName() ?? '';
-    function navActive(string $prefix): string {
-        return str_starts_with(request()->route()?->getName() ?? '', $prefix)
-            ? 'bg-indigo-600 text-white'
-            : 'text-gray-400 hover:bg-gray-800 hover:text-white';
-    }
-    function navGroupActive(array $prefixes): bool {
-        $route = request()->route()?->getName() ?? '';
+    $navActive = fn(string $prefix): string => str_starts_with($currentRoute, $prefix)
+        ? 'bg-indigo-600 text-white'
+        : 'text-gray-400 hover:bg-gray-800 hover:text-white';
+    $navGroupActive = function(array $prefixes) use ($currentRoute): bool {
         foreach ($prefixes as $p) {
-            if (str_starts_with($route, $p)) return true;
+            if (str_starts_with($currentRoute, $p)) return true;
         }
         return false;
-    }
+    };
 @endphp
 
 {{-- Dashboard --}}
 <a href="{{ route('dashboard') }}"
-   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors {{ navActive('dashboard') }}">
+   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors {{ $navActive('dashboard') }}">
     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/>
     </svg>
@@ -25,7 +22,7 @@
 
 {{-- ASSETS group --}}
 @canany(['assets.view', 'assets.create', 'category_fields.manage'])
-<div x-data="{ open: {{ navGroupActive(['assets.', 'categories.', 'tags.']) ? 'true' : 'false' }} }">
+<div x-data="{ open: {{ $navGroupActive(['assets.', 'categories.', 'tags.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +64,7 @@
 
 {{-- TAGS / QR --}}
 @canany(['assets.view', 'tags.manage'])
-<div x-data="{ open: {{ navGroupActive(['tags.']) ? 'true' : 'false' }} }">
+<div x-data="{ open: {{ $navGroupActive(['tags.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +94,7 @@
 
 {{-- MOVEMENT --}}
 @canany(['movement.assign', 'movement.transfer', 'movement.verify'])
-<div x-data="{ open: {{ navGroupActive(['movement.']) ? 'true' : 'false' }} }">
+<div x-data="{ open: {{ $navGroupActive(['movement.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,7 +128,7 @@
 
 {{-- AUDIT --}}
 @can('audit.manage')
-<div x-data="{ open: {{ navGroupActive(['audit.']) ? 'true' : 'false' }} }">
+<div x-data="{ open: {{ $navGroupActive(['audit.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,7 +154,7 @@
 
 {{-- MAINTENANCE --}}
 @can('maintenance.manage')
-<div x-data="{ open: {{ navGroupActive(['maintenance.']) ? 'true' : 'false' }} }">
+<div x-data="{ open: {{ $navGroupActive(['maintenance.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,7 +185,7 @@
 
 {{-- DISPOSAL --}}
 @canany(['disposal.request', 'disposal.approve'])
-<div x-data="{ open: {{ navGroupActive(['disposal.']) ? 'true' : 'false' }} }">
+<div x-data="{ open: {{ $navGroupActive(['disposal.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,7 +212,7 @@
 {{-- REPORTS --}}
 @can('reports.view')
 <a href="#"
-   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors {{ navActive('reports.') }}">
+   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors {{ $navActive('reports.') }}">
     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
     </svg>
@@ -228,7 +225,7 @@
 
 {{-- ADMINISTRATION --}}
 @canany(['users.view', 'masters.manage', 'workflow.approve'])
-<div x-data="{ open: {{ navGroupActive(['admin.', 'users.', 'roles.', 'masters.']) ? 'true' : 'false' }} }">
+<div x-data="{ open: {{ $navGroupActive(['admin.', 'users.', 'roles.', 'masters.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -250,12 +247,18 @@
             <span x-show="!sidebarCollapsed">Roles & Permissions</span>
         </a>
         @endcan
-        @can('masters.manage')
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        @canany(['masters.manage', 'masters.view'])
+        <a href="{{ route('admin.masters.landing') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.masters') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Shared Masters</span>
         </a>
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        <a href="{{ route('admin.locations.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.locations') }} hover:bg-gray-800 hover:text-white transition-colors">
+            <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
+            <span x-show="!sidebarCollapsed">Locations</span>
+        </a>
+        @endcanany
+        @can('companies.manage')
+        <a href="{{ route('admin.companies.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.companies') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Companies</span>
         </a>

@@ -20,7 +20,7 @@ class RolePermissionSeeder extends Seeder
             'login_history.view',
 
             // Masters
-            'masters.manage',
+            'masters.view', 'masters.manage', 'companies.manage',
 
             // Assets
             'assets.view', 'assets.create', 'assets.edit', 'assets.delete',
@@ -63,7 +63,7 @@ class RolePermissionSeeder extends Seeder
         // Super Admin — all permissions, 8hr session
         $superAdmin = Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
         $superAdmin->update(['session_lifetime_minutes' => 480]);
-        $superAdmin->syncPermissions(Permission::all());
+        $superAdmin->syncPermissions(Permission::all()); // includes companies.manage, masters.manage
 
         // Asset Manager
         $assetManager = Role::firstOrCreate(['name' => 'Asset Manager', 'guard_name' => 'web']);
@@ -79,7 +79,7 @@ class RolePermissionSeeder extends Seeder
             'disposal.request',
             'reports.view', 'reports.export',
             'imports.manage',
-            'masters.manage',
+            'masters.view', 'masters.manage', 'companies.manage',
         ]);
 
         // Department User
@@ -98,6 +98,7 @@ class RolePermissionSeeder extends Seeder
             'assets.view',
             'audit.manage', 'audit.verify',
             'reports.view',
+            'masters.view',
         ]);
 
         // Approver

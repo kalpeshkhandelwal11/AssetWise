@@ -68,7 +68,7 @@ class ProfileTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->delete('/profile', [
-                'password' => 'password',
+                'password' => 'Admin@1234',
             ]);
 
         $response
@@ -87,7 +87,7 @@ class ProfileTest extends TestCase
             ->actingAs($user)
             ->from('/profile')
             ->delete('/profile', [
-                'password' => 'wrong-password',
+                'password' => 'WrongPass@1',
             ]);
 
         $response
@@ -95,5 +95,39 @@ class ProfileTest extends TestCase
             ->assertRedirect('/profile');
 
         $this->assertNotNull($user->fresh());
+    }
+
+    // ── Validation ──────────────────────────────────────────────────────────────
+
+    public function test_profile_update_fails_without_name(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->patch('/profile', ['name' => '', 'email' => $user->email])
+            ->assertSessionHasErrors('name');
+    }
+
+    public function test_profile_update_fails_with_invalid_email(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->patch('/profile', ['name' => 'Test User', 'email' => 'not-an-email'])
+            ->assertSessionHasErrors('email');
+    }
+
+    // ── Auth guard ───────────────────────────────────────────────────────────────
+
+    public function test_profile_patch_requires_auth(): void
+    {
+        $this->patch('/profile', ['name' => 'x', 'email' => 'x@x.com'])
+            ->assertRedirect('/login');
+    }
+
+    public function test_profile_delete_requires_auth(): void
+    {
+        $this->delete('/profile', ['password' => 'Admin@1234'])
+            ->assertRedirect('/login');
     }
 }

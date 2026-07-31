@@ -19,7 +19,8 @@ class CheckSessionLifetime
 
         $lastActivity = session('_last_activity_at');
 
-        if ($lastActivity && now()->diffInMinutes($lastActivity) > $lifetimeMinutes) {
+        // diffInMinutes(now) gives a positive value (elapsed minutes since last activity)
+        if ($lastActivity && $lastActivity->diffInMinutes(now()) > $lifetimeMinutes) {
             auth()->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
