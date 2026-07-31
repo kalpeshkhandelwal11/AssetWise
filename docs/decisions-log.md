@@ -1,0 +1,126 @@
+# AssetWise — Decisions Log
+
+Running record of architectural and implementation decisions across all modules. Each entry records **what** was decided, **why**, and **when**. Pending decisions flag what must be answered before a module can start.
+
+---
+
+## Architectural Decisions (Expert Panel — confirmed before build started)
+
+| # | Question | Decision | Rationale |
+|---|----------|----------|-----------|
+| A1 | Custom field inheritance in category tree? | **Inherit with override** — child categories inherit parent fields; child can hide or override label/required | Avoids field duplication; mirrors standard EAV patterns |
+| A2 | Category change after asset has custom data? | **Block by default** — locked once `asset_field_values` exist; only `assets.override_category` permission can force-change; does NOT migrate values | Prevents silent data loss on EAV rows tied to old category |
+| A3 | Asset Type vs Category? | **Independent** — `asset_type_id` and `category_id` are separate FKs on `assets`; category drives custom fields, type is a simple classification | Per BRD: IT Hardware vs "Laptop" are orthogonal axes |
+| A4 | Field definition changes after data exists? | **Soft-delete only** — `deleted_at` on `category_fields`; deactivated fields hidden on new asset forms; shown read-only on existing assets | Hard delete would orphan EAV rows with no label |
+| A5 | Bulk import with per-category fields? | **Per-category Excel template** — template header = core columns + resolved custom columns for the selected category | One template per category avoids a confusing mega-sheet |
+| A6 | Transfer approval required? | **Always required** — every asset movement (assign, return, transfer, inter-company) goes through multi-level approval before taking effect | Audit trail + control requirement from BRD |
+| A7 | QR/Barcode lifecycle? | **Pre-generate tag pool** — bulk generate tags into `available` pool, print labels, assign to assets later. Tag replacement requires approval workflow | Physical labels printed before assets registered; decouples tagging from registration |
+| A8 | Depreciation configuration? | **Category default + per-asset override** — category sets method/useful life/salvage; each asset can override | Mirrors real-world practice; reduces per-asset data entry |
+| A9 | Depreciation methods in MVP? | **Straight-line only** — strategy-pattern architecture allows adding methods without schema changes; others seeded inactive | Simplest method for MVP; architecture ready for WDV etc. |
+| A10 | Kit/bundle assignment? | **Both** — saved kit templates (named, reusable) AND ad-hoc bundles (pick assets at assignment time) | Per BRD: both use cases exist |
+| A11 | Kit assignment approval mode? | **Configurable** — admin setting `kit_assignment_approval_mode`: `single` (one approval for whole kit) or `per_asset` (one approval per asset) | Different orgs have different governance needs |
+
+---
+
+## M01 — Auth & RBAC
+
+### Implementation choices (made during build, 2026-07-31)
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Session lifetime storage | `_last_activity_at` stored in PHP session | Avoids a DB round-trip on every request; no persistent store needed |
+| Session expiry timing | `_last_activity_at` set on first **authenticated GET**, not on login POST | At login POST time the user is not yet authenticated when middleware runs; cannot seed the key there |
+| Event listener registration | Auto-discovery only (via typed `handle()`) — never manually register in `AppServiceProvider` | Manual + auto = double-firing; caused 2 login history rows per login |
+| Carbon 3 diffInMinutes | Use `$past->diffInMinutes(now())` not `now()->diffInMinutes($past)` | Carbon 3 changed `$absolute` default to `false`; reversed order gives positive value |
+| Factory password | `Admin@1234` in `UserFactory` | Must satisfy global password policy (min 8, mixed case, numbers, symbols) set in `AppServiceProvider::boot()` |
+
+---
+
+## M02 — Shared Masters
+
+### Implementation choices (made during build, 2026-07-31)
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Generic master CRUD | Single `MasterController` with entity-registry array — not one controller per entity | 7 entities share identical schema (name, code, is_active); registry pattern avoids 7 near-identical controllers |
+| Location hierarchy controller | Single `LocationController` handles all 4 levels (location/building/floor/room) | All operations redirect to the same locations index page; grouping in one controller keeps related logic together |
+| Master table deletion | `is_active` toggle only — no hard delete for master records | FK integrity: statuses/types are referenced by assets in later modules; deactivation hides without breaking references |
+| System status protection | `is_system` boolean on `asset_statuses` — system statuses block deactivation and deletion | Available/Assigned/In Maintenance/Disposed are required by application logic in all downstream modules |
+| Company deactivation | Toggle-active only (no hard delete); "cannot deactivate if assets exist" is a **placeholder comment** in `CompanyController::toggleActive()` | Assets table doesn't exist yet in M02; M03 must wire in the actual `$company->assets()->exists()` check |
+| Separate `companies.manage` permission | `companies.manage` distinct from `masters.manage` | Companies have more business weight (own assets, drive inter-company transfers) — finer access control needed |
+| `masters.view` permission | Added for Auditor and Viewer roles | Read-only access to master landing page for reporting/verification users |
+
+---
+
+## M03 — Asset Master
+
+### Pre-implementation decisions (confirmed 2026-07-31)
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Departments & Branches | Create as new master tables now (`departments`, `branches` — name, code, is_active) | `assets.department_id` and `assets.branch_id` are FK columns per master plan; need the tables before the migration |
+| Category tree UI | Parent-dropdown list (not drag-and-drop tree) | Same pattern as M02 masters; covers real-world use; drag-and-drop is a M07 UI enhancement |
+| Location cascade | API endpoints in `routes/api.php` — `GET /api/buildings?location_id=X`, `/api/floors?building_id=X`, `/api/rooms?floor_id=X` | Alpine.js fetches on select change; endpoints reused by M09 movement wizard |
+| Photo storage path | `storage/app/public/assets/{asset_id}/photos/` | Standard Laravel public disk; symlink already in place from M00 |
+| Attachment preview | Download link only (no inline preview) | Inline PDF/image preview is a M07 UI enhancement; not needed for MVP |
+| File size limits | Photos: 10 MB max. Attachments: 20 MB max | Enforced in controller validation; shared hosting safe |
+| `company_id` mutability | Read-only after asset creation for standard users | Only changes via approved inter-company transfer (M09); prevents accidental re-assignment |
+
+### M03 wire-up required (M02 placeholder)
+
+> `CompanyController::toggleActive()` has a comment placeholder: `// When M03 adds assets table, add: if ($company->assets()->exists()) { ... }`
+> **Must be wired in M03** after the `assets` migration and model exist.
+
+---
+
+## Pending Decisions (must answer before each module starts)
+
+### M04 — Dynamic Fields
+
+| # | Question | Status |
+|---|----------|--------|
+| P4.1 | Field builder UI location: inline on category edit page, or separate `/admin/categories/{cat}/fields` dedicated page? | ❓ Pending |
+| P4.2 | `resolveForCategory()` cache strategy: per-request only (request-scoped singleton), or cache to file/DB per category code version? | ❓ Pending |
+
+### M05 — QR / Barcode Tags
+
+| # | Question | Status |
+|---|----------|--------|
+| P5.1 | Tag number format: what is the pattern? (e.g. `AW-000001`, `{PREFIX}-{6-digit}`, fully custom?) | ❓ Pending |
+| P5.2 | Print label layout: grid of labels on A4 sheet, or individual label per page? What label size? (e.g. 50×25mm, 63×38mm) | ❓ Pending |
+
+### M06 — Bulk Import / Export
+
+| # | Question | Status |
+|---|----------|--------|
+| P6.1 | Import processing: synchronous (inline, blocks request) or queued job (background, shows progress page)? Sync is simpler; queue is needed for large files. | ❓ Pending |
+| P6.2 | Maximum rows per import batch? (Practical limit to prevent memory issues on shared hosting) | ❓ Pending |
+
+### M08 — Approval Workflow
+
+| # | Question | Status |
+|---|----------|--------|
+| P8.1 | When a step is escalated, can the original approver still act, or do they lose the ability? | ❓ Pending |
+| P8.2 | After rejection, can the requester edit and resubmit the same record, or must they create a new request? | ❓ Pending |
+
+### M09 — Asset Movement
+
+| # | Question | Status |
+|---|----------|--------|
+| P9.1 | Bulk movement (multiple assets, non-kit): one approval request for the whole batch, or one per asset? Master plan notes "TBD: default per batch" — needs confirmation. | ❓ Pending |
+
+---
+
+## Cross-module Contracts (must not break)
+
+These are interfaces between modules. Changing them requires coordinating both sides.
+
+| Contract | Owner | Consumers | Notes |
+|----------|-------|-----------|-------|
+| `DynamicFieldService::resolveForCategory($id)` | M04 | M03 forms, M06 import, M14 reports | Must be stable before M06 starts |
+| `Asset::hasCustomFieldData()` | M03 (stub → M04 real) | M04 category lock | M03 returns `false`; M04 replaces with real check |
+| `WorkflowService::submit/approve/reject` | M08 | M09, M05 replacement, M17 kits | M08 must ship before M09 can go live |
+| `NotificationService::send($user, $type, $data)` | M12 | M08, M09, M10, M11, M13 | Stub in M07; full implementation in M12 |
+| `TagService` + `/scan/{tag_number}` route | M05 | M08 tag replacement, M10 audit scan | Scan URL format is a contract — never change `tag_number` slug |
+| `MovementService::applyBulk()` | M09 | M17 kit assignment | Must accept `Collection $assets` + `KitAssignment` |
+| `company_id` on `assets` | M03 | M09 inter-company transfer, M06 import, M14 reports | Updated atomically on inter-company transfer approval; never directly writeable after create |
