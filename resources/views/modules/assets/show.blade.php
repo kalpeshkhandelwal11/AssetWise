@@ -92,6 +92,26 @@
                     <dd class="text-gray-700 dark:text-gray-300 mt-1 text-sm">{{ $asset->notes }}</dd>
                 </div>
             @endif
+            @if($asset->fieldValues->isNotEmpty())
+                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Custom Fields</p>
+                    <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                        @foreach($asset->fieldValues->sortBy(fn ($fv) => $fv->categoryField?->display_order) as $fv)
+                            @if($fv->categoryField)
+                                <div>
+                                    <dt class="text-gray-400 text-xs uppercase tracking-wide">
+                                        {{ $fv->categoryField->label }}
+                                        @if($fv->categoryField->trashed() || ! $fv->categoryField->is_active)
+                                            <span class="text-amber-500" title="Field no longer active on this category">(archived)</span>
+                                        @endif
+                                    </dt>
+                                    <dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ $fv->displayValue() }}</dd>
+                                </div>
+                            @endif
+                        @endforeach
+                    </dl>
+                </div>
+            @endif
         </div>
 
         {{-- Photos tab --}}

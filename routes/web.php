@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\CategoryFieldController;
 use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\Admin\FieldOverrideController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\LoginHistoryController;
 use App\Http\Controllers\Admin\MasterController;
@@ -46,6 +48,18 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
 
         // Asset categories
         Route::resource('categories', CategoryController::class)->except(['show']);
+
+        // Category custom fields (M04)
+        Route::prefix('categories/{category}/fields')->name('categories.fields.')->group(function () {
+            Route::get('/', [CategoryFieldController::class, 'index'])->name('index');
+            Route::get('create', [CategoryFieldController::class, 'create'])->name('create');
+            Route::post('/', [CategoryFieldController::class, 'store'])->name('store');
+            Route::get('{field}/edit', [CategoryFieldController::class, 'edit'])->name('edit');
+            Route::put('{field}', [CategoryFieldController::class, 'update'])->name('update');
+            Route::delete('{field}', [CategoryFieldController::class, 'destroy'])->name('destroy');
+            Route::post('{field}/override', [FieldOverrideController::class, 'store'])->name('override.store');
+            Route::delete('{field}/override', [FieldOverrideController::class, 'destroy'])->name('override.destroy');
+        });
 
         // Companies
         Route::resource('companies', CompanyController::class)->except(['show']);

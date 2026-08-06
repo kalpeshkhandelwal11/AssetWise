@@ -109,10 +109,14 @@ class Asset extends Model
         return $this->hasMany(AssetAttachment::class);
     }
 
-    // Stub for M03; M04 replaces with a real check against asset_field_values.
+    public function fieldValues(): HasMany
+    {
+        return $this->hasMany(AssetFieldValue::class);
+    }
+
     public function hasCustomFieldData(): bool
     {
-        return false;
+        return $this->fieldValues()->exists();
     }
 
     public function getActivitylogOptions(): LogOptions

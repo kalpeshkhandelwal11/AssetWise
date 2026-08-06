@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\DynamicFieldController;
 use App\Http\Controllers\Api\LocationCascadeController;
 use Illuminate\Support\Facades\Route;
 
@@ -11,4 +12,5 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/buildings', [LocationCascadeController::class, 'buildings']);
     Route::get('/floors', [LocationCascadeController::class, 'floors']);
     Route::get('/rooms', [LocationCascadeController::class, 'rooms']);
+    Route::get('/categories/{category}/fields', [DynamicFieldController::class, 'forCategory']);
 });

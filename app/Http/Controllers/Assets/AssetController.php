@@ -13,15 +13,19 @@ use App\Models\Department;
 use App\Models\Location;
 use App\Models\User;
 use App\Services\AssetService;
+use App\Services\DynamicFieldService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Spatie\Activitylog\Models\Activity;
 
 class AssetController extends Controller
 {
-    public function __construct(private readonly AssetService $assets)
-    {
+    public function __construct(
+        private readonly AssetService $assets,
+        private readonly DynamicFieldService $fields,
+    ) {
     }
 
     public function index(Request $request): View
@@ -67,12 +71,17 @@ class AssetController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
         $this->authorize('create', Asset::class);
 
+        $categoryId = $request->old('category_id');
+
         return view('modules.assets.form', [
-            'asset' => new Asset(),
+            'asset'           => new Asset(),
+            'resolvedFields'  => $categoryId ? $this->fields->resolveForCategory((int) $categoryId) : collect(),
+            'fieldValues'     => collect(),
+            'canChangeCategory' => true,
         ] + $this->formLookups());
     }
 
@@ -80,9 +89,13 @@ class AssetController extends Controller
     {
         $this->authorize('create', Asset::class);
 
-        $data = $request->validate($this->rules(companyRequired: true));
+        $data = $this->validateAsset($request, companyRequired: true, companyEditable: true);
+        $resolved = $data['_resolved_fields'];
+        $fieldInput = $data['fields'];
+        unset($data['fields'], $data['_resolved_fields']);
 
         $asset = $this->assets->create($data, $request->user());
+        $this->fields->saveValues($asset, $fieldInput, $resolved);
 
         return redirect()->route('assets.show', $asset)->with('success', 'Asset created.');
     }
@@ -91,7 +104,11 @@ class AssetController extends Controller
     {
         $this->authorize('view', $asset);
 
-        $asset->load(['company', 'category', 'assetType', 'status', 'location', 'building', 'floor', 'room', 'custodian', 'department', 'branch', 'photos', 'attachments', 'creator', 'updater']);
+        $asset->load([
+            'company', 'category', 'assetType', 'status', 'location', 'building', 'room', 'floor',
+            'custodian', 'department', 'branch', 'photos', 'attachments', 'creator', 'updater',
+            'fieldValues.categoryField.options',
+        ]);
 
         $activities = Activity::where('subject_type', Asset::class)
             ->where('subject_id', $asset->id)
@@ -105,8 +122,19 @@ class AssetController extends Controller
     {
         $this->authorize('update', $asset);
 
+        $categoryId = (int) old('category_id', $asset->category_id);
+        $canChangeCategory = ! $asset->hasCustomFieldData() || auth()->user()->can('assets.override_category');
+
+        $fieldValues = $asset->fieldValues()->with('categoryField')->get()
+            ->filter(fn ($fv) => $fv->categoryField !== null)
+            ->keyBy(fn ($fv) => $fv->categoryField->field_key)
+            ->map(fn ($fv) => $fv->rawValue());
+
         return view('modules.assets.form', [
-            'asset' => $asset,
+            'asset'             => $asset,
+            'resolvedFields'    => $this->fields->resolveForCategory($categoryId),
+            'fieldValues'       => $fieldValues,
+            'canChangeCategory' => $canChangeCategory,
         ] + $this->formLookups());
     }
 
@@ -116,15 +144,13 @@ class AssetController extends Controller
 
         $canChangeCompany = $request->user()->can('companies.manage');
 
-        $data = $request->validate($this->rules(companyRequired: false, companyEditable: $canChangeCompany));
-
-        // Category is locked once custom field data exists (M04 enforces the real check;
-        // Asset::hasCustomFieldData() is a stub returning false until then).
-        if ($asset->hasCustomFieldData() && ! $request->user()->can('assets.override_category')) {
-            unset($data['category_id']);
-        }
+        $data = $this->validateAsset($request, companyRequired: false, companyEditable: $canChangeCompany, asset: $asset);
+        $resolved = $data['_resolved_fields'];
+        $fieldInput = $data['fields'];
+        unset($data['fields'], $data['_resolved_fields']);
 
         $this->assets->update($asset, $data, $request->user());
+        $this->fields->saveValues($asset, $fieldInput, $resolved);
 
         return redirect()->route('assets.show', $asset)->with('success', 'Asset updated.');
     }
@@ -138,7 +164,48 @@ class AssetController extends Controller
         return redirect()->route('assets.index')->with('success', 'Asset deleted.');
     }
 
-    private function rules(bool $companyRequired, bool $companyEditable = true): array
+    /**
+     * Runs the core-field validator and the dynamic-field validator together and merges
+     * their error bags into a single ValidationException, so a user sees both a core-field
+     * error and a dynamic-field error in one round trip instead of discovering them one at a time.
+     */
+    private function validateAsset(Request $request, bool $companyRequired, bool $companyEditable, ?Asset $asset = null): array
+    {
+        $locked = $asset?->exists && $asset->hasCustomFieldData() && ! $request->user()->can('assets.override_category');
+        $submittedCategoryId = $request->input('category_id');
+        $effectiveCategoryId = $locked ? $asset->category_id : ($submittedCategoryId ? (int) $submittedCategoryId : null);
+        $resolved = $effectiveCategoryId ? $this->fields->resolveForCategory($effectiveCategoryId) : collect();
+
+        $errors = [];
+        $core = [];
+        $dynamic = [];
+
+        try {
+            $core = validator($request->all(), $this->rules($companyRequired, $companyEditable, categoryLocked: $locked))->validate();
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+        }
+
+        try {
+            $dynamic = $this->fields->validate($request->input('fields', []), $resolved);
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $key => $messages) {
+                $errors["fields.$key"] = $messages;
+            }
+        }
+
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        if ($locked) {
+            unset($core['category_id']);
+        }
+
+        return $core + ['fields' => $dynamic, '_resolved_fields' => $resolved];
+    }
+
+    private function rules(bool $companyRequired, bool $companyEditable = true, bool $categoryLocked = false): array
     {
         $companyRule = match (true) {
             $companyRequired => 'required|exists:companies,id',
@@ -153,7 +220,7 @@ class AssetController extends Controller
             'model'            => 'nullable|string|max:255',
             'manufacturer'     => 'nullable|string|max:255',
             'company_id'       => $companyRule,
-            'category_id'      => 'required|exists:asset_categories,id',
+            'category_id'      => $categoryLocked ? 'sometimes|exists:asset_categories,id' : 'required|exists:asset_categories,id',
             'asset_type_id'    => 'required|exists:asset_types,id',
             'status_id'        => 'required|exists:asset_statuses,id',
             'location_id'      => 'nullable|exists:locations,id',

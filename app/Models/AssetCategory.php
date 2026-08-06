@@ -35,4 +35,14 @@ class AssetCategory extends Model
     {
         return $this->hasMany(Asset::class, 'category_id');
     }
+
+    public function fields(): HasMany
+    {
+        return $this->hasMany(CategoryField::class, 'category_id');
+    }
+
+    public function fieldOverrides(): HasMany
+    {
+        return $this->hasMany(CategoryFieldOverride::class, 'category_id');
+    }
 }

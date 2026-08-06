@@ -11,6 +11,15 @@
             floorId: '{{ old('floor_id', $asset->floor_id) }}',
             roomId: '{{ old('room_id', $asset->room_id) }}',
             buildings: [], floors: [], rooms: [],
+            categoryId: '{{ old('category_id', $asset->category_id) }}',
+            dynamicFields: {{ Illuminate\Support\Js::from($resolvedFields) }},
+            fieldValues: {{ Illuminate\Support\Js::from(old('fields', $fieldValues)) }},
+            async loadDynamicFields() {
+                if (! this.categoryId) { this.dynamicFields = []; this.fieldValues = {}; return; }
+                const res = await fetch(`{{ url('/api/categories') }}/${this.categoryId}/fields`);
+                this.dynamicFields = await res.json();
+                this.fieldValues = {};
+            },
             async loadBuildings(keep = false) {
                 this.buildings = [];
                 if (! this.locationId) { this.floors = []; this.rooms = []; return; }
@@ -88,13 +97,19 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <x-input-label for="category_id" value="Category *" />
-                    <select id="category_id" name="category_id" required
-                            class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
-                        <option value="">— Select —</option>
-                        @foreach($categories as $category)
-                            <option value="{{ $category->id }}" @selected(old('category_id', $asset->category_id) == $category->id)>{{ $category->name }}</option>
-                        @endforeach
-                    </select>
+                    @if($canChangeCategory)
+                        <select id="category_id" name="category_id" x-model="categoryId" @change="loadDynamicFields()" required
+                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                            <option value="">— Select —</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                            @endforeach
+                        </select>
+                    @else
+                        <input type="text" disabled value="{{ $asset->category?->name }}"
+                               class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-400 shadow-sm text-sm" />
+                        <p class="mt-1 text-xs text-gray-400">Category is locked because this asset has saved custom field data.</p>
+                    @endif
                     <x-input-error :messages="$errors->get('category_id')" class="mt-1" />
                 </div>
                 <div>
@@ -121,8 +136,17 @@
                 </div>
             </div>
 
-            {{-- M04 will inject category-specific dynamic fields here once resolved by DynamicFieldService --}}
-            <div id="dynamic-fields-placeholder"></div>
+            @if($errors->get('fields.*'))
+                <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-sm text-red-700 dark:text-red-400 space-y-1">
+                    @foreach($errors->get('fields.*') as $key => $messages)
+                        @php
+                            $label = $resolvedFields->first(fn ($f) => $f->fieldKey === last(explode('.', $key)))?->label ?? $key;
+                        @endphp
+                        <p><span class="font-medium">{{ $label }}:</span> {{ implode(' ', $messages) }}</p>
+                    @endforeach
+                </div>
+            @endif
+            <x-dynamic-fields />
 
             {{-- Identification --}}
             <div class="pt-2 border-t border-gray-100 dark:border-gray-700">

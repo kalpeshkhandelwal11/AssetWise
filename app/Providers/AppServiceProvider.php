@@ -2,12 +2,18 @@
 
 namespace App\Providers;
 
+use App\Services\DynamicFieldService;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        // Singleton so resolveForCategory()'s per-request memoization holds across
+        // multiple injection points (e.g. controller + view) within one request.
+        $this->app->singleton(DynamicFieldService::class);
+    }
 
     public function boot(): void
     {
