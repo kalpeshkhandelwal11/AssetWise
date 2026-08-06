@@ -1,9 +1,13 @@
 <?php
 
+use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\LoginHistoryController;
 use App\Http\Controllers\Admin\MasterController;
+use App\Http\Controllers\Assets\AssetController;
+use App\Http\Controllers\Assets\AttachmentController;
+use App\Http\Controllers\Assets\PhotoController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -28,9 +32,20 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Assets
+    Route::resource('assets', AssetController::class);
+    Route::post('assets/{asset}/photos', [PhotoController::class, 'store'])->name('assets.photos.store');
+    Route::delete('assets/{asset}/photos/{photo}', [PhotoController::class, 'destroy'])->name('assets.photos.destroy');
+    Route::patch('assets/{asset}/photos/{photo}/primary', [PhotoController::class, 'setPrimary'])->name('assets.photos.primary');
+    Route::post('assets/{asset}/attachments', [AttachmentController::class, 'store'])->name('assets.attachments.store');
+    Route::delete('assets/{asset}/attachments/{attachment}', [AttachmentController::class, 'destroy'])->name('assets.attachments.destroy');
+
     // Administration
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('login-history', [LoginHistoryController::class, 'index'])->name('login-history.index');
+
+        // Asset categories
+        Route::resource('categories', CategoryController::class)->except(['show']);
 
         // Companies
         Route::resource('companies', CompanyController::class)->except(['show']);

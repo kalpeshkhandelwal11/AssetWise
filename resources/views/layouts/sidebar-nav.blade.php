@@ -22,7 +22,7 @@
 
 {{-- ASSETS group --}}
 @canany(['assets.view', 'assets.create', 'category_fields.manage'])
-<div x-data="{ open: {{ $navGroupActive(['assets.', 'categories.', 'tags.']) ? 'true' : 'false' }} }">
+<div x-data="{ open: {{ $navGroupActive(['assets.', 'admin.categories.', 'tags.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,13 +35,13 @@
     </button>
     <div x-show="open" x-collapse class="pl-8 mt-1 space-y-1">
         @can('assets.view')
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        <a href="{{ route('assets.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('assets.index') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">All Assets</span>
         </a>
         @endcan
         @can('assets.create')
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        <a href="{{ route('assets.create') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('assets.create') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Add Asset</span>
         </a>
@@ -52,8 +52,8 @@
             <span x-show="!sidebarCollapsed">Bulk Import</span>
         </a>
         @endcan
-        @can('category_fields.manage')
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        @can('assets.view')
+        <a href="{{ route('admin.categories.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.categories') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Categories</span>
         </a>

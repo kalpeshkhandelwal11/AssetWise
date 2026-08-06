@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,6 +19,7 @@ class CheckSessionLifetime
             ?? config('session.lifetime'); // default 480 min (8 hrs)
 
         $lastActivity = session('_last_activity_at');
+        $lastActivity = $lastActivity ? Carbon::parse($lastActivity) : null;
 
         // diffInMinutes(now) gives a positive value (elapsed minutes since last activity)
         if ($lastActivity && $lastActivity->diffInMinutes(now()) > $lifetimeMinutes) {

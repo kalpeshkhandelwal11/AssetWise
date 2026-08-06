@@ -2,11 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Models\AssetCategory;
 use App\Models\AssetStatus;
 use App\Models\AssetType;
 use App\Models\AuditType;
+use App\Models\Branch;
 use App\Models\Building;
 use App\Models\Company;
+use App\Models\Department;
 use App\Models\DisposalType;
 use App\Models\Floor;
 use App\Models\Location;
@@ -131,5 +134,35 @@ class SharedMastersSeeder extends Seeder
             ['floor_id' => $floor->id, 'code' => 'IT_LAB'],
             ['name' => 'IT Lab', 'is_active' => true]
         );
+
+        // Departments
+        foreach (['Information Technology', 'Finance', 'Human Resources', 'Operations', 'Administration'] as $dept) {
+            Department::firstOrCreate(
+                ['code' => strtoupper(str_replace(' ', '_', $dept))],
+                ['name' => $dept, 'is_active' => true]
+            );
+        }
+
+        // Branches
+        foreach (['Head Office', 'North Branch', 'South Branch'] as $branch) {
+            Branch::firstOrCreate(
+                ['code' => strtoupper(str_replace(' ', '_', $branch))],
+                ['name' => $branch, 'is_active' => true]
+            );
+        }
+
+        // Sample asset category tree
+        $itEquipment = AssetCategory::firstOrCreate(['code' => 'IT_EQUIPMENT'], [
+            'name' => 'IT Equipment', 'is_active' => true, 'sort_order' => 1,
+        ]);
+        AssetCategory::firstOrCreate(['code' => 'LAPTOPS'], [
+            'parent_id' => $itEquipment->id, 'name' => 'Laptops', 'is_active' => true, 'sort_order' => 1,
+        ]);
+        AssetCategory::firstOrCreate(['code' => 'DESKTOPS'], [
+            'parent_id' => $itEquipment->id, 'name' => 'Desktops', 'is_active' => true, 'sort_order' => 2,
+        ]);
+        AssetCategory::firstOrCreate(['code' => 'FURNITURE'], [
+            'name' => 'Furniture', 'is_active' => true, 'sort_order' => 2,
+        ]);
     }
 }

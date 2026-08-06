@@ -1,0 +1,14 @@
+<?php
+
+use App\Http\Controllers\Api\LocationCascadeController;
+use Illuminate\Support\Facades\Route;
+
+// Session-authenticated JSON endpoints consumed by Alpine.js on the asset form
+// (and reused by M09 movement forms). Explicitly runs the 'web' middleware group
+// so the auth session cookie is read, since routes/api.php defaults to the
+// stateless 'api' group.
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/buildings', [LocationCascadeController::class, 'buildings']);
+    Route::get('/floors', [LocationCascadeController::class, 'floors']);
+    Route::get('/rooms', [LocationCascadeController::class, 'rooms']);
+});
