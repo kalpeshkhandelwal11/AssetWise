@@ -9,6 +9,12 @@
         }
         return false;
     };
+
+    // Pending-approval badge. Computed inline (same style as app.blade.php's unread-notification
+    // count — this codebase has no View Composers) and only for users who can actually approve.
+    $approvalCount = auth()->user()?->can('workflow.approve')
+        ? app(\App\Services\WorkflowService::class)->pendingFor(auth()->user())->count()
+        : 0;
 @endphp
 
 {{-- Dashboard --}}
@@ -92,6 +98,20 @@
 </div>
 @endcanany
 
+{{-- APPROVALS --}}
+@can('workflow.approve')
+<a href="{{ route('approvals.index') }}"
+   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors {{ $navActive('approvals.') }}">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+    </svg>
+    <span x-show="!sidebarCollapsed" class="flex-1 truncate">Approvals</span>
+    @if($approvalCount > 0)
+        <span x-show="!sidebarCollapsed" class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white">{{ $approvalCount > 9 ? '9+' : $approvalCount }}</span>
+    @endif
+</a>
+@endcan
+
 {{-- MOVEMENT --}}
 @canany(['movement.assign', 'movement.transfer', 'movement.verify'])
 <div x-data="{ open: {{ $navGroupActive(['movement.']) ? 'true' : 'false' }} }">
@@ -109,10 +129,6 @@
         <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">New Movement</span>
-        </a>
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
-            <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
-            <span x-show="!sidebarCollapsed">Approvals Queue</span>
         </a>
         <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
@@ -224,7 +240,7 @@
 <div class="my-2 border-t border-gray-700/40"></div>
 
 {{-- ADMINISTRATION --}}
-@canany(['users.view', 'masters.manage', 'workflow.approve'])
+@canany(['users.view', 'masters.manage', 'workflow.manage'])
 <div x-data="{ open: {{ $navGroupActive(['admin.', 'users.', 'roles.', 'masters.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
@@ -263,8 +279,8 @@
             <span x-show="!sidebarCollapsed">Companies</span>
         </a>
         @endcan
-        @can('workflow.approve')
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        @can('workflow.manage')
+        <a href="{{ route('admin.workflows.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.workflows') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Workflow Config</span>
         </a>

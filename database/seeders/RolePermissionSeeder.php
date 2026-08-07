@@ -77,6 +77,9 @@ class RolePermissionSeeder extends Seeder
             'audit.manage', 'audit.verify',
             'maintenance.manage',
             'disposal.request',
+            // The default transfer + tag_replacement workflows (WorkflowSeeder) both route
+            // a step to Asset Manager, so the role needs to be able to act on approvals.
+            'workflow.approve',
             'reports.view', 'reports.export',
             'imports.manage',
             'masters.view', 'masters.manage', 'companies.manage',

@@ -7,6 +7,9 @@ use App\Http\Controllers\Admin\FieldOverrideController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\LoginHistoryController;
 use App\Http\Controllers\Admin\MasterController;
+use App\Http\Controllers\Admin\WorkflowController;
+use App\Http\Controllers\Admin\WorkflowStepController;
+use App\Http\Controllers\Approvals\ApprovalController;
 use App\Http\Controllers\Assets\AssetController;
 use App\Http\Controllers\Assets\AttachmentController;
 use App\Http\Controllers\Assets\PhotoController;
@@ -42,6 +45,15 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::post('assets/{asset}/attachments', [AttachmentController::class, 'store'])->name('assets.attachments.store');
     Route::delete('assets/{asset}/attachments/{attachment}', [AttachmentController::class, 'destroy'])->name('assets.attachments.destroy');
 
+    // Approvals (M08) — the param is {approval_request}, not {request}, so it never
+    // shadows the Illuminate\Http\Request that approve/reject also need.
+    Route::prefix('approvals')->name('approvals.')->group(function () {
+        Route::get('/', [ApprovalController::class, 'index'])->name('index');
+        Route::get('{approval_request}', [ApprovalController::class, 'show'])->name('show');
+        Route::post('{approval_request}/approve', [ApprovalController::class, 'approve'])->name('approve');
+        Route::post('{approval_request}/reject', [ApprovalController::class, 'reject'])->name('reject');
+    });
+
     // Administration
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('login-history', [LoginHistoryController::class, 'index'])->name('login-history.index');
@@ -59,6 +71,14 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
             Route::delete('{field}', [CategoryFieldController::class, 'destroy'])->name('destroy');
             Route::post('{field}/override', [FieldOverrideController::class, 'store'])->name('override.store');
             Route::delete('{field}/override', [FieldOverrideController::class, 'destroy'])->name('override.destroy');
+        });
+
+        // Approval workflows (M08)
+        Route::resource('workflows', WorkflowController::class)->except(['show']);
+        Route::prefix('workflows/{workflow}/steps')->name('workflows.steps.')->group(function () {
+            Route::post('/', [WorkflowStepController::class, 'store'])->name('store');
+            Route::put('{step}', [WorkflowStepController::class, 'update'])->name('update');
+            Route::delete('{step}', [WorkflowStepController::class, 'destroy'])->name('destroy');
         });
 
         // Companies
