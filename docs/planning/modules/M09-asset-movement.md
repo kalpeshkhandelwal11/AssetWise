@@ -6,6 +6,15 @@
 | **Phase** | 2 |
 | **Depends on** | M03, M08 |
 | **Parallel with** | M10, M11, M16, M17 |
+| **Status** | ⏳ unblocked — M03 ✅ and M08 ✅ are both merged |
+
+> **M08 integration.** Submit with `WorkflowService::submit($movement, 'transfer', $actor)`. `WorkflowSeeder` ships an active default chain (Approver → Asset Manager, 48h escalation each).
+>
+> M08 will **not** call `MovementService` — it has no compile-time knowledge of M09. Apply the movement from a listener on `App\Events\ApprovalRequestApproved` (auto-discovered via its `handle()` type-hint; do not also register it in `AppServiceProvider` or it fires twice), filtered on `$event->request->workflow->module === 'transfer'`, acting on `$event->request->approvable`. The event fires only on the terminal step, synchronously, so the caller sees the applied movement in the same request cycle.
+>
+> Rejection is terminal and leaves the source record untouched (decision P8.2) — a rejected movement is re-submitted by calling `submit()` again, which opens a fresh `approval_requests` row. Implement `getApprovalLabel(): string` on the movement model for a readable approver inbox.
+>
+> **Still open:** P9.1 in `docs/decisions-log.md` — whether a bulk (non-kit) movement raises one approval request for the batch or one per asset. Resolve before building.
 
 ## Scope
 

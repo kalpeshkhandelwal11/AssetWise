@@ -33,6 +33,20 @@ Carbon 3 changed the default for `$absolute` from `true` to `false`. `now()->dif
 
 ## Event listeners auto-discovered — never register manually too
 
-Laravel 11 auto-discovers listeners via `handle()` type-hints in `app/Listeners/`. If you ALSO register with `Event::listen()` in `AppServiceProvider::boot()`, the listener fires TWICE per event. `LogSuccessfulLogin` and `LogFailedLogin` were double-registered, causing 2 history records per login.
+Laravel auto-discovers listeners via `handle()` type-hints in `app/Listeners/`. If you ALSO register with `Event::listen()` in `AppServiceProvider::boot()`, the listener fires TWICE per event. `LogSuccessfulLogin` and `LogFailedLogin` were double-registered, causing 2 history records per login.
 
 **How to apply:** Do NOT add `Event::listen(...)` calls for any listener class in `app/Listeners/` — rely on auto-discovery only.
+
+## Use partial `Event::fake([X::class])`, never a bare `Event::fake()`
+
+A bare `Event::fake()` intercepts *all* events, including the Eloquent model events (`created`, `updated`, …) that Spatie's `LogsActivity` trait relies on. Tests that assert on domain events while also touching `Asset` (or any `LogsActivity` model) must scope the fake:
+
+```php
+Event::fake([ApprovalRequestApproved::class]);   // not Event::fake()
+```
+
+**Why:** silently disabling activity logging makes an unrelated assertion fail later, and the cause is not obvious from the failure message.
+
+## Time-travel tests must always `travelBack()`
+
+Escalation tests (`WorkflowServiceTest`, `EscalateApprovalsCommandTest`) follow: create → `$this->travel(49)->hours()` → act/assert → `$this->travelBack()`. Leaving time advanced leaks into later tests in the same class.

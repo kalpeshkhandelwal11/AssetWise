@@ -35,14 +35,16 @@ Authentication, users, roles, permissions, org masters (departments, branches, d
 
 ## Tasks
 
-- [ ] Extend User model + migration
-- [ ] User CRUD with role assignment
-- [ ] Role CRUD + permission matrix UI
-- [ ] Org master CRUD (3 entities)
-- [ ] LoginHistory listener on Login/Failed events
-- [ ] Seed default roles: Super Admin, Asset Manager, Department User, Auditor, Approver, Viewer
-- [ ] Activity log on user/role changes
-- [ ] Deactivate user (no hard delete if linked to assets)
+- [x] Extend User model + migration
+- [ ] **User CRUD with role assignment** — ❌ not built: no `UserController`, no `/admin/users` route, no views
+- [ ] **Role CRUD + permission matrix UI** — ❌ not built: no `RoleController`, no `/admin/roles` route. Roles/permissions exist only via `RolePermissionSeeder`
+- [ ] **Org master CRUD (3 entities)** — ❌ not built: `departments` and `branches` tables exist (added by M03) but are absent from `MasterController::ENTITIES`; `designations` has no table at all
+- [x] LoginHistory listener on Login/Failed events
+- [x] Seed default roles: Super Admin, Asset Manager, Department User, Auditor, Approver, Viewer
+- [ ] **Activity log on user/role changes** — ❌ blocked on the two CRUD screens above
+- [ ] **Deactivate user (no hard delete if linked to assets)** — ❌ blocked on user CRUD
+
+> **M01 is partially complete.** What shipped: the extended `User` model, session-lifetime middleware, forced password change, login-history capture and listing, and the seeded role/permission matrix. What did not: every *administration screen* for users, roles and org masters. Today a Super Admin cannot create a user or edit a role through the UI — it has to be done in `tinker` or a seeder. Close this gap before any module that assumes self-service user management, and note that M08's role-based approver routing depends on roles being assignable.
 
 ## Acceptance criteria
 

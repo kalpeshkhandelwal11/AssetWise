@@ -52,13 +52,15 @@ isProject: false
 
 # AssetWise — Detailed Implementation Plan (from BRD v1)
 
+> **This is the original plan document, kept as written.** For what is actually built today see [MODULES_INDEX.md](MODULES_INDEX.md)'s status column and [`../decisions-log.md`](../decisions-log.md). Short version as of 2026-08-07: M00, M03, M04, M08 complete; M01 and M02 partial; M05 and M06 next; 273 tests passing.
+
 ## Context
 
 - **Source:** [Asset_Management_BRD_v1.txt](c:\Users\KALPESH\Downloads\Asset_Management_BRD_v1.txt)
-- **Workspace:** [g:\AssetWise](g:\AssetWise) is empty — full greenfield setup
+- **Workspace:** [g:\AssetWise](g:\AssetWise) is empty — full greenfield setup *(historical — the repo now lives on `daniels_branch`)*
 - **Deployment model:** Single system, **no multi-tenancy** — but assets carry a `company_id` so ownership can be tracked per company and assets can be transferred between companies (inter-company transfer). Reports can be filtered and grouped by company.
 - **Target hosting:** Shared hosting (PHP + MySQL, no long-running workers assumed unless cron is available)
-- **Module plans (parallel dev):** [MODULES_INDEX.md](MODULES_INDEX.md) — 16 modules with per-file specs in `modules/`
+- **Module plans (parallel dev):** [MODULES_INDEX.md](MODULES_INDEX.md) — 18 modules (M00–M17) with per-file specs in `modules/`
 
 ---
 
@@ -77,7 +79,7 @@ isProject: false
 
 | Layer | Choice | Rationale |
 |-------|--------|-----------|
-| Backend | **Laravel 11** | BRD-specified; mature auth, queues, exports, file storage |
+| Backend | **Laravel 13** | BRD-specified; mature auth, queues, exports, file storage |
 | Database | **MySQL 8** | BRD-specified; JSON columns for dynamic field values |
 | UI | **Blade + Alpine.js + Tailwind CSS** | BRD-specified; low JS complexity, shared-hosting friendly |
 | Auth scaffold | **Laravel Breeze (Blade)** | Session auth, login history hooks, minimal overhead |
@@ -1250,7 +1252,7 @@ Use queued exports for large datasets; download link when ready.
 
 ## Deployment Plan (Shared Hosting)
 
-1. PHP 8.2+, required extensions (mbstring, openssl, pdo_mysql, gd/intl for QR)
+1. PHP 8.3+ (Laravel 13 requirement), required extensions (mbstring, openssl, pdo_mysql, gd/intl for QR)
 2. Point web root to `/public`
 3. `php artisan migrate --force` + `db:seed`
 4. `php artisan storage:link`

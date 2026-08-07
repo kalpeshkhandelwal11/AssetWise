@@ -34,16 +34,16 @@ Generic multi-level approval engine for transfers (all movement types), tag repl
 
 ## Tasks
 
-- [ ] Workflow + step admin CRUD
-- [ ] Polymorphic approval request creation
-- [ ] Multi-level sequential approval logic
-- [ ] Escalation scheduled job (daily)
-- [ ] Approver inbox UI with pending count in nav
-- [ ] Email + in-app notification on pending step (via M12 stub)
-- [ ] Seed default transfer workflow: Dept Head → Asset Manager
-- [ ] Seed default tag replacement workflow: Asset Manager → Super Admin
-- [ ] On `tag_replacement` approval final step → call `TagService::applyReplacement()`
-- [ ] Permission: `workflow.approve`, `workflows.manage`
+- [x] Workflow + step admin CRUD
+- [x] Polymorphic approval request creation
+- [x] Multi-level sequential approval logic
+- [x] Escalation scheduled job (daily)
+- [x] Approver inbox UI with pending count in nav
+- [x] In-app notification on pending step (via `NotificationService` stub — database channel only; **email deferred to M12**)
+- [x] Seed default transfer workflow: Dept Head → Asset Manager (approximated with the Approver role — no dept-head field exists yet)
+- [x] Seed default tag replacement workflow: Asset Manager → Super Admin
+- [ ] On `tag_replacement` approval final step → call `TagService::applyReplacement()` — **deferred to M05**: M08 fires `ApprovalRequestApproved`; M05 adds the listener when `TagService` exists
+- [x] Permission: `workflow.approve`, `workflow.manage` (added `workflow.approve` to Asset Manager)
 
 ## Acceptance criteria
 

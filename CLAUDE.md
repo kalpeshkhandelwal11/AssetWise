@@ -11,14 +11,18 @@ AssetWise is a **greenfield** Enterprise Asset Management System. It is a **sing
 | Module | Status | Notes |
 |--------|--------|-------|
 | M00 Foundation | ✅ done | Laravel 13 scaffold, packages, base UI |
-| M01 Auth & RBAC | ✅ done | Session lifetime, force-change, login history, RBAC seed |
-| M02 Shared Masters | ✅ done | Companies, statuses, locations, masters CRUD |
-| M03 Asset Master | 🔄 next | Categories, assets CRUD, photos, attachments — all decisions confirmed |
-| M04+ | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
+| M01 Auth & RBAC | 🟡 partial | Session lifetime, force-change, login history, seeded RBAC — but **no user/role admin UI**: no `UserController`, no `RoleController`, no `/admin/users` or `/admin/roles`. Users and role assignments are seeder/tinker-only today |
+| M02 Shared Masters | 🟡 partial | Companies, statuses, locations, masters CRUD — but the "block deactivating a company that owns assets" guard is still a placeholder comment in `CompanyController::toggleActive()` |
+| M03 Asset Master | ✅ done | Categories, assets CRUD, photos, attachments |
+| M04 Dynamic Fields | ✅ done | Category-scoped EAV fields with inheritance/override |
+| M08 Approval Workflow | ✅ done | Polymorphic multi-level engine, escalation, approver inbox |
+| M05 QR / Barcode | 🔄 next | Unblocked — Phase 1 (pool/assign/scan) needs only M03; the replacement flow can now use M08 |
+| M06 Bulk Import / Export | 🔄 next | Unblocked — M03 + M04 both done |
+| M07, M09–M17 | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
 
-For the full developer setup guide see `docs/developer-setup.md`.
+Test suite: **273 passing**. For the full developer setup guide see `docs/developer-setup.md`.
 
-**Stack:** Laravel 11, MySQL 8, Blade + Alpine.js + Tailwind CSS, PWA (vite-plugin-pwa)
+**Stack:** Laravel 13, MySQL 8, Blade + Alpine.js + Tailwind CSS, PWA (vite-plugin-pwa)
 
 **Key packages:**
 - Laravel Breeze (Blade) — auth scaffold
@@ -30,7 +34,7 @@ For the full developer setup guide see `docs/developer-setup.md`.
 
 ## Local Development Setup (Laragon on Windows)
 
-1. Install [Laragon Full](https://laragon.org/download/) with PHP 8.2+, MySQL 8, Composer, Node 20 LTS
+1. Install [Laragon Full](https://laragon.org/download/) with **PHP 8.3+** (hard requirement — Laravel 13; Composer's `platform_check.php` aborts on 8.2), MySQL 8, Composer, Node 20 LTS
 2. Create database: `CREATE DATABASE assetwise CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
 3. Required PHP extensions: `mbstring`, `openssl`, `pdo_mysql`, `gd`, `intl`, `zip`, `exif`, `bcmath`
 4. Site URL: `http://assetwise.test` (Laragon auto virtual host) or `http://localhost/AssetWise/public`
@@ -57,8 +61,10 @@ php artisan storage:link
 # Queue (database driver — no Redis)
 php artisan queue:work --stop-when-empty
 
-# Scheduler (runs all scheduled jobs)
+# Scheduler (runs all scheduled jobs — registered in bootstrap/app.php's withSchedule)
 php artisan schedule:run
+php artisan schedule:list         # what is registered
+php artisan approvals:escalate    # M08 escalation sweep — daily, idempotent, safe to run by hand
 
 # Tests
 php artisan test
@@ -92,6 +98,8 @@ $this->travelBack();
 
 **Event listeners** — `LogSuccessfulLogin` and `LogFailedLogin` are auto-discovered via their `handle()` type-hints. Do NOT add them to `AppServiceProvider::boot()` or they will fire twice per event.
 
+**Approval tests** — prefer partial `Event::fake([SomeEvent::class])` over bare `Event::fake()`, which also swallows Eloquent model events that `LogsActivity` depends on. Escalation tests use `$this->travel(49)->hours()` then `$this->travelBack()`; `Asset` is the stand-in `approvable` since `WorkflowService` must stay model-agnostic.
+
 **Role tests** — always include `use Tests\Concerns\SeedsRolesAndPermissions` and use `$this->createUserWithRole('Super Admin')` etc.
 
 ## Architecture
@@ -117,8 +125,9 @@ routes/api.php                   — scan endpoint + mobile helpers only
 ### Controller Namespacing
 
 ```
-Admin/    — org masters, users, roles, RBAC settings
+Admin/    — org masters, users, roles, RBAC settings, workflow config
 Assets/   — asset CRUD, bulk, QR tags
+Approvals/— approver inbox, approve/reject actions
 Movement/ — Phase 2
 Audit/    — Phase 2
 Maintenance/ — Phase 2
@@ -138,7 +147,8 @@ Implementation is split into 17 modules with defined dependencies. See `docs/pla
 | `DynamicFieldService::resolveForCategory($id)` | M04 | M03 forms, M06 import, M14 reports |
 | `Asset::hasCustomFieldData()` | M03 | M04 category lock |
 | `WorkflowService::submit/approve/reject` | M08 | M09, M13 |
-| `NotificationService::send($user, $type, $data)` | M12 | M08, M09, M10, M11, M13 |
+| `ApprovalRequestApproved` event | M08 | M05, M09, M13, M17 — the *only* way M08 hands back to the domain |
+| `NotificationService::send($user, $type, $data)` | M12 (stub built in M08) | M08, M09, M10, M11, M13 |
 | `TagService` + `/scan/{tag_number}` route | M05 | M08 replacement, M10 audit scan |
 | `MovementService::applyBulk()` | M09 | M17 kit assignment |
 
@@ -169,6 +179,8 @@ Tags are pre-generated into a pool (`tags` table, status `available`), physicall
 ### Approval Workflow
 
 Every asset transfer, tag replacement, and disposal goes through multi-level approval (`approval_requests` + `approval_actions`, append-only). The workflow engine in M08 is polymorphic and supports escalation. Kit assignments are configurable: `single` (one approval for whole kit) or `per_asset` (controlled by `config/assetwise.php` key `kit_assignment_approval_mode`).
+
+Consumers submit with `WorkflowService::submit($model, $module, $actor)` and **react to the `ApprovalRequestApproved` event** — M08 never calls domain services directly. That event fires only on the terminal step; listen and switch on `$event->request->workflow->module`, acting on `$event->request->approvable`. Escalation *widens* eligibility for the current step (original approver + next level both may act) rather than skipping a level. Rejection is terminal — resubmitting means calling `submit()` again for a fresh request. Exactly one workflow per module may be active; `WorkflowService::activate()` enforces it.
 
 ### Depreciation (Strategy Pattern)
 

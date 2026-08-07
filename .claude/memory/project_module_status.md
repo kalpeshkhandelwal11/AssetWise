@@ -1,31 +1,40 @@
 ---
 name: project-module-status
-description: "AssetWise implementation progress — M00–M04 complete, M05 or M06 next"
+description: "AssetWise implementation progress — M00/M03/M04/M08 done, M01+M02 partial, M05 or M06 next"
 metadata:
   type: project
 ---
 
-M00, M01, M02, M03, and M04 are complete as of 2026-08-06 (all on the `daniels_branch` GitHub branch, kalpeshkhandelwal11/AssetWise). M05 (QR/Barcode) and M06 (Bulk Import/Export) are next — M06 depends on M04 (now done) in addition to M03; M05 depends only on M03. Both can proceed in parallel per `docs/planning/MODULES_INDEX.md`.
+As of 2026-08-07 on the `daniels_branch` branch (kalpeshkhandelwal11/AssetWise): **M00, M03, M04 and M08 are complete; M01 and M02 are partial.** Full suite: **273 tests passing**. **M05 (QR/Barcode) and M06 (Bulk Import/Export) are next** — both unblocked and independent of each other. M09/M11/M13/M16 are also unblocked now that M08 exists.
 
-**What's in M01–M03 (done):** see prior summaries — auth/RBAC, shared masters (companies/locations/lookup tables), and full Asset Master (categories, asset CRUD, photos, attachments, location cascade API). `Asset::hasCustomFieldData()` was a stub in M03; M04 replaced it with a real check.
+**Environment (fixed 2026-08-07):** `C:\php83` (PHP 8.3.33) is now first on the USER PATH, so plain `php` resolves to 8.3 in any **new** shell — an already-open terminal keeps the old PATH until reopened. PHP 8.2.33 is still installed via winget (`PHP.PHP.8.2`) but is no longer on PATH; its removal was blocked by the permission prompt and is still pending. Also delete a stale `public/hot` if pages render unstyled.
 
-**What's in M04 (done) — Dynamic Fields / EAV custom fields per category:**
-- Migrations: `category_fields`, `category_field_options`, `category_field_overrides`, `asset_field_values` (typed EAV columns: value_text/value_number/value_date/value_boolean)
-- Models: `CategoryField`, `CategoryFieldOption` (no timestamps — deliberately cheap/rewritable rows), `CategoryFieldOverride`, `AssetFieldValue` (`categoryField()` relation uses `withTrashed()` since values must survive field soft-deletion)
-- `App\Services\DynamicFieldService` (bound as a container singleton in `AppServiceProvider` for per-request memoization) — `resolveForCategory()` walks the category tree and merges `category_field_overrides` (recorded only on the leaf category, never intermediate ancestors), returns a `Collection<ResolvedField>` DTO (`app/Services/DynamicFields/ResolvedField.php`) rather than a plain array or decorated Eloquent model, specifically so no consumer can accidentally read a pre-override raw value
-- `Admin\CategoryFieldController` (`/admin/categories/{cat}/fields`) enforces a cross-tree `field_key` uniqueness check (ancestors + descendants, not just the DB's same-category unique constraint) and blocks `field_type` changes once `asset_field_values` exist for that field
-- `Admin\FieldOverrideController` — hide/relabel/change_required overrides; rejects overriding a category's own directly-defined field
-- `Api\DynamicFieldController` at `/api/categories/{cat}/fields` (same `['web','auth']` middleware pattern as M03's `LocationCascadeController`) — returns field *definitions* only, never values
-- `AssetController::store()/update()` run the core-field validator and `DynamicFieldService::validate()` together, merging both error bags into one `ValidationException` so a user sees a core-field error and a dynamic-field error in the same round trip (errors namespaced `fields.*`)
-- Category lock is now real: `hasCustomFieldData()` → `fieldValues()->exists()`; locked users get `category_id` silently dropped (validated as `sometimes`, not `required`, when locked, mirroring the existing `company_id` pattern)
-- Views: `x-dynamic-fields` anonymous Blade component (shares the parent form's Alpine `x-data` scope directly, no prop-passing) — fields/values embedded server-side on initial page load (zero fetches on first paint), AJAX only fires when the user changes the category dropdown
-- 39 new tests (`tests/Unit/Services/DynamicFieldServiceTest.php` + 5 feature test files) — full suite: 205 passing
+## M01 / M02 are NOT fully done (audited 2026-08-07 — the status tables previously claimed otherwise)
 
-**Non-obvious things worth remembering if picking this back up:**
-- Boolean dynamic fields need a hidden `value="0"` input paired with the checkbox (same name) since unchecked checkboxes don't submit — already implemented in `dynamic-fields.blade.php`.
-- `AssetFieldValue`'s `decimal:4` cast always formats numbers with 4 fixed decimal places (e.g. "8.0000") — both `rawValue()` (edit-form prefill) and `displayValue()` (detail page) trim trailing zeros via a shared private helper; don't reintroduce the raw cast output directly into a view.
-- `CategoryFieldOption` has no `timestamps()` column in its migration — the model needs `public $timestamps = false;` or inserts fail (`no column named updated_at`). This bit us once during M04 verification.
+- **M01:** no user admin UI, no role admin UI, no org-master CRUD. No `UserController`, no `RoleController`, no `/admin/users` or `/admin/roles` routes. Roles and role assignments are seeder/`tinker`-only. `departments`/`branches` exist as tables (added by M03) but aren't in `MasterController::ENTITIES`; `designations` has no table.
+- **M02:** `CompanyController::toggleActive()` still has the placeholder comment where the "can't deactivate a company that owns assets" guard belongs (line ~97). M03 was supposed to wire it and didn't.
 
-**Why M04 mattered:** it was the second cross-module contract owner (after M03's `Asset` model) — `DynamicFieldService::resolveForCategory()` must stay stable now that M06 (bulk import) and M14 (reports) will consume it.
+Both are recorded in `docs/decisions-log.md` under "Outstanding gaps in done modules".
 
-**How to apply:** Pick M05 (`docs/planning/modules/M05-qr-barcode.md`, Phase 1 only — tag replacement needs M08 which doesn't exist yet) or M06 (`docs/planning/modules/M06-bulk-import-export.md`) next. Both are unblocked. Follow the same pattern used for M03/M04: read the module spec + `docs/decisions-log.md`'s "Pending Decisions" section for that module, resolve any open P#.# items with the user before finalizing a plan, then build in the established layering (thin controllers, `app/Services/`, `app/Policies/` only where instance-scoped abilities are needed).
+## What's in M08 (done) — Approval Workflow Engine
+
+Polymorphic multi-level approval engine. Migrations: `approval_workflows`, `approval_steps`, `approval_requests` (morphs to `approvable`), `approval_actions` (append-only, `created_at` only, `$timestamps = false` — copies `LoginHistory`).
+
+- **`App\Services\WorkflowService`** — `submit / approve / reject / escalate / canAct / activate / pendingFor / hasEscalated`. Constructor-injects `NotificationService`.
+- **The hand-off is an event, not a call.** M08 never invokes `TagService`/`MovementService` — those don't exist. `ApprovalRequestApproved` fires **only on the terminal step**, synchronously (no `ShouldQueue`); consumers add an auto-discovered listener and switch on `$event->request->workflow->module`. Also `ApprovalRequestSubmitted`, `...Rejected`, `...Escalated`.
+- **Escalation widens, never skips** (decision P8.1) — once escalated, the original approver *and* the next level's approver can both act on the same step; on the last step it falls back to `workflow.manage` holders so Super Admin is always a way out. "Has escalated" is *derived* from an `escalate` row existing for `(request_id, step_level)` — no boolean flag — which is also what makes `escalate()` idempotent.
+- **Rejection is terminal** (decision P8.2) — no edit-in-place; re-submitting means calling `submit()` again for a fresh row.
+- **Exactly one active workflow per module** — `submit()` throws `ValidationException` on 0 or >1; `activate()` deactivates module siblings so the admin UI maintains the invariant.
+- **`App\Services\NotificationService`** — M12's Phase 1 stub, database channel only, via `GenericNotification` which overrides `databaseType()` so `notifications.type` holds `approval.pending` etc., not the PHP class name.
+- `approvals:escalate` command, registered in `bootstrap/app.php` via a **newly added** `->withSchedule()` block (the file had none).
+- `WorkflowSeeder` seeds `transfer` and `tag_replacement` only; `disposal`/`kit_assignment` are left unconfigured on purpose as proof the engine is configurable without code changes. Companion fix: `workflow.approve` added to Asset Manager (both defaults route a step to it — they'd have 403'd).
+
+**Non-obvious things worth remembering:**
+- `nextStepAfter()` walks to the next-highest level, **not** `level + 1` — workflow levels are only unique-per-workflow, not contiguous.
+- `escalate()`'s due check (`started_at + escalation_hours < now()`) runs in PHP, not SQL — adding a *column* number of hours to a timestamp has no portable form across MySQL and the SQLite test suite. The join + `whereNotExists` stay in SQL.
+- The inbox filters eligibility with `canAct()` in PHP, not SQL — a deliberate, documented scaling deferral to revisit when M09/M13 produce real volume.
+- Route param is `{approval_request}`, not `{request}` — `{request}` would shadow the `Illuminate\Http\Request` that approve/reject also need.
+- `ApprovalRequestPolicy::view()` must admit past actors, not just `canAct()` — `canAct()` goes false the instant a request resolves, which locked an approver out of the trail they'd just written. Found by browser smoke test, not by the unit tests.
+- Use partial `Event::fake([X::class])` in tests; a bare `Event::fake()` also swallows the Eloquent model events `LogsActivity` needs.
+
+**How to apply:** pick M05 (`docs/planning/modules/M05-qr-barcode.md` — its replacement flow can now go straight in) or M06 (`docs/planning/modules/M06-bulk-import-export.md`). Read the module spec plus its "Pending Decisions" block in `docs/decisions-log.md`, resolve open `P#.#` items with the user before finalizing a plan, then build in the established layering (thin controllers → `app/Services/` → `app/Policies/` only for instance-scoped abilities).

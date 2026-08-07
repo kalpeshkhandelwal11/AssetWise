@@ -3,7 +3,13 @@
 **Parent plan:** [MASTER_PLAN.md](MASTER_PLAN.md)  
 **BRD source:** [Asset_Management_BRD_v1.txt](Asset_Management_BRD_v1.txt)
 
-This index splits the BRD into **16 independent modules** so Developer 1 and Developer 2 can work in parallel after shared foundation.
+This index splits the BRD into **18 independent modules (M00–M17)** so Developer 1 and Developer 2 can work in parallel after shared foundation.
+
+> **Current status:** M00, M03, M04 and M08 are complete on `daniels_branch` (273 tests passing). M01 and M02 are **partially** complete — enough for downstream modules to build on, but each has a real gap (see below). **M05 and M06 are next** — both unblocked, and they can run in parallel.
+>
+> **Known gaps to close (carried debt, not blockers):**
+> - **M01** — no user or role administration UI at all (`/admin/users`, `/admin/roles` don't exist). Users and role assignments can only be created via seeder or `tinker`. Also missing: departments/branches/designations org-master CRUD.
+> - **M02** — `CompanyController::toggleActive()` still has a placeholder comment where the "cannot deactivate a company that owns assets" check belongs. The `assets` table has existed since M03.
 
 ---
 
@@ -21,14 +27,14 @@ Install and verify **before** Module M00.
 
 | Tool | Version |
 |------|---------|
-| PHP | **8.2+** (8.3 OK) |
+| PHP | **8.3+** — required, not a preference (Laravel 13; Composer's platform check aborts on 8.2) |
 | MySQL | **8.0+** |
 | Composer | **2.x** |
 | Node.js | **20 LTS** or **22 LTS** |
 | npm | **10+** (bundled with Node) |
 | Git | Latest |
 
-In Laragon: **Menu → PHP → Version** → select 8.2 or 8.3.
+In Laragon: **Menu → PHP → Version** → select 8.3 or newer. Verify with `php -v` before reporting that artisan is broken — an 8.2 binary on the PATH fails every command with *"Composer detected issues in your platform"*.
 
 ### 3. Enable PHP extensions
 
@@ -83,26 +89,30 @@ mysql --version
 
 ## Module Map
 
-| ID | Module | Dev | Phase | Depends On | Can Parallel With |
-|----|--------|-----|-------|------------|-------------------|
-| [M00](modules/M00-foundation.md) | Project Foundation | Dev 1 | 1 | — | — (blocking start) |
-| [M01](modules/M01-user-access.md) | User & Access | Dev 1 | 1 | M00 | — |
-| [M02](modules/M02-shared-masters.md) | Shared Masters | Dev 1 | 1 | M00, M01 | M08 (after M01) |
-| [M03](modules/M03-asset-master.md) | Asset Master Core | Dev 1 | 1 | M01, M02 | M08, M11 |
-| [M04](modules/M04-dynamic-fields.md) | Dynamic Fields | Dev 1 | 1 | M03 | M05, M11 |
-| [M05](modules/M05-qr-barcode.md) | QR / Barcode | Dev 1 | 1 | M03 | M04, M11 |
-| [M06](modules/M06-bulk-import-export.md) | Bulk Import / Export | Dev 1 | 1 | M03, M04 | M08 |
-| [M07](modules/M07-shared-ui-services.md) | Shared UI & Services | Dev 1 | 1 | M00 | All modules (ongoing) |
-| [M08](modules/M08-approval-workflow.md) | Approval Workflow | Dev 2 | 2 | M00, M01 | M02, M03, M04, M11 |
-| [M09](modules/M09-asset-movement.md) | Asset Movement | Dev 2 | 2 | M03, M08 | M10, M11 |
-| [M10](modules/M10-audit.md) | Audit & Verification | Dev 2 | 2 | M03, M05 | M09, M11 |
-| [M11](modules/M11-maintenance.md) | Maintenance | Dev 2 | 2 | M03 | M08, M09, M10 |
-| [M12](modules/M12-notifications.md) | Notifications | Both | 1–3 | M00 | Any (stub early) |
-| [M13](modules/M13-disposal.md) | Disposal & Scrap | Dev 2 | 3 | M03, M08 | M14 |
-| [M14](modules/M14-reports-dashboard.md) | Reports & Dashboard | Dev 2 | 3 | M03+ | M13, M15 |
-| [M15](modules/M15-pwa.md) | PWA (Full Site) | Dev 2 | 3 | M00 UI | M14 |
-| [M16](modules/M16-depreciation.md) | Depreciation | Dev 2 | 2 | M03 | M09, M17 |
-| [M17](modules/M17-asset-kits.md) | Asset Kits & Bundles | Dev 2 | 2 | M03, M08, M09 | M10, M16 |
+| ID | Module | Status | Dev | Phase | Depends On | Can Parallel With |
+|----|--------|--------|-----|-------|------------|-------------------|
+| [M00](modules/M00-foundation.md) | Project Foundation | ✅ done | Dev 1 | 1 | — | — (blocking start) |
+| [M01](modules/M01-user-access.md) | User & Access | 🟡 partial | Dev 1 | 1 | M00 | — |
+| [M02](modules/M02-shared-masters.md) | Shared Masters | 🟡 partial | Dev 1 | 1 | M00, M01 | M08 (after M01) |
+| [M03](modules/M03-asset-master.md) | Asset Master Core | ✅ done | Dev 1 | 1 | M01, M02 | M08, M11 |
+| [M04](modules/M04-dynamic-fields.md) | Dynamic Fields | ✅ done | Dev 1 | 1 | M03 | M05, M11 |
+| [M05](modules/M05-qr-barcode.md) | QR / Barcode | 🔄 **next** | Dev 1 | 1 | M03 ✅ | M04, M11 |
+| [M06](modules/M06-bulk-import-export.md) | Bulk Import / Export | 🔄 **next** | Dev 1 | 1 | M03 ✅, M04 ✅ | M08 |
+| [M07](modules/M07-shared-ui-services.md) | Shared UI & Services | ⏳ pending | Dev 1 | 1 | M00 | All modules (ongoing) |
+| [M08](modules/M08-approval-workflow.md) | Approval Workflow | ✅ done | Dev 2 | 2 | M00, M01 | M02, M03, M04, M11 |
+| [M09](modules/M09-asset-movement.md) | Asset Movement | ⏳ unblocked | Dev 2 | 2 | M03 ✅, M08 ✅ | M10, M11 |
+| [M10](modules/M10-audit.md) | Audit & Verification | ⏳ pending | Dev 2 | 2 | M03 ✅, M05 | M09, M11 |
+| [M11](modules/M11-maintenance.md) | Maintenance | ⏳ unblocked | Dev 2 | 2 | M03 ✅ | M08, M09, M10 |
+| [M12](modules/M12-notifications.md) | Notifications | 🟡 stub built | Both | 1–3 | M00 | Any (stub early) |
+| [M13](modules/M13-disposal.md) | Disposal & Scrap | ⏳ unblocked | Dev 2 | 3 | M03 ✅, M08 ✅ | M14 |
+| [M14](modules/M14-reports-dashboard.md) | Reports & Dashboard | ⏳ pending | Dev 2 | 3 | M03+ | M13, M15 |
+| [M15](modules/M15-pwa.md) | PWA (Full Site) | ⏳ pending | Dev 2 | 3 | M00 UI | M14 |
+| [M16](modules/M16-depreciation.md) | Depreciation | ⏳ unblocked | Dev 2 | 2 | M03 ✅ | M09, M17 |
+| [M17](modules/M17-asset-kits.md) | Asset Kits & Bundles | ⏳ pending | Dev 2 | 2 | M03 ✅, M08 ✅, M09 | M10, M16 |
+
+**Status key:** ✅ done · 🔄 next (start here) · ⏳ unblocked (dependencies met, not started) · ⏳ pending (still waiting on a dependency) · 🟡 partial
+
+M08 shipped ahead of M05–M07 because it is the Dev 2 track and gates M09, M13 and M17. Its `NotificationService` stub also covers M12's Phase 1 stub task.
 
 ---
 
@@ -146,7 +156,8 @@ gantt
 | `DynamicFieldService::resolveForCategory($id)` | M04 | M03 forms, M06 import, M14 reports |
 | `Asset::hasCustomFieldData()` | M03 | M04 category lock |
 | `WorkflowService::submit/approve/reject` | M08 | M09, M13 |
-| `NotificationService::send($user, $type, $data)` | M12 | M08, M09, M10, M11, M13 |
+| `ApprovalRequestApproved` event (terminal step only) | M08 | M05, M09, M13, M17 — M08 never calls domain services directly; consumers listen and switch on `$event->request->workflow->module` |
+| `NotificationService::send($user, $type, $data)` | M12 (stub shipped in M08) | M08, M09, M10, M11, M13 |
 | Blade components (`x-data-table`, `x-dynamic-fields`) | M07 | All UI modules |
 | `tags` pool + `/scan/{tag_number}` + `TagService` | M05 | M08 replacement, M10 audit scan |
 | `tag_replacement` workflow module | M08 | M05 replacement apply |
@@ -158,10 +169,18 @@ gantt
 
 ## Development Start Order
 
+> **Historical** — steps 1–4 below describe the original cold start. M00–M04 and M08 are now merged; pick up from "Where to start today".
+
 1. You install Laragon + verify commands (above)
 2. Dev 1 runs **M00** (Laravel scaffold) — both developers pull/sync
 3. Dev 1 → M01; Dev 2 prepares M08 migrations behind feature branch
 4. Follow dependency column; merge to `develop` daily to avoid drift
+
+### Where to start today
+
+- **Dev 1** → **M05** (QR/Barcode) or **M06** (Bulk Import/Export). Both are unblocked and independent of each other. M05's tag-replacement phase can now go straight in, since M08 exists and already seeds a `tag_replacement` workflow.
+- **Dev 2** → **M09** (Asset Movement) is unblocked (M03 + M08 both done); **M11** and **M16** are also unblocked if you prefer to stay off M09's critical path.
+- Before planning any module, read its spec in `modules/`, then the matching "Pending Decisions" block in [`../decisions-log.md`](../decisions-log.md) — resolve open `P#.#` items with the product owner *before* writing code.
 
 ---
 
@@ -185,3 +204,5 @@ Each file contains: scope, tables, routes, permissions, tasks, acceptance criter
 - [M13 — Disposal & Scrap](modules/M13-disposal.md)
 - [M14 — Reports & Dashboard](modules/M14-reports-dashboard.md)
 - [M15 — PWA](modules/M15-pwa.md)
+- [M16 — Depreciation](modules/M16-depreciation.md)
+- [M17 — Asset Kits & Bundles](modules/M17-asset-kits.md)

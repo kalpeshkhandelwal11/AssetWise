@@ -3,7 +3,7 @@
 This guide covers deploying AssetWise on a typical shared hosting provider (cPanel, Plesk, or DirectAdmin) where you do not have root access or Docker.
 
 > **Minimum server requirements**
-> - PHP 8.2+ with extensions: `mbstring`, `openssl`, `pdo_mysql`, `gd`, `intl`, `zip`, `exif`, `bcmath`, `fileinfo`
+> - **PHP 8.3+** (hard requirement — Laravel 13; the app will not boot on 8.2) with extensions: `mbstring`, `openssl`, `pdo_mysql`, `gd`, `intl`, `zip`, `exif`, `bcmath`, `fileinfo`
 > - MySQL 8.0+
 > - SSH access (strongly recommended; FTP-only hosting is very limiting)
 > - Ability to set a custom document root to `/public` OR place files outside public_html (see below)
@@ -228,7 +228,11 @@ chown -R username:username storage bootstrap/cache
 
 ## 10. Configure cron for the scheduler
 
-Laravel's task scheduler (depreciation, notifications, cleanup) requires one cron entry.
+Laravel's task scheduler requires one cron entry. Everything scheduled is registered in `bootstrap/app.php` under `->withSchedule()`, so this single entry covers all of it — no cron changes are needed when a module adds a job.
+
+Currently scheduled: **`approvals:escalate`** (daily) — escalates approval steps past their configured `escalation_hours`. It is idempotent, so a missed or double run is harmless. Depreciation posting (M16) and notification digests (M12) will join the same block.
+
+Verify what is registered with `php artisan schedule:list` over SSH.
 
 ### cPanel → Cron Jobs
 

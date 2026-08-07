@@ -2,6 +2,8 @@
 
 This guide takes you from a bare Windows machine to a fully running local development environment.
 
+> **PHP 8.3 or newer is mandatory.** Laravel 13 declares `"php": "^8.3"`, and Composer's generated `vendor/composer/platform_check.php` throws before any application code runs on 8.2 — every `php artisan` command fails with *"Composer detected issues in your platform"*. If you have several PHP installs, confirm the one on your PATH is the 8.3+ build (`php -v`) before assuming the application is broken.
+
 ---
 
 ## Table of Contents
@@ -170,7 +172,7 @@ composer install
 ```
 
 This installs all packages listed in `composer.json`, including:
-- Laravel Framework 11
+- Laravel Framework 13 (requires PHP 8.3+)
 - Spatie Laravel Permission
 - Spatie Activity Log
 - Maatwebsite Laravel Excel
@@ -238,6 +240,8 @@ This creates all tables and seeds:
 | Roles | Super Admin, Asset Manager, Department User, Auditor, Approver, Viewer |
 | Permissions | All `{module}.{action}` permissions (masters, assets, movement, etc.) |
 | Demo admin | `admin@assetwise.test` / `Admin@1234` with Super Admin role |
+| Shared masters | Statuses, asset types, priorities, movement/audit/disposal/maintenance types, sample departments and branches |
+| Approval workflows | Two defaults — *Standard Transfer Approval* (Approver → Asset Manager) and *Standard Tag Replacement Approval* (Asset Manager → Super Admin), both 48h escalation. `disposal` and `kit_assignment` are intentionally left unconfigured for M13/M17 |
 
 To reset and re-seed from scratch at any time:
 
@@ -312,7 +316,7 @@ php artisan test tests/Feature/Auth/
 php artisan test --coverage
 ```
 
-Expected output: **93+ tests, 0 failures**.
+Expected output: **273 tests, 0 failures**.
 
 ### Test conventions
 
@@ -323,6 +327,8 @@ Expected output: **93+ tests, 0 failures**.
 | Session-expiry tests | login → one authenticated GET → `$this->travel()` → assert redirect |
 | Role/permission tests | `use Tests\Concerns\SeedsRolesAndPermissions` + `$this->createUserWithRole('Role Name')` |
 | Event listeners | Auto-discovered — never register manually in `AppServiceProvider` |
+| Event assertions | Use partial `Event::fake([SomeEvent::class])`; a bare `Event::fake()` also swallows the Eloquent model events `LogsActivity` needs |
+| Approval/escalation tests | `$this->travel(49)->hours()` → act → `$this->travelBack()`; `Asset` stands in as the `approvable` |
 
 ---
 
@@ -340,12 +346,20 @@ For development convenience, set `QUEUE_CONNECTION=sync` in `.env` to run jobs i
 
 ## 17. Scheduler
 
-The depreciation scheduler and notification jobs run via Laravel's task scheduler.
+Scheduled work is registered in `bootstrap/app.php` under `->withSchedule()`. Currently registered:
+
+| Command | Frequency | Purpose |
+|---------|-----------|---------|
+| `approvals:escalate` | daily | Escalates pending approval steps past their `escalation_hours` (M08). Idempotent — re-running never double-escalates |
+
+Depreciation posting (M16) and notification digests (M12) will be added to the same block.
 
 **Local development** — run manually:
 
 ```powershell
-php artisan schedule:run
+php artisan schedule:list   # confirm what is registered
+php artisan schedule:run    # run anything currently due
+php artisan approvals:escalate   # or invoke a single command directly
 ```
 
 **Production** — add one cron entry on the server:
@@ -369,6 +383,8 @@ php artisan schedule:run
 | `http://assetwise.test` not resolving | Virtual host not created | Restart Laragon as Administrator; check `hosts` file |
 | `npm run dev` port 5173 already in use | Another Vite process running | Kill with `npx kill-port 5173` |
 | `php artisan` fails with `APP_KEY` missing | `.env` not set up | Run `php artisan key:generate` |
+| `Composer detected issues in your platform: ... requires ">= 8.3.0"` | PATH `php` is 8.2 or older | Install/select PHP 8.3+; if several are installed, invoke the 8.3 binary explicitly (e.g. `C:\php83\php.exe artisan test`) |
+| Every page renders unstyled after `npm run build` | Stale `public/hot` left by a killed `npm run dev` | Delete `public/hot` — Vite only falls back to the built manifest when that file is absent |
 
 ---
 
@@ -377,22 +393,24 @@ php artisan schedule:run
 ```
 M00 ✓  Foundation (scaffold, packages, base UI)
 M01 ✓  Auth & RBAC (session lifetime, force-change, login history)
-M02 →  Shared Masters (companies, statuses, locations — CURRENT)
-M03    Asset Master
-M04    Dynamic Fields (EAV)
-M05    QR/Barcode Tags
-M06    Bulk Import/Export
+M02 ✓  Shared Masters (companies, statuses, locations)
+M03 ✓  Asset Master (categories, assets, photos, attachments)
+M04 ✓  Dynamic Fields (per-category EAV with inheritance/override)
+M08 ✓  Approval Workflow (multi-level, escalation, approver inbox)
+M05 →  QR/Barcode Tags        — NEXT (unblocked; replacement flow can now use M08)
+M06 →  Bulk Import/Export     — NEXT (unblocked; M03 + M04 both done)
 M07    Shared UI Services
-M08    Approval Workflow
-M09    Asset Movement
-M10    Audit
+M09    Asset Movement         (needs M03 + M08 — both now done)
+M10    Audit                  (needs M03 + M05)
 M11    Maintenance
-M12    Notifications
-M13    Disposal
+M12    Notifications          (M08 shipped a database-channel stub)
+M13    Disposal               (needs M03 + M08 — both now done)
 M14    Reports & Dashboard
 M15    PWA
 M16    Depreciation
 M17    Asset Kits
 ```
+
+M08 landing out of numeric order is by design — it is the Dev 2 track and gates M09/M13/M17.
 
 See `docs/planning/MODULES_INDEX.md` for the full dependency graph and parallel-track breakdown.

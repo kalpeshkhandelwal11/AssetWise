@@ -58,7 +58,8 @@ Admin UI under Settings (M17).
 ## Handoff
 
 - M09 `MovementService::applyBulk($assets, $target)` called on kit approval
-- M08 supports batch-linked approval for `kit_assignment` morph type
+- M08 supports the `kit_assignment` module enum; **no default workflow is seeded** — configure one via `/admin/workflows` before the `single` mode can be used. `WorkflowService::submit()` throws if zero or multiple active workflows exist for a module.
+- Submit `single` mode with `WorkflowService::submit($kitAssignment, 'kit_assignment', $actor)`; `per_asset` mode submits one `transfer` request per item. Apply from a listener on `App\Events\ApprovalRequestApproved` filtered on `$event->request->workflow->module` — M08 never calls back into M17/M09 directly.
 
 ## User flow
 

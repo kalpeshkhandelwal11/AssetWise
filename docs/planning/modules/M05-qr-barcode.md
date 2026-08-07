@@ -8,6 +8,12 @@
 | **Blocks** | M10 |
 | **Parallel with** | M04, M11 |
 
+> **M08 is built — the replacement flow is unblocked.** `tag_replacement` is already in the `approval_workflows.module` enum and `WorkflowSeeder` ships a default chain (Asset Manager → Super Admin, 48h escalation).
+>
+> Submit with `WorkflowService::submit($replacement, 'tag_replacement', $actor)`. Do **not** expect M08 to call `TagService::applyReplacement()` — it cannot, it has no compile-time knowledge of M05. Instead add a listener in `app/Listeners/` for `App\Events\ApprovalRequestApproved` (auto-discovered via the `handle()` type-hint — never also register it in `AppServiceProvider`), filter on `$event->request->workflow->module === 'tag_replacement'`, and apply the change to `$event->request->approvable`. That event fires only on the terminal step, synchronously.
+>
+> Optionally implement `getApprovalLabel(): string` on the replacement model — the approver inbox picks it up automatically and falls back to `ClassName #id` otherwise.
+
 ## Scope
 
 **Pre-generate** QR/barcode labels into an inventory pool → print → **assign to assets later**. When a label must change, assign a **new tag from pool**, old tag becomes **inactive** — replacement goes through **approval workflow** (Phase 2).
@@ -90,5 +96,5 @@ resolveScan(string $tagNumber): ScanResult  // assigned | available | inactive
 ## Handoff
 
 - Scan URL format: `/scan/{tag_number}` — contract for M10 audit QR verification
-- M08 must add `tag_replacement` workflow module enum
+- ~~M08 must add `tag_replacement` workflow module enum~~ — ✅ **already done**, see the M08 note below
 - M03: remove any auto-tag-on-create logic; expose `activeTag` relationship

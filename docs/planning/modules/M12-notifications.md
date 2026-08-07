@@ -27,11 +27,22 @@ In-app alerts + email for lifecycle events.
 
 ## Tasks
 
-- [ ] **Phase 1 stub:** `NotificationService` interface + `notifications` table + bell icon placeholder
-- [ ] Notification bell in layout with unread count
-- [ ] Mark as read; deep links to records
+- [x] **Phase 1 stub:** `NotificationService` + `notifications` table + bell icon — **shipped in M08**
+- [x] Notification bell in layout with unread count — `layouts/app.blade.php` reads `auth()->user()->unreadNotifications`
+- [ ] Mark as read; deep links to records — the bell dropdown still renders a hard-coded "No new notifications" and both its links are `#`
 - [ ] Mailable classes per event type
 - [ ] Queue mail on database driver
+
+## What M08 already built (Phase 1 stub — extend, don't replace)
+
+`App\Services\NotificationService` implements the cross-module contract `send($user, $type, $data)` plus a `sendMany($users, $type, $data)` convenience. It writes through Laravel's **database channel only**, via `App\Notifications\GenericNotification`, which overrides `databaseType()` so the `notifications.type` column holds the app-level type string (`approval.pending`, `approval.approved`, `approval.rejected`, `approval.escalated`) rather than the PHP class name. Each payload carries `request_id`, `module`, `workflow`, `subject`, `url` and `step_level`.
+
+**M12's job is to add channels behind that same signature** — callers in M08 (and later M09/M10/M11/M13) must not have to change. Concretely:
+
+- Add a mail channel to `GenericNotification::via()`, or dispatch per-type notification classes keyed off `$type`
+- Make the bell dropdown render real rows from `unreadNotifications` and link through to `data.url`
+- Add a mark-as-read route and a "view all" index
+- The `Approval escalated` row in the events table below is already emitted by M08's `approvals:escalate` command — it needs the email channel, not the trigger
 
 ## Acceptance criteria
 

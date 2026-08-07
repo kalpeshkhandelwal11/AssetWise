@@ -107,23 +107,23 @@ Attachment types: `invoice`, `warranty_card`, `manual`, `agreement`.
 
 ## Implementation Checklist
 
-- [ ] Migrations: departments, branches, asset_categories, assets, asset_photos, asset_attachments
-- [ ] Models: Department, Branch, AssetCategory (self-referential), Asset (with all relationships), AssetPhoto, AssetAttachment
-- [ ] `Asset::hasCustomFieldData()` → returns `false` (stub; M04 replaces with real check)
-- [ ] `AssetPolicy` — view/create/edit/delete
-- [ ] `CategoryController` — CRUD with parent-dropdown tree (admin)
-- [ ] `AssetController` — CRUD + search/filter (tag, name, serial, custodian, company, status, type, category, location, date range) + soft delete
-- [ ] `PhotoController` — store (multi-upload), destroy, set-primary
-- [ ] `AttachmentController` — store (with type), destroy
-- [ ] `Api\LocationCascadeController` — buildings, floors, rooms (JSON for Alpine)
-- [ ] `AssetService` — create/update with `created_by`/`updated_by`, Spatie activity log (before/after on update)
-- [ ] Asset create/edit form — category dropdown first; M04 placeholder div; cascading location selects via API
-- [ ] Asset detail page — tabs: Summary, Photos, Attachments, History (Spatie timeline); tag section placeholder
-- [ ] Asset list — searchable, filterable, paginated; company column prominent
-- [ ] Sidebar nav — wire Assets and Categories links
-- [ ] SharedMastersSeeder — add sample departments and branches
-- [ ] RolePermissionSeeder — no new permissions needed (assets.* already seeded)
-- [ ] Tests — CategoryTest, AssetTest, PhotoTest, AttachmentTest, LocationCascadeApiTest (~40 tests)
+- [x] Migrations: departments, branches, asset_categories, assets, asset_photos, asset_attachments
+- [x] Models: Department, Branch, AssetCategory (self-referential), Asset (with all relationships), AssetPhoto, AssetAttachment
+- [x] `Asset::hasCustomFieldData()` → returns `false` (stub; M04 replaces with real check)
+- [x] `AssetPolicy` — view/create/edit/delete
+- [x] `CategoryController` — CRUD with parent-dropdown tree (admin)
+- [x] `AssetController` — CRUD + search/filter (tag, name, serial, custodian, company, status, type, category, location, date range) + soft delete
+- [x] `PhotoController` — store (multi-upload), destroy, set-primary
+- [x] `AttachmentController` — store (with type), destroy
+- [x] `Api\LocationCascadeController` — buildings, floors, rooms (JSON for Alpine)
+- [x] `AssetService` — create/update with `created_by`/`updated_by`, Spatie activity log (before/after on update)
+- [x] Asset create/edit form — category dropdown first; M04 placeholder div; cascading location selects via API
+- [x] Asset detail page — tabs: Summary, Photos, Attachments, History (Spatie timeline); tag section placeholder
+- [x] Asset list — searchable, filterable, paginated; company column prominent
+- [x] Sidebar nav — wire Assets and Categories links
+- [x] SharedMastersSeeder — add sample departments and branches
+- [x] RolePermissionSeeder — no new permissions needed (assets.* already seeded)
+- [x] Tests — CategoryTest, AssetTest, PhotoTest, AttachmentTest, LocationCascadeApiTest (~40 tests)
 
 ---
 

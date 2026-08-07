@@ -30,14 +30,14 @@ CRUD for all shared lookup tables used across asset lifecycle, including the **C
 
 ## Tasks
 
-- [ ] Migrations + models for all tables
-- [ ] **Companies CRUD** — name, code (unique slug), address, contact info, active flag
-- [ ] Reusable master list component (search, sort, paginate)
-- [ ] Reusable master form component
-- [ ] Location cascade API endpoints for Alpine (location → building → floor → room)
-- [ ] Seed defaults: at least one default company, statuses (Available, Assigned, In Maintenance, Disposed), movement types (including **Inter-Company Transfer**), etc.
-- [ ] Soft-deactivate with "in use" validation (block deactivating a company that owns active assets)
-- [ ] Permissions: `masters.view`, `masters.manage`, `companies.manage`
+- [x] Migrations + models for all tables
+- [x] **Companies CRUD** — name, code (unique slug), address, contact info, active flag
+- [x] Reusable master list component (search, sort, paginate)
+- [x] Reusable master form component
+- [x] Location cascade API endpoints for Alpine (location → building → floor → room)
+- [x] Seed defaults: at least one default company, statuses (Available, Assigned, In Maintenance, Disposed), movement types (including **Inter-Company Transfer**), etc.
+- [ ] **Soft-deactivate with "in use" validation (block deactivating a company that owns active assets)** — ❌ still a placeholder comment in `CompanyController::toggleActive()`. The `assets` table has existed since M03; wire in the real `$company->assets()->exists()` check (see the "M03 wire-up required" note in `docs/decisions-log.md`, still outstanding)
+- [x] Permissions: `masters.view`, `masters.manage`, `companies.manage`
 
 ## Acceptance criteria
 

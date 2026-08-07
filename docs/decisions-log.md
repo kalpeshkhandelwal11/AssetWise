@@ -70,6 +70,60 @@ Running record of architectural and implementation decisions across all modules.
 
 > `CompanyController::toggleActive()` has a comment placeholder: `// When M03 adds assets table, add: if ($company->assets()->exists()) { ... }`
 > **Must be wired in M03** after the `assets` migration and model exist.
+>
+> ⚠️ **Still outstanding as of 2026-08-07.** M03 shipped without wiring this in — the comment is still there at `CompanyController.php:97` and an admin can currently deactivate a company that owns assets. Carry into whichever module touches company management next.
+
+---
+
+## Outstanding gaps in "done" modules (audited 2026-08-07)
+
+Found while reconciling the module docs against the code. None block M05/M06, but each is real debt that the status tables previously hid.
+
+| Module | Gap | Evidence |
+|--------|-----|----------|
+| M01 | **No user administration UI** — `/admin/users` route, `UserController` and views do not exist | Only `LoginHistoryController` exists in `app/Http/Controllers/Admin/` for M01's scope |
+| M01 | **No role administration UI** — `/admin/roles` and the permission-matrix screen do not exist; roles and permissions are seeder-only | `RolePermissionSeeder` is the sole source; no `RoleController` |
+| M01 | **Org master CRUD missing** — `departments` and `branches` exist as tables (added by M03) but are absent from `MasterController::ENTITIES`, so they have no admin screen. `designations` has no table at all | `MasterController::ENTITIES` lists 7 entities, none of them org masters |
+| M01 | Activity log on user/role changes, and user deactivation guard — both blocked on the two missing CRUD screens | — |
+| M02 | Company "in use" deactivation guard never wired | `CompanyController.php:97` placeholder comment |
+
+**Impact on M08:** approver steps route by Spatie role *name*, so a workflow can only reach users whose roles were assigned via seeder or `tinker` until M01's role-assignment UI exists. This does not affect correctness — only day-to-day administration.
+
+---
+
+## M08 — Approval Workflow
+
+### Pre-implementation decisions (confirmed 2026-08-07)
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| P8.1 — Escalation authority | **Escalation widens, never skips** — after a step escalates, BOTH the original approver and the escalation target may act; whoever acts first resolves the step | Escalation is about unblocking a stalled step, not removing the assigned approver's authority |
+| P8.2 — Reject → resubmit | **Rejection is terminal** for that `approval_requests` row; no edit-in-place. The consumer calls `submit()` again, creating a fresh row | Keeps `approval_actions` a clean per-attempt log; a re-opened request would make "who approved what" ambiguous |
+| Notifications with M12 unbuilt | Minimal `NotificationService::send($user, $type, $data)` now, database channel only, via `App\Notifications\GenericNotification` | The `notifications` table and the sidebar bell already existed but were never fed; M12 extends channels behind the same signature |
+| Approver routing | **Role-based only for MVP** — no department-head field exists anywhere (no `department_id` on `User`, no `head_user_id` on `Department`) | The spec's "Dept Head" step is approximated with the existing "Approver" role; swap to `approver_type=user` once dept heads exist |
+
+### Implementation choices (made during build, 2026-08-07)
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Domain hand-off mechanism | `ApprovalRequestApproved` event on terminal approval only — M08 never calls `TagService`/`MovementService` directly | No consumer module exists yet; consumers listen and switch on `$event->request->workflow->module`. Fired synchronously so listeners run in the same request cycle |
+| One active workflow per module | `submit()` throws on 0 or >1 active workflows; `WorkflowService::activate()` deactivates module siblings so the admin UI maintains the invariant | Silently picking one of several active workflows would make approvals nondeterministic |
+| `approval_actions` shape | Append-only, `created_at` only (`$timestamps = false`), copying `LoginHistory` | `created_at` *is* the act timestamp — a separate `acted_at` column would duplicate it |
+| "Already escalated" state | Derived from the existence of an `escalate` action row for `(request_id, step_level)` — no boolean flag | The append-only log is already the source of truth; a flag could drift from it. Also what makes `escalate()` idempotent |
+| Step ordering | `nextStepAfter()` walks to the next-highest level, not `level + 1` | Levels are only unique-per-workflow, not contiguous; a 1/3/7 chain still advances correctly |
+| Escalation due check | SQL join + `whereNotExists` filters candidates; the `started_at + escalation_hours < now()` arithmetic runs in PHP | Adding a *column* number of hours to a timestamp has no portable form across MySQL and the SQLite test suite |
+| Inbox eligibility filter | `canAct()` applied in PHP over pending rows, not expressed in SQL | Eligibility depends on per-row escalation state; a pure-SQL version roughly doubles query complexity for a feature with zero live consumers. **Deliberate deferral — revisit when M09/M13 produce real volume** |
+| Post-resolution visibility | `ApprovalRequestPolicy::view()` also admits anyone who recorded an action, plus `workflow.manage` holders | `canAct()` goes false the moment a request resolves; without this an approver loses the audit trail they contributed to (found during browser smoke test) |
+| Route param name | `{approval_request}`, not `{request}` | `{request}` would shadow the `Illuminate\Http\Request $request` that approve/reject also need |
+
+### M08 companion fix (RolePermissionSeeder)
+
+> `Asset Manager` did not hold `workflow.approve`, but both seeded default workflows route a step to it — those users would have matched a step and then been 403'd. Added to the role's `syncPermissions([...])`.
+
+### M08 wire-up required (later modules)
+
+> `disposal` and `kit_assignment` deliberately have **no** seeded workflow — M13/M17 (or an admin via `/admin/workflows`) configure them, which is the proof that "configurable without code changes" holds.
+> M05/M09/M13/M17 each add a listener for `ApprovalRequestApproved` filtered on `workflow->module`.
 
 ---
 
@@ -100,8 +154,8 @@ Running record of architectural and implementation decisions across all modules.
 
 | # | Question | Status |
 |---|----------|--------|
-| P8.1 | When a step is escalated, can the original approver still act, or do they lose the ability? | ❓ Pending |
-| P8.2 | After rejection, can the requester edit and resubmit the same record, or must they create a new request? | ❓ Pending |
+| P8.1 | When a step is escalated, can the original approver still act, or do they lose the ability? | ✅ Resolved 2026-08-07 — see M08 section above |
+| P8.2 | After rejection, can the requester edit and resubmit the same record, or must they create a new request? | ✅ Resolved 2026-08-07 — see M08 section above |
 
 ### M09 — Asset Movement
 

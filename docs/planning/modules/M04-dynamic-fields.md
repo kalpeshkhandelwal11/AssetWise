@@ -40,15 +40,15 @@ searchQuery(Builder $query, string $fieldKey, mixed $value): Builder
 
 ## Tasks
 
-- [ ] Field builder UI on category admin
-- [ ] Override UI on child categories (hide, relabel, change required)
-- [ ] Soft-delete fields (read-only on existing assets)
-- [ ] Integrate dynamic fields into asset create/edit (AJAX load on category change)
-- [ ] Server validation from resolved schema
-- [ ] EAV save/load
-- [ ] **Category lock:** block `category_id` change when `asset_field_values` exist; allow with `assets.override_category`
-- [ ] Mark searchable fields; add to asset list filters
-- [ ] Show soft-deleted field values read-only on asset detail
+- [x] Field builder UI on category admin
+- [x] Override UI on child categories (hide, relabel, change required)
+- [x] Soft-delete fields (read-only on existing assets)
+- [x] Integrate dynamic fields into asset create/edit (AJAX load on category change)
+- [x] Server validation from resolved schema
+- [x] EAV save/load
+- [x] **Category lock:** block `category_id` change when `asset_field_values` exist; allow with `assets.override_category`
+- [x] Mark searchable fields; add to asset list filters
+- [x] Show soft-deleted field values read-only on asset detail
 
 ## Acceptance criteria
 
