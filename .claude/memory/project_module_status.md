@@ -1,6 +1,6 @@
 ---
 name: project-module-status
-description: "AssetWise implementation progress — M00/M03/M04/M08 done, M01+M02 partial, M05 or M06 next"
+description: "AssetWise implementation progress — M00/M03/M04/M08 done, M01+M02 partial, M01 completion planned and starting next"
 metadata:
   type: project
 ---
@@ -15,6 +15,22 @@ As of 2026-08-07 on the `daniels_branch` branch (kalpeshkhandelwal11/AssetWise):
 - **M02:** `CompanyController::toggleActive()` still has the placeholder comment where the "can't deactivate a company that owns assets" guard belongs (line ~97). M03 was supposed to wire it and didn't.
 
 Both are recorded in `docs/decisions-log.md` under "Outstanding gaps in done modules".
+
+## M01 completion — scope decisions (confirmed with the user 2026-08-08)
+
+Full plan: `docs/planning/modules/M01-implementation-plan.md`. Development starts 2026-08-09. Four decisions were settled before planning:
+
+1. **Designations: create fully** — migration + model + seed + admin screen + `designation_id` on `users`. (Spec'd in M01 and MASTER_PLAN UF-02; nothing consumes it today, but users need the field.)
+2. **Org masters: reuse `MasterController::ENTITIES`**, not the dedicated `DepartmentController`/`BranchController`/`DesignationController` the M01 routes table names. All three are byte-identical in shape to the 7 entities already in the registry, so they inherit the existing list/search/Alpine-modal screens for ~6 lines. **The M01 module doc must be amended, not silently diverged from.** URLs become `/admin/masters/departments` etc.
+3. **Roles: full CRUD with guards** — create/rename/delete + permission matrix + `session_lifetime_minutes`. The 6 seeded roles cannot be renamed or deleted; Super Admin's permission set is immutable; roles referenced by `approval_steps.approver_role` or held by users cannot be deleted. Renaming a *custom* role **cascades** to `approval_steps` in a transaction rather than being blocked.
+4. **Activity log: log changes + build the global viewer** at `/admin/activity-log`, wiring up the dead sidebar placeholder.
+
+**Traps found during planning that the implementation must respect:**
+- 🔴 `logFillable()` on `User` would write **password hashes** into `activity_log` — `password` is in `$fillable` and `LogsActivity` ignores `$hidden`. Use an explicit `logOnly([...])` allow-list. Do not copy `Asset::getActivitylogOptions()` verbatim.
+- 🔴 `syncRoles`/`syncPermissions` are pivot writes and fire **no model events** — adding `LogsActivity` alone will never log a role change. Those must be manual `activity()` calls.
+- 🔴 `RolePermissionSeeder` uses destructive `syncPermissions`, so once roles are UI-editable, `php artisan db:seed` on a live install **silently reverts every admin permission edit**. Must be documented as install-only (the deployment doc currently lists it as a routine deploy step).
+- `User` needs `->dontSubmitEmptyLogs()` or every login writes an empty row (`last_login_at` churn).
+- Two pre-existing bugs to sweep up: the Administration sidebar group is gated `masters.manage` while the Shared Masters link inside it needs `masters.view`, so **Auditor can never see the group**; and `admin.login-history.index` has had no nav entry since it shipped.
 
 ## What's in M08 (done) — Approval Workflow Engine
 
