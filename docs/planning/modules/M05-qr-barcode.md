@@ -16,30 +16,35 @@
 
 ## Scope
 
-**Pre-generate** QR/barcode labels into an inventory pool → print → **assign to assets later**. When a label must change, assign a **new tag from pool**, old tag becomes **inactive** — replacement goes through **approval workflow** (Phase 2).
+**Pre-generate** QR/barcode labels into an inventory pool → print → **assign to assets later** (after the asset already exists — assets are never auto-tagged on creation). When a label must change, assign a **new tag from pool**, old tag becomes **inactive** — replacement goes through **approval workflow** (Phase 2).
+
+**Tag numbering:** tag numbers are a purely global, sequential, non-repeating numeric ID (e.g. `000001`, `000002`, …) — **not** category-based. No prefix, no per-category pool, no assignment restriction by category. Which code type (QR or barcode) gets generated is controlled by a single **global admin setting**, not chosen per batch — see `settings` table below.
 
 ## DB Tables
 
-- `tag_batches` (quantity, prefix, created_by)
-- `tags` (tag_number unique, qr_payload, barcode_value, status: available/assigned/inactive)
+- `settings` (generic key-value: `key` unique, `value`) — new, reusable beyond M05; first row is `tag_code_type` (`qr` or `barcode`), admin-editable.
+- `tag_batches` (quantity, `code_type` — snapshot of the `tag_code_type` setting at generation time, created_by)
+- `tags` (tag_number unique — global sequential, derived from the row's own auto-increment id, never reused; `code_type`; qr_payload; barcode_value; status: available/assigned/inactive)
 - `asset_tag_assignments` (asset_id, tag_id, status: active/inactive, assigned/deactivated metadata)
 - `tag_replacement_requests` (Phase 2 — asset_id, current_tag_id, new_tag_id, reason, status, approval_request_id)
 - `scan_logs` (tag_id, asset_id nullable, user_id, method, scanned_at)
 
 ## Packages
 
-- `simplesoftwareio/simple-qrcode`
-- `picqer/php-barcode-generator`
+- `simplesoftwareio/simple-qrcode` (already in `composer.json`)
+- `picqer/php-barcode-generator` (already in `composer.json`)
+- `barryvdh/laravel-dompdf` (already in `composer.json`, unconfigured — used for the printable PDF label sheet)
+- `phpoffice/phpword` — **new dependency**, not yet in `composer.json`, needed for the printable Word (.docx) label sheet
 
 ## Service
 
 `App\Services\TagService`
 
 ```php
-generateBatch(int $quantity, ?string $prefix): TagBatch
+generateBatch(int $quantity, User $actor): TagBatch  // code type comes from the global setting, not a param
 assignToAsset(Tag $tag, Asset $asset, User $actor): AssetTagAssignment
-requestReplacement(Asset $asset, Tag $newTag, string $reason): TagReplacementRequest  // Phase 2
-applyReplacement(TagReplacementRequest $request): void  // called by WorkflowService on approve
+requestReplacement(Asset $asset, Tag $newTag, string $reason, User $actor): TagReplacementRequest  // Phase 2
+applyReplacement(TagReplacementRequest $request): void  // called by the ApprovalRequestApproved listener
 resolveScan(string $tagNumber): ScanResult  // assigned | available | inactive
 ```
 
@@ -47,9 +52,11 @@ resolveScan(string $tagNumber): ScanResult  // assigned | available | inactive
 
 | Method | URI | Action |
 |--------|-----|--------|
-| GET/POST | `/admin/tags/batches` | Generate batch |
+| GET/POST | `/admin/tags/batches` | Generate batch (quantity only) |
 | GET | `/admin/tags` | Tag pool list (filter by status) |
-| GET | `/admin/tags/print` | Bulk print available tags PDF |
+| GET | `/admin/tags/print/pdf` | Bulk print selected/batch tags as PDF |
+| GET | `/admin/tags/print/word` | Bulk print selected/batch tags as Word (.docx) |
+| GET/PATCH | `/admin/settings/tags` | View/update the global QR-vs-barcode setting |
 | POST | `/assets/{asset}/tags/assign` | Assign available tag |
 | DELETE | `/assets/{asset}/tags` | Unassign (only if no replacement policy — optional) |
 | GET | `/scan/{tag_number}` | Scan resolver |
@@ -65,17 +72,20 @@ resolveScan(string $tagNumber): ScanResult  // assigned | available | inactive
 ## Tasks
 
 ### Phase 1
-- [ ] Batch generator UI (quantity + optional prefix)
-- [ ] QR + barcode image per tag in pool
+- [ ] `settings` table + `Setting` model (generic key-value, reusable beyond M05)
+- [ ] Admin settings screen: global QR-vs-barcode toggle (`tag_code_type`), seeded default `qr`
+- [ ] Batch generator UI (quantity only — no prefix/category input)
+- [ ] Tag number generation: global sequential, non-repeating, derived from each tag row's own id — never category-based
+- [ ] QR or barcode image per tag in pool, per whichever `code_type` the batch snapshotted
 - [ ] Tag pool list: available / assigned / inactive filters
-- [ ] Bulk print PDF for selected available tags
-- [ ] Assign tag to asset (picker + scan-to-assign for available tags)
+- [ ] Bulk print for selected/batch available tags — downloadable as both **PDF** and **Word (.docx)**
+- [ ] Assign tag to asset (picker + scan-to-assign for available tags) — always after the asset already exists
 - [ ] Asset create/edit: tag optional; no auto-generation on save
 - [ ] Sync `assets.asset_tag` from active assignment
 - [ ] Tag history on asset detail (all assignments)
 - [ ] Scan resolver: assigned → asset detail; available → assign prompt; inactive → retired message + link to current tag
 - [ ] Log all scans to `scan_logs`
-- [ ] Permissions: `tags.generate`, `tags.assign`, `tags.view`, `tags.print`
+- [ ] Permissions: `tags.generate`, `tags.assign`, `tags.view`, `tags.print`, `settings.manage`
 
 ### Phase 2 (with M08)
 - [ ] Replacement request: reason + pick new available tag
@@ -92,6 +102,8 @@ resolveScan(string $tagNumber): ScanResult  // assigned | available | inactive
 - Replaced tags scan as inactive with clear messaging
 - Replacement cannot complete without full approval chain
 - Tag numbers never reused
+- Tag numbering is global and sequential, independent of asset category — no category prefix, no category-based assignment restriction
+- Printable label sheets download as both PDF and Word
 
 ## Handoff
 

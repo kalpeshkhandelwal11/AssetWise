@@ -174,7 +174,7 @@ gantt
 
 ### Where to start today
 
-- **Dev 1** → **M05** (QR/Barcode) or **M06** (Bulk Import/Export). Both are unblocked and independent of each other. M05's tag-replacement phase can now go straight in, since M08 exists and already seeds a `tag_replacement` workflow.
+- **Dev 1** → **M05** (QR/Barcode) or **M06** (Bulk Import/Export). Both are unblocked and independent of each other, and can be built as two parallel tracks — see each module's detailed implementation plan: [M05-implementation-plan.md](modules/M05-implementation-plan.md), [M06-implementation-plan.md](modules/M06-implementation-plan.md). M05's tag-replacement phase can now go straight in, since M08 exists and already seeds a `tag_replacement` workflow.
 - **Dev 2** → **M09** (Asset Movement) is unblocked (M03 + M08 both done); **M11** and **M16** are also unblocked if you prefer to stay off M09's critical path.
 - Before planning any module, read its spec in `modules/`, then the matching "Pending Decisions" block in [`../decisions-log.md`](../decisions-log.md) — resolve open `P#.#` items with the product owner *before* writing code.
 
