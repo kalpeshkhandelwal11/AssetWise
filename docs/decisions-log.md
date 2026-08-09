@@ -66,28 +66,36 @@ Running record of architectural and implementation decisions across all modules.
 | File size limits | Photos: 10 MB max. Attachments: 20 MB max | Enforced in controller validation; shared hosting safe |
 | `company_id` mutability | Read-only after asset creation for standard users | Only changes via approved inter-company transfer (M09); prevents accidental re-assignment |
 
-### M03 wire-up required (M02 placeholder)
+### M03 wire-up required (M02 placeholder) — resolved 2026-08-09
 
-> `CompanyController::toggleActive()` has a comment placeholder: `// When M03 adds assets table, add: if ($company->assets()->exists()) { ... }`
-> **Must be wired in M03** after the `assets` migration and model exist.
+> `CompanyController::toggleActive()` had a comment placeholder: `// When M03 adds assets table, add: if ($company->assets()->exists()) { ... }`. M03 shipped the `assets` table and `Asset::company()` relation without wiring the inverse guard in.
 >
-> ⚠️ **Still outstanding as of 2026-08-07.** M03 shipped without wiring this in — the comment is still there at `CompanyController.php:97` and an admin can currently deactivate a company that owns assets. Carry into whichever module touches company management next.
+> **Closed as part of M02's completion pass.** Added `Company::assets(): HasMany`; both `CompanyController::toggleActive()` and `destroy()` now block deactivation with a flash error (`"Cannot deactivate: N asset(s) are still assigned to this company."`) when `$company->assets()->count() > 0`. `Asset` uses `SoftDeletes`, so the count naturally excludes soft-deleted/disposed assets. Regression tests in `tests/Feature/Admin/CompanyTest.php`.
 
 ---
 
-## Outstanding gaps in "done" modules (audited 2026-08-07)
+## Outstanding gaps in "done" modules
 
-Found while reconciling the module docs against the code. None block M05/M06, but each is real debt that the status tables previously hid.
+M01's four gaps (user admin UI, role admin UI, org master CRUD, activity log) were closed 2026-08-09 — see "M01 — completion decisions" below. M02's sole gap (company deactivation guard) was closed the same day — see directly above. No known gaps remain in any module marked ✅ done.
 
-| Module | Gap | Evidence |
-|--------|-----|----------|
-| M01 | **No user administration UI** — `/admin/users` route, `UserController` and views do not exist | Only `LoginHistoryController` exists in `app/Http/Controllers/Admin/` for M01's scope |
-| M01 | **No role administration UI** — `/admin/roles` and the permission-matrix screen do not exist; roles and permissions are seeder-only | `RolePermissionSeeder` is the sole source; no `RoleController` |
-| M01 | **Org master CRUD missing** — `departments` and `branches` exist as tables (added by M03) but are absent from `MasterController::ENTITIES`, so they have no admin screen. `designations` has no table at all | `MasterController::ENTITIES` lists 7 entities, none of them org masters |
-| M01 | Activity log on user/role changes, and user deactivation guard — both blocked on the two missing CRUD screens | — |
-| M02 | Company "in use" deactivation guard never wired | `CompanyController.php:97` placeholder comment |
+**Impact on M08 (resolved):** approver steps route by Spatie role *name*; roles are now assignable through `/admin/users` and `/admin/roles` instead of `tinker` only. The rename-cascade in `RoleController::update()` keeps `approval_steps.approver_role` in sync when a custom role is renamed.
 
-**Impact on M08:** approver steps route by Spatie role *name*, so a workflow can only reach users whose roles were assigned via seeder or `tinker` until M01's role-assignment UI exists. This does not affect correctness — only day-to-day administration.
+---
+
+## M01 — User & Access: completion decisions (2026-08-09)
+
+Full plan: `docs/planning/modules/M01-implementation-plan.md`. Four scope decisions were confirmed with the user before implementation (see that doc's "Scope decisions" table) — designations built fully, org masters reuse `MasterController`'s registry, roles get full CRUD with guards, and activity log gets a global viewer. Summary of what shipped:
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Org masters (departments/branches/designations) | Added to `MasterController::ENTITIES` with their own `permission` key (`departments.manage` etc.) and a `usage` guard checked in `destroy()` | Reusing the existing registry gets 3 admin screens for ~6 lines instead of 3 near-identical controllers; the `usage` guard stops a hard-delete from silently nulling `users`/`assets` FKs |
+| Custom `App\Models\Role` | Extends Spatie's `Role`, adds `SEEDED`/`LOCKED` constants, `PERMISSION_GROUPS` matrix map, and `LogsActivity` | Needed a home for role-editor metadata and audit logging; registered via `config/permission.php` so all three existing consumers (`WorkflowController`, `WorkflowService`, `RolePermissionSeeder`) get it for free |
+| Role logging is manual | `syncRoles`/`syncPermissions` are pivot writes and fire no Eloquent events — `LogsActivity` alone never sees them. Both `UserController` and `RoleController` call the `activity()` helper explicitly after every role/permission change | Verified in code before build; the alternative (assuming the trait "just works") would have shipped a silent audit gap |
+| `User::getActivitylogOptions()` uses `logOnly()`, not `logFillable()` | `password` is in `$fillable`; `LogsActivity` does not consult `$hidden`. An explicit allow-list (`name`, `email`, `is_active`, `mfa_enabled`, `must_change_password`, the 3 org FKs) plus `dontSubmitEmptyLogs()` | `logFillable()` would have written password hashes into `activity_log` on every password change and forced-reset. Regression-tested in `UserTest::test_activity_log_never_records_the_password_hash` |
+| Role rename cascades instead of blocking | Renaming a custom role referenced by `approval_steps.approver_role` retargets those steps inside the same DB transaction and flashes the count | `approval_steps` stores a role *name*, not an FK. Blocking the rename would make a referenced custom role permanently unrenamable; seeded role names are already frozen by the "cannot rename" guard so this only ever touches custom roles |
+| Super Admin permission set is immutable | `RoleController::update()` ignores the submitted `permissions[]` array for the role named `Super Admin` and forces `Permission::all()` | Prevents an admin from locking themselves (or everyone) out by accidentally stripping `roles.manage` from the one role guaranteed to have it |
+| `RolePermissionSeeder` is now install-only | Documented in the seeder's docblock and here: `syncPermissions()` is destructive, so running `db:seed` on a live install silently reverts every permission edit made through the Roles UI | Before M01 shipped, `db:seed` was harmless to re-run since nothing else wrote to `role_has_permissions`. That stopped being true the moment the Roles screen shipped |
+| Two pre-existing bugs fixed alongside | Sidebar Administration group widened from `masters.manage` to also include `masters.view` (fixes Auditor never seeing its own Shared Masters link) and the other relevant permissions; `admin.login-history.index` got its missing nav entry | Both were found while auditing the sidebar for the new Users/Roles/Activity Log links — fixing them here was strictly cheaper than a follow-up module |
 
 ---
 

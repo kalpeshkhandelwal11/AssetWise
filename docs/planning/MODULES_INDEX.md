@@ -5,11 +5,7 @@
 
 This index splits the BRD into **18 independent modules (M00–M17)** so Developer 1 and Developer 2 can work in parallel after shared foundation.
 
-> **Current status:** M00, M03, M04 and M08 are complete on `daniels_branch` (273 tests passing). M01 and M02 are **partially** complete — enough for downstream modules to build on, but each has a real gap (see below). **M05 and M06 are next** — both unblocked, and they can run in parallel.
->
-> **Known gaps to close (carried debt, not blockers):**
-> - **M01** — no user or role administration UI at all (`/admin/users`, `/admin/roles` don't exist). Users and role assignments can only be created via seeder or `tinker`. Also missing: departments/branches/designations org-master CRUD.
-> - **M02** — `CompanyController::toggleActive()` still has a placeholder comment where the "cannot deactivate a company that owns assets" check belongs. The `assets` table has existed since M03.
+> **Current status:** M00, M01, M02, M03, M04 and M08 are complete on `daniels_branch` (307 tests passing). **M05 and M06 are next** — both unblocked, and they can run in parallel.
 
 ---
 
@@ -92,8 +88,8 @@ mysql --version
 | ID | Module | Status | Dev | Phase | Depends On | Can Parallel With |
 |----|--------|--------|-----|-------|------------|-------------------|
 | [M00](modules/M00-foundation.md) | Project Foundation | ✅ done | Dev 1 | 1 | — | — (blocking start) |
-| [M01](modules/M01-user-access.md) | User & Access | 🟡 partial | Dev 1 | 1 | M00 | — |
-| [M02](modules/M02-shared-masters.md) | Shared Masters | 🟡 partial | Dev 1 | 1 | M00, M01 | M08 (after M01) |
+| [M01](modules/M01-user-access.md) | User & Access | ✅ done | Dev 1 | 1 | M00 | — |
+| [M02](modules/M02-shared-masters.md) | Shared Masters | ✅ done | Dev 1 | 1 | M00, M01 | M08 (after M01) |
 | [M03](modules/M03-asset-master.md) | Asset Master Core | ✅ done | Dev 1 | 1 | M01, M02 | M08, M11 |
 | [M04](modules/M04-dynamic-fields.md) | Dynamic Fields | ✅ done | Dev 1 | 1 | M03 | M05, M11 |
 | [M05](modules/M05-qr-barcode.md) | QR / Barcode | 🔄 **next** | Dev 1 | 1 | M03 ✅ | M04, M11 |

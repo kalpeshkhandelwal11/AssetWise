@@ -240,7 +240,7 @@
 <div class="my-2 border-t border-gray-700/40"></div>
 
 {{-- ADMINISTRATION --}}
-@canany(['users.view', 'masters.manage', 'workflow.manage'])
+@canany(['users.view', 'roles.manage', 'masters.manage', 'masters.view', 'companies.manage', 'workflow.manage', 'login_history.view', 'activity_log.view'])
 <div x-data="{ open: {{ $navGroupActive(['admin.', 'users.', 'roles.', 'masters.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
@@ -254,13 +254,21 @@
     </button>
     <div x-show="open" x-collapse class="pl-8 mt-1 space-y-1">
         @can('users.view')
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        <a href="{{ route('admin.users.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.users') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Users</span>
         </a>
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        @endcan
+        @can('roles.manage')
+        <a href="{{ route('admin.roles.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.roles') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Roles & Permissions</span>
+        </a>
+        @endcan
+        @can('login_history.view')
+        <a href="{{ route('admin.login-history.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.login-history') }} hover:bg-gray-800 hover:text-white transition-colors">
+            <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
+            <span x-show="!sidebarCollapsed">Login History</span>
         </a>
         @endcan
         @canany(['masters.manage', 'masters.view'])
@@ -285,10 +293,12 @@
             <span x-show="!sidebarCollapsed">Workflow Config</span>
         </a>
         @endcan
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        @can('activity_log.view')
+        <a href="{{ route('admin.activity-log.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.activity-log') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Activity Log</span>
         </a>
+        @endcan
     </div>
 </div>
 @endcanany

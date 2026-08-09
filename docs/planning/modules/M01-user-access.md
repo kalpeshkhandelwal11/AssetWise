@@ -20,31 +20,38 @@ Authentication, users, roles, permissions, org masters (departments, branches, d
 
 ## Permissions to seed
 
-`users.*`, `roles.*`, `departments.*`, `branches.*`, `designations.*`, `login_history.view`, `assets.override_category`, `workflow.approve`, `category_fields.manage`
+`users.view`, `users.create`, `users.edit`, `users.delete`, `roles.manage`, `departments.manage`, `branches.manage`, `designations.manage`, `login_history.view`, `activity_log.view`, `assets.override_category`, `workflow.approve`, `category_fields.manage`
+
+> The spec originally implied four-verb CRUD permissions per org entity (`departments.*`). The shipped convention is a single coarse `.manage` permission per entity — matching every other master in `MasterController::ENTITIES` — except `users.*`, which keeps its four verbs because create/edit/delete carry materially different guards (see the implementation plan).
 
 ## Routes
 
 | Method | URI | Action |
 |--------|-----|--------|
-| CRUD | `/admin/users` | UserController |
-| CRUD | `/admin/roles` | RoleController |
-| CRUD | `/admin/departments` | DepartmentController |
-| CRUD | `/admin/branches` | BranchController |
-| CRUD | `/admin/designations` | DesignationController |
-| GET | `/admin/login-history` | LoginHistoryController@index |
+| CRUD | `/admin/users` | `Admin\UserController` |
+| PATCH | `/admin/users/{user}/toggle` | `Admin\UserController@toggleActive` |
+| PATCH | `/admin/users/{user}/reset-password` | `Admin\UserController@resetPassword` |
+| CRUD | `/admin/roles` | `Admin\RoleController` |
+| GET | `/admin/masters/departments` | `Admin\MasterController` (registry slug — no dedicated `DepartmentController`) |
+| GET | `/admin/masters/branches` | `Admin\MasterController` (registry slug — no dedicated `BranchController`) |
+| GET | `/admin/masters/designations` | `Admin\MasterController` (registry slug — no dedicated `DesignationController`) |
+| GET | `/admin/login-history` | `Admin\LoginHistoryController@index` |
+| GET | `/admin/activity-log` | `Admin\ActivityLogController@index` |
+
+> Departments, branches and designations were originally specced as three dedicated controllers. They turned out to be byte-identical in shape to the 7 entities already registered in `MasterController::ENTITIES` (name, code, is_active), so they were added as registry slugs instead — each with its own `permission` key and a `usage` guard in `destroy()` so a hard-delete can't silently null a `users`/`assets` FK. See `docs/planning/modules/M01-implementation-plan.md` and the decisions log for the full rationale.
 
 ## Tasks
 
 - [x] Extend User model + migration
-- [ ] **User CRUD with role assignment** — ❌ not built: no `UserController`, no `/admin/users` route, no views
-- [ ] **Role CRUD + permission matrix UI** — ❌ not built: no `RoleController`, no `/admin/roles` route. Roles/permissions exist only via `RolePermissionSeeder`
-- [ ] **Org master CRUD (3 entities)** — ❌ not built: `departments` and `branches` tables exist (added by M03) but are absent from `MasterController::ENTITIES`; `designations` has no table at all
+- [x] **User CRUD with role assignment** — `Admin\UserController`, `/admin/users`, views at `resources/views/admin/users/`
+- [x] **Role CRUD + permission matrix UI** — `Admin\RoleController`, `/admin/roles`, per-role permission matrix at `resources/views/admin/roles/form.blade.php`
+- [x] **Org master CRUD (3 entities)** — `departments`, `branches`, `designations` all registered in `MasterController::ENTITIES`; `designations` table + model added
 - [x] LoginHistory listener on Login/Failed events
 - [x] Seed default roles: Super Admin, Asset Manager, Department User, Auditor, Approver, Viewer
-- [ ] **Activity log on user/role changes** — ❌ blocked on the two CRUD screens above
-- [ ] **Deactivate user (no hard delete if linked to assets)** — ❌ blocked on user CRUD
+- [x] **Activity log on user/role changes** — `User` and `Role` both use `LogsActivity`; role/permission pivot changes are logged manually via `activity()` since `syncRoles`/`syncPermissions` fire no model events. Global viewer at `/admin/activity-log`
+- [x] **Deactivate user (no hard delete if linked to assets)** — `UserController` guards block deactivating a user who is custodian of active assets, the last active Super Admin, or yourself
 
-> **M01 is partially complete.** What shipped: the extended `User` model, session-lifetime middleware, forced password change, login-history capture and listing, and the seeded role/permission matrix. What did not: every *administration screen* for users, roles and org masters. Today a Super Admin cannot create a user or edit a role through the UI — it has to be done in `tinker` or a seeder. Close this gap before any module that assumes self-service user management, and note that M08's role-based approver routing depends on roles being assignable.
+M01 is now ✅ done. Completion work landed 2026-08-09 — see `docs/planning/modules/M01-implementation-plan.md` for the design and `docs/decisions-log.md` for the "M01 — completion decisions" section.
 
 ## Acceptance criteria
 

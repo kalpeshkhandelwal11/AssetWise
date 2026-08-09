@@ -5,8 +5,11 @@ use App\Http\Controllers\Admin\CategoryFieldController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\FieldOverrideController;
 use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\LoginHistoryController;
 use App\Http\Controllers\Admin\MasterController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WorkflowController;
 use App\Http\Controllers\Admin\WorkflowStepController;
 use App\Http\Controllers\Approvals\ApprovalController;
@@ -57,6 +60,15 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     // Administration
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('login-history', [LoginHistoryController::class, 'index'])->name('login-history.index');
+
+        // Users & Roles (M01)
+        Route::resource('users', UserController::class)->except(['show']);
+        Route::patch('users/{user}/toggle', [UserController::class, 'toggleActive'])->name('users.toggle');
+        Route::patch('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+        Route::resource('roles', RoleController::class)->except(['show']);
+
+        // Activity log (M01)
+        Route::get('activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
 
         // Asset categories
         Route::resource('categories', CategoryController::class)->except(['show']);

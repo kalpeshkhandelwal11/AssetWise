@@ -36,7 +36,7 @@ CRUD for all shared lookup tables used across asset lifecycle, including the **C
 - [x] Reusable master form component
 - [x] Location cascade API endpoints for Alpine (location → building → floor → room)
 - [x] Seed defaults: at least one default company, statuses (Available, Assigned, In Maintenance, Disposed), movement types (including **Inter-Company Transfer**), etc.
-- [ ] **Soft-deactivate with "in use" validation (block deactivating a company that owns active assets)** — ❌ still a placeholder comment in `CompanyController::toggleActive()`. The `assets` table has existed since M03; wire in the real `$company->assets()->exists()` check (see the "M03 wire-up required" note in `docs/decisions-log.md`, still outstanding)
+- [x] **Soft-deactivate with "in use" validation (block deactivating a company that owns active assets)** — `Company::assets()` relation added; `CompanyController::toggleActive()` and `destroy()` both block with a flash error when the company still owns assets
 - [x] Permissions: `masters.view`, `masters.manage`, `companies.manage`
 
 ## Acceptance criteria

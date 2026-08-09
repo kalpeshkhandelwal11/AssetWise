@@ -2,11 +2,16 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
+/**
+ * Install-only. `syncPermissions()` is destructive — running this seeder on a live
+ * install silently reverts any permission edit made through the Roles admin UI.
+ * Do not add `db:seed` to a routine deployment step once M01's Roles screen ships.
+ */
 class RolePermissionSeeder extends Seeder
 {
     public function run(): void
@@ -18,9 +23,11 @@ class RolePermissionSeeder extends Seeder
             'users.view', 'users.create', 'users.edit', 'users.delete',
             'roles.manage',
             'login_history.view',
+            'activity_log.view',
 
             // Masters
             'masters.view', 'masters.manage', 'companies.manage',
+            'departments.manage', 'branches.manage', 'designations.manage',
 
             // Assets
             'assets.view', 'assets.create', 'assets.edit', 'assets.delete',
@@ -83,6 +90,7 @@ class RolePermissionSeeder extends Seeder
             'reports.view', 'reports.export',
             'imports.manage',
             'masters.view', 'masters.manage', 'companies.manage',
+            'departments.manage', 'branches.manage', 'designations.manage',
         ]);
 
         // Department User
@@ -102,6 +110,7 @@ class RolePermissionSeeder extends Seeder
             'audit.manage', 'audit.verify',
             'reports.view',
             'masters.view',
+            'activity_log.view',
         ]);
 
         // Approver

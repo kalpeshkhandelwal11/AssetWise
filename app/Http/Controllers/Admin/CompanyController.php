@@ -93,8 +93,10 @@ class CompanyController extends Controller
         $this->authorize('companies.manage');
 
         if ($company->is_active) {
-            // Block deactivation if this company owns any assets (future FK check; placeholder for now)
-            // When M03 adds assets table, add: if ($company->assets()->exists()) { ... }
+            $assetCount = $company->assets()->count();
+            if ($assetCount > 0) {
+                return back()->with('error', "Cannot deactivate: {$assetCount} asset(s) are still assigned to this company.");
+            }
         }
 
         $company->update(['is_active' => ! $company->is_active]);
@@ -107,6 +109,11 @@ class CompanyController extends Controller
     public function destroy(Company $company): RedirectResponse
     {
         $this->authorize('companies.manage');
+
+        $assetCount = $company->assets()->count();
+        if ($assetCount > 0) {
+            return back()->with('error', "Cannot deactivate: {$assetCount} asset(s) are still assigned to this company.");
+        }
 
         // Never hard-delete; always deactivate
         $company->update(['is_active' => false]);

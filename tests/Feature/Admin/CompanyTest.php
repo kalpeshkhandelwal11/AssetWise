@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Asset;
 use App\Models\Company;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsRolesAndPermissions;
@@ -150,5 +151,47 @@ class CompanyTest extends TestCase
              ->assertRedirect(route('admin.companies.index'));
 
         $this->assertFalse($company->refresh()->is_active);
+    }
+
+    public function test_cannot_deactivate_company_with_assets(): void
+    {
+        $company = Company::factory()->create(['is_active' => true]);
+        Asset::factory()->create(['company_id' => $company->id]);
+
+        $this->actingAs($this->admin())
+             ->patch(route('admin.companies.toggle', $company))
+             ->assertRedirect()
+             ->assertSessionHas('error');
+
+        $this->assertTrue($company->refresh()->is_active);
+    }
+
+    public function test_can_deactivate_company_after_assets_reassigned(): void
+    {
+        $company = Company::factory()->create(['is_active' => true]);
+        $otherCompany = Company::factory()->create();
+        $asset = Asset::factory()->create(['company_id' => $company->id]);
+
+        $asset->update(['company_id' => $otherCompany->id]);
+
+        $this->actingAs($this->admin())
+             ->patch(route('admin.companies.toggle', $company))
+             ->assertRedirect()
+             ->assertSessionHas('success');
+
+        $this->assertFalse($company->refresh()->is_active);
+    }
+
+    public function test_cannot_destroy_company_with_assets(): void
+    {
+        $company = Company::factory()->create(['is_active' => true]);
+        Asset::factory()->create(['company_id' => $company->id]);
+
+        $this->actingAs($this->admin())
+             ->delete(route('admin.companies.destroy', $company))
+             ->assertRedirect()
+             ->assertSessionHas('error');
+
+        $this->assertTrue($company->refresh()->is_active);
     }
 }

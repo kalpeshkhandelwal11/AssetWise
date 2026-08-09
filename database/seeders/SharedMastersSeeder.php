@@ -10,6 +10,7 @@ use App\Models\Branch;
 use App\Models\Building;
 use App\Models\Company;
 use App\Models\Department;
+use App\Models\Designation;
 use App\Models\DisposalType;
 use App\Models\Floor;
 use App\Models\Location;
@@ -148,6 +149,14 @@ class SharedMastersSeeder extends Seeder
             Branch::firstOrCreate(
                 ['code' => strtoupper(str_replace(' ', '_', $branch))],
                 ['name' => $branch, 'is_active' => true]
+            );
+        }
+
+        // Designations
+        foreach (['Manager', 'Supervisor', 'Analyst', 'Executive', 'Officer', 'Coordinator', 'Assistant'] as $designation) {
+            Designation::firstOrCreate(
+                ['code' => strtoupper(str_replace(' ', '_', $designation))],
+                ['name' => $designation, 'is_active' => true]
             );
         }
 

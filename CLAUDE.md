@@ -11,8 +11,8 @@ AssetWise is a **greenfield** Enterprise Asset Management System. It is a **sing
 | Module | Status | Notes |
 |--------|--------|-------|
 | M00 Foundation | ✅ done | Laravel 13 scaffold, packages, base UI |
-| M01 Auth & RBAC | 🟡 partial | Session lifetime, force-change, login history, seeded RBAC — but **no user/role admin UI**: no `UserController`, no `RoleController`, no `/admin/users` or `/admin/roles`. Users and role assignments are seeder/tinker-only today |
-| M02 Shared Masters | 🟡 partial | Companies, statuses, locations, masters CRUD — but the "block deactivating a company that owns assets" guard is still a placeholder comment in `CompanyController::toggleActive()` |
+| M01 Auth & RBAC | ✅ done | Session lifetime, force-change, login history, seeded RBAC, plus full user/role/org-master admin UI (`UserController`, `RoleController`, `/admin/users`, `/admin/roles`) and a global activity log viewer |
+| M02 Shared Masters | ✅ done | Companies, statuses, locations, masters CRUD, including the "block deactivating a company that owns assets" guard in `CompanyController` |
 | M03 Asset Master | ✅ done | Categories, assets CRUD, photos, attachments |
 | M04 Dynamic Fields | ✅ done | Category-scoped EAV fields with inheritance/override |
 | M08 Approval Workflow | ✅ done | Polymorphic multi-level engine, escalation, approver inbox |
@@ -20,7 +20,7 @@ AssetWise is a **greenfield** Enterprise Asset Management System. It is a **sing
 | M06 Bulk Import / Export | 🔄 next | Unblocked — M03 + M04 both done |
 | M07, M09–M17 | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
 
-Test suite: **273 passing**. For the full developer setup guide see `docs/developer-setup.md`.
+Test suite: **307 passing**. For the full developer setup guide see `docs/developer-setup.md`.
 
 **Stack:** Laravel 13, MySQL 8, Blade + Alpine.js + Tailwind CSS, PWA (vite-plugin-pwa)
 
@@ -192,13 +192,16 @@ Use `QUEUE_CONNECTION=database` and `CACHE_DRIVER=database` (or file). No Redis 
 
 ## RBAC Permissions (Seeded)
 
-Permissions follow `{module}.{action}` naming. Key non-obvious ones:
+Permissions follow `{module}.{action}` naming, except org masters and most admin screens which use a single coarse `.manage` permission (matching every entity in `MasterController::ENTITIES`). Key non-obvious ones:
 - `assets.override_category` — force category change when field data exists
 - `category_fields.manage` — build/soft-delete dynamic field definitions
 - `workflow.approve` — act on approval steps
 - `imports.manage` — bulk upload per category
+- `roles.manage` — full role CRUD + permission matrix at `/admin/roles`
+- `departments.manage`, `branches.manage`, `designations.manage` — org master CRUD via `MasterController`'s registry (not dedicated controllers)
+- `activity_log.view` — global audit trail viewer at `/admin/activity-log`
 
-Default roles seeded: Super Admin, Asset Manager, Department User, Auditor, Approver, Viewer.
+Default roles seeded: Super Admin, Asset Manager, Department User, Auditor, Approver, Viewer. **These 6 seeded roles cannot be renamed or deleted** (`App\Models\Role::SEEDED`); Super Admin's permission set is additionally immutable — `RoleController` always forces it back to every permission, regardless of what's submitted. Custom roles created through `/admin/roles` have full CRUD, including delete, as long as they're not referenced by `approval_steps.approver_role` or held by any user.
 
 ## PWA Scope
 

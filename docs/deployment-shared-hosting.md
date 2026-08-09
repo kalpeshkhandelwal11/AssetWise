@@ -194,6 +194,8 @@ This seeds:
 - Demo admin: `admin@assetwise.test` / `Admin@1234`
 
 > **Change the admin password immediately after first login.**
+>
+> ⚠️ **`db:seed` is install-only, not a routine deploy step.** `RolePermissionSeeder` calls `syncPermissions()`, which is destructive — once a Super Admin starts editing roles/permissions through `/admin/roles`, re-running `db:seed` silently reverts every one of those edits back to the seeded defaults. Do **not** include `php artisan db:seed` in the "Updating the application" steps below after the first install.
 
 ---
 

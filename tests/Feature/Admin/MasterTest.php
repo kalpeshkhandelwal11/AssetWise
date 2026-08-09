@@ -2,9 +2,13 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Asset;
 use App\Models\AssetStatus;
 use App\Models\AssetType;
+use App\Models\Department;
 use App\Models\Priority;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsRolesAndPermissions;
 use Tests\TestCase;
@@ -140,5 +144,52 @@ class MasterTest extends TestCase
         $this->actingAs($viewer)
              ->get(route('admin.masters.landing'))
              ->assertForbidden();
+    }
+
+    public function test_org_master_requires_its_own_permission(): void
+    {
+        $this->seedRolesAndPermissions();
+
+        // A role with masters.manage but deliberately without departments.manage —
+        // proves the 'permission' key on the ENTITIES registry doesn't leak
+        // authorization from the generic masters.manage grant.
+        $role = Role::create(['name' => 'Masters Only', 'guard_name' => 'web']);
+        $role->syncPermissions(['masters.manage']);
+
+        $user = User::factory()->create();
+        $user->assignRole('Masters Only');
+
+        $this->actingAs($user)
+             ->get(route('admin.masters.index', 'statuses'))
+             ->assertOk();
+
+        $this->actingAs($user)
+             ->get(route('admin.masters.index', 'departments'))
+             ->assertForbidden();
+    }
+
+    public function test_department_in_use_by_an_asset_cannot_be_deleted(): void
+    {
+        $department = Department::create(['name' => 'Finance', 'code' => 'FIN', 'is_active' => true]);
+        Asset::factory()->create(['department_id' => $department->id]);
+
+        $this->actingAs($this->admin())
+             ->delete(route('admin.masters.destroy', ['departments', $department->id]))
+             ->assertRedirect()
+             ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('departments', ['id' => $department->id]);
+    }
+
+    public function test_department_not_in_use_can_be_deleted(): void
+    {
+        $department = Department::create(['name' => 'Old Dept', 'code' => 'OLD_DEPT', 'is_active' => true]);
+
+        $this->actingAs($this->admin())
+             ->delete(route('admin.masters.destroy', ['departments', $department->id]))
+             ->assertRedirect()
+             ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('departments', ['id' => $department->id]);
     }
 }
