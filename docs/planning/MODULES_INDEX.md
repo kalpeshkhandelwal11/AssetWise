@@ -5,7 +5,7 @@
 
 This index splits the BRD into **18 independent modules (M00–M17)** so Developer 1 and Developer 2 can work in parallel after shared foundation.
 
-> **Current status:** M00, M01, M02, M03, M04 and M08 are complete on `daniels_branch` (307 tests passing). **M05 and M06 are next** — both unblocked, and they can run in parallel.
+> **Current status:** M00, M01, M02, M03, M04, M05, M06 and M08 are complete on `daniels_branch` (372 tests passing).
 
 ---
 
@@ -92,8 +92,8 @@ mysql --version
 | [M02](modules/M02-shared-masters.md) | Shared Masters | ✅ done | Dev 1 | 1 | M00, M01 | M08 (after M01) |
 | [M03](modules/M03-asset-master.md) | Asset Master Core | ✅ done | Dev 1 | 1 | M01, M02 | M08, M11 |
 | [M04](modules/M04-dynamic-fields.md) | Dynamic Fields | ✅ done | Dev 1 | 1 | M03 | M05, M11 |
-| [M05](modules/M05-qr-barcode.md) | QR / Barcode | 🔄 **next** | Dev 1 | 1 | M03 ✅ | M04, M11 |
-| [M06](modules/M06-bulk-import-export.md) | Bulk Import / Export | 🔄 **next** | Dev 1 | 1 | M03 ✅, M04 ✅ | M08 |
+| [M05](modules/M05-qr-barcode.md) | QR / Barcode | ✅ done | Dev 1 | 1 | M03 ✅ | M04, M11 |
+| [M06](modules/M06-bulk-import-export.md) | Bulk Import / Export | ✅ done | Dev 1 | 1 | M03 ✅, M04 ✅ | M08 |
 | [M07](modules/M07-shared-ui-services.md) | Shared UI & Services | ⏳ pending | Dev 1 | 1 | M00 | All modules (ongoing) |
 | [M08](modules/M08-approval-workflow.md) | Approval Workflow | ✅ done | Dev 2 | 2 | M00, M01 | M02, M03, M04, M11 |
 | [M09](modules/M09-asset-movement.md) | Asset Movement | ⏳ unblocked | Dev 2 | 2 | M03 ✅, M08 ✅ | M10, M11 |

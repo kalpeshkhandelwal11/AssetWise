@@ -16,11 +16,11 @@ AssetWise is a **greenfield** Enterprise Asset Management System. It is a **sing
 | M03 Asset Master | ✅ done | Categories, assets CRUD, photos, attachments |
 | M04 Dynamic Fields | ✅ done | Category-scoped EAV fields with inheritance/override |
 | M08 Approval Workflow | ✅ done | Polymorphic multi-level engine, escalation, approver inbox |
-| M05 QR / Barcode | 🔄 next | Unblocked — Phase 1 (pool/assign/scan) needs only M03; the replacement flow can now use M08 |
-| M06 Bulk Import / Export | 🔄 next | Unblocked — M03 + M04 both done |
+| M05 QR / Barcode | ✅ done | Tag pool (`settings`, `tag_batches`, `tags`, `asset_tag_assignments`, `scan_logs`), generate/assign/scan, PDF + Word label sheets, Phase 2 replacement via `WorkflowService` + `ApplyTagReplacement` listener on `ApprovalRequestApproved` |
+| M06 Bulk Import / Export | ✅ done | Per-category Excel template (`AssetTemplateExport`), row-validated import (`AssetImport`, `import_batches`/`import_batch_rows`), filtered export (`AssetExport`), first `ShouldQueue` jobs in the codebase (`ProcessAssetImport`, `GenerateAssetExport`) |
 | M07, M09–M17 | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
 
-Test suite: **307 passing**. For the full developer setup guide see `docs/developer-setup.md`.
+Test suite: **372 passing**. For the full developer setup guide see `docs/developer-setup.md`.
 
 **Stack:** Laravel 13, MySQL 8, Blade + Alpine.js + Tailwind CSS, PWA (vite-plugin-pwa)
 
