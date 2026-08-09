@@ -11,6 +11,7 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Department;
 use App\Models\Location;
+use App\Models\Tag;
 use App\Models\User;
 use App\Services\AssetService;
 use App\Services\DynamicFieldService;
@@ -108,6 +109,7 @@ class AssetController extends Controller
             'company', 'category', 'assetType', 'status', 'location', 'building', 'room', 'floor',
             'custodian', 'department', 'branch', 'photos', 'attachments', 'creator', 'updater',
             'fieldValues.categoryField.options',
+            'tagAssignments.tag', 'tagAssignments.assignedBy',
         ]);
 
         $activities = Activity::where('subject_type', Asset::class)
@@ -115,7 +117,11 @@ class AssetController extends Controller
             ->latest()
             ->get();
 
-        return view('modules.assets.show', compact('asset', 'activities'));
+        $availableTags = auth()->user()->can('tags.assign') && ! $asset->activeTag()
+            ? Tag::where('status', 'available')->orderBy('tag_number')->get()
+            : collect();
+
+        return view('modules.assets.show', compact('asset', 'activities', 'availableTags'));
     }
 
     public function edit(Asset $asset): View

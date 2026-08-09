@@ -40,7 +40,10 @@ class Role extends SpatieRole
             'category_fields.manage',
         ],
         'Tags' => [
-            'tags.manage',
+            'tags.generate', 'tags.assign', 'tags.view', 'tags.print', 'tags.replace',
+        ],
+        'Settings' => [
+            'settings.manage',
         ],
         'Movement' => [
             'movement.assign', 'movement.transfer', 'movement.verify',

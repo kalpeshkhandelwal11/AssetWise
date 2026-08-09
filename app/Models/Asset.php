@@ -119,6 +119,17 @@ class Asset extends Model
         return $this->fieldValues()->exists();
     }
 
+    public function tagAssignments(): HasMany
+    {
+        return $this->hasMany(AssetTagAssignment::class)->latest('assigned_at');
+    }
+
+    /** The Tag behind this asset's current active AssetTagAssignment, if any. */
+    public function activeTag(): ?Tag
+    {
+        return $this->tagAssignments()->where('status', 'active')->first()?->tag;
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
