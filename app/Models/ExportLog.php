@@ -31,10 +31,14 @@ class ExportLog extends Model
         return $this->belongsTo(User::class);
     }
 
-    public static function record(string $reportType, array $filters = [], ?int $rowCount = null, ?string $fileName = null): self
+    /**
+     * $userId is optional and defaults to the current web session (auth()->id()) — pass it
+     * explicitly when recording from a queued job, where there is no authenticated session.
+     */
+    public static function record(string $reportType, array $filters = [], ?int $rowCount = null, ?string $fileName = null, ?int $userId = null): self
     {
         return self::create([
-            'user_id'     => auth()->id(),
+            'user_id'     => $userId ?? auth()->id(),
             'report_type' => $reportType,
             'filters'     => $filters ?: null,
             'row_count'   => $rowCount,

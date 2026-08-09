@@ -19,6 +19,8 @@ use App\Http\Controllers\Api\ScanController;
 use App\Http\Controllers\Approvals\ApprovalController;
 use App\Http\Controllers\Assets\AssetController;
 use App\Http\Controllers\Assets\AttachmentController;
+use App\Http\Controllers\Assets\ExportController;
+use App\Http\Controllers\Assets\ImportController;
 use App\Http\Controllers\Assets\PhotoController;
 use App\Http\Controllers\Assets\TagController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
@@ -45,7 +47,15 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Assets
+    // Assets — bulk import/export (M06) register before the resource route so
+    // "assets/import" and "assets/export" aren't swallowed by the "assets/{asset}" show route.
+    Route::get('assets/import', [ImportController::class, 'index'])->name('assets.import.index');
+    Route::get('assets/import/template/{category}', [ImportController::class, 'template'])->name('assets.import.template');
+    Route::post('assets/import', [ImportController::class, 'store'])->name('assets.import.store');
+    Route::get('assets/import/{batch}', [ImportController::class, 'show'])->name('assets.import.show');
+    Route::get('assets/export', [ExportController::class, 'index'])->name('assets.export.index');
+    Route::post('assets/export', [ExportController::class, 'store'])->name('assets.export.store');
+
     Route::resource('assets', AssetController::class);
     Route::post('assets/{asset}/photos', [PhotoController::class, 'store'])->name('assets.photos.store');
     Route::delete('assets/{asset}/photos/{photo}', [PhotoController::class, 'destroy'])->name('assets.photos.destroy');
