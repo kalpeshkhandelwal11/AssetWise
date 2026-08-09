@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             SharedMastersSeeder::class,
             WorkflowSeeder::class, // must follow RolePermissionSeeder — steps reference role names
+            SettingsSeeder::class,
         ]);
     }
 }

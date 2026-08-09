@@ -9,13 +9,18 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\LoginHistoryController;
 use App\Http\Controllers\Admin\MasterController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\TagBatchController;
+use App\Http\Controllers\Admin\TagPrintController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WorkflowController;
 use App\Http\Controllers\Admin\WorkflowStepController;
+use App\Http\Controllers\Api\ScanController;
 use App\Http\Controllers\Approvals\ApprovalController;
 use App\Http\Controllers\Assets\AssetController;
 use App\Http\Controllers\Assets\AttachmentController;
 use App\Http\Controllers\Assets\PhotoController;
+use App\Http\Controllers\Assets\TagController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -47,6 +52,14 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::patch('assets/{asset}/photos/{photo}/primary', [PhotoController::class, 'setPrimary'])->name('assets.photos.primary');
     Route::post('assets/{asset}/attachments', [AttachmentController::class, 'store'])->name('assets.attachments.store');
     Route::delete('assets/{asset}/attachments/{attachment}', [AttachmentController::class, 'destroy'])->name('assets.attachments.destroy');
+
+    // Tags (M05)
+    Route::post('assets/{asset}/tags/assign', [TagController::class, 'store'])->name('assets.tags.assign');
+    Route::get('assets/{asset}/tags/replace', [TagController::class, 'replaceForm'])->name('assets.tags.replace');
+    Route::post('assets/{asset}/tags/replace', [TagController::class, 'submitReplacement'])->name('assets.tags.replace.submit');
+
+    // Scan resolver (M05) — contract for M10 audit QR verification
+    Route::get('/scan/{tag_number}', [ScanController::class, 'resolve'])->name('scan.resolve');
 
     // Approvals (M08) — the param is {approval_request}, not {request}, so it never
     // shadows the Illuminate\Http\Request that approve/reject also need.
@@ -92,6 +105,17 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
             Route::put('{step}', [WorkflowStepController::class, 'update'])->name('update');
             Route::delete('{step}', [WorkflowStepController::class, 'destroy'])->name('destroy');
         });
+
+        // Tag pool (M05)
+        Route::prefix('tags')->name('tags.')->group(function () {
+            Route::get('/', [TagBatchController::class, 'index'])->name('index');
+            Route::get('/batches/create', [TagBatchController::class, 'create'])->name('batches.create');
+            Route::post('/batches', [TagBatchController::class, 'store'])->name('batches.store');
+            Route::get('/print/pdf', [TagPrintController::class, 'pdf'])->name('print.pdf');
+            Route::get('/print/word', [TagPrintController::class, 'word'])->name('print.word');
+        });
+        Route::get('/settings/tags', [SettingController::class, 'edit'])->name('settings.tags.edit');
+        Route::patch('/settings/tags', [SettingController::class, 'update'])->name('settings.tags.update');
 
         // Companies
         Route::resource('companies', CompanyController::class)->except(['show']);

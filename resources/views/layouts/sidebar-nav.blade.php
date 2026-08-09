@@ -28,7 +28,7 @@
 
 {{-- ASSETS group --}}
 @canany(['assets.view', 'assets.create', 'category_fields.manage'])
-<div x-data="{ open: {{ $navGroupActive(['assets.', 'admin.categories.', 'tags.']) ? 'true' : 'false' }} }">
+<div x-data="{ open: {{ $navGroupActive(['assets.', 'admin.categories.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,9 +68,9 @@
 </div>
 @endcanany
 
-{{-- TAGS / QR --}}
-@canany(['assets.view', 'tags.manage'])
-<div x-data="{ open: {{ $navGroupActive(['tags.']) ? 'true' : 'false' }} }">
+{{-- TAGS / QR (M05) --}}
+@canany(['tags.view', 'tags.generate', 'tags.print', 'settings.manage'])
+<div x-data="{ open: {{ $navGroupActive(['admin.tags.', 'admin.settings.tags']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,18 +82,30 @@
         </svg>
     </button>
     <div x-show="open" x-collapse class="pl-8 mt-1 space-y-1">
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        @can('tags.view')
+        <a href="{{ route('admin.tags.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.tags.index') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Tag Pool</span>
         </a>
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        @endcan
+        @can('tags.generate')
+        <a href="{{ route('admin.tags.batches.create') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.tags.batches') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Generate Tags</span>
         </a>
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        @endcan
+        @can('tags.print')
+        <a href="{{ route('admin.tags.print.pdf') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.tags.print') }} hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Print Labels</span>
         </a>
+        @endcan
+        @can('settings.manage')
+        <a href="{{ route('admin.settings.tags.edit') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.settings.tags') }} hover:bg-gray-800 hover:text-white transition-colors">
+            <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
+            <span x-show="!sidebarCollapsed">Tag Settings</span>
+        </a>
+        @endcan
     </div>
 </div>
 @endcanany

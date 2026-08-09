@@ -43,7 +43,7 @@
         {{-- Tabs --}}
         <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
             <nav class="flex gap-6 -mb-px">
-                @foreach(['summary' => 'Summary', 'photos' => 'Photos ('.$asset->photos->count().')', 'attachments' => 'Attachments ('.$asset->attachments->count().')', 'history' => 'History'] as $key => $label)
+                @foreach(['summary' => 'Summary', 'photos' => 'Photos ('.$asset->photos->count().')', 'attachments' => 'Attachments ('.$asset->attachments->count().')', 'tags' => 'Tags ('.$asset->tagAssignments->count().')', 'history' => 'History'] as $key => $label)
                     <button @click="tab = '{{ $key }}'"
                             :class="tab === '{{ $key }}' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
                             class="pb-3 text-sm font-medium border-b-2 transition-colors">
@@ -193,6 +193,87 @@
                 @empty
                     <p class="text-sm text-gray-400 py-8 text-center">No attachments uploaded.</p>
                 @endforelse
+            </div>
+        </div>
+
+        {{-- Tags tab (M05) --}}
+        @php $currentTagAssignment = $asset->tagAssignments->firstWhere('status', 'active'); @endphp
+        <div x-show="tab === 'tags'" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+            <div class="flex items-center justify-between mb-5">
+                <div>
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Current Tag</p>
+                    @if($currentTagAssignment)
+                        <p class="font-mono text-lg text-gray-900 dark:text-gray-100 mt-0.5">{{ $currentTagAssignment->tag->tag_number }}</p>
+                        <p class="text-xs text-gray-400">{{ ucfirst($currentTagAssignment->tag->code_type) }} &middot; assigned {{ $currentTagAssignment->assigned_at->format('d M Y') }} by {{ $currentTagAssignment->assignedBy?->name ?? '—' }}</p>
+                    @else
+                        <p class="text-sm text-gray-400 mt-0.5">No tag assigned</p>
+                    @endif
+                </div>
+                @can('tags.replace')
+                    @if($currentTagAssignment)
+                        <a href="{{ route('assets.tags.replace', $asset) }}"
+                           class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">
+                            Replace Tag
+                        </a>
+                    @endif
+                @endcan
+            </div>
+
+            @can('tags.assign')
+                @if(! $currentTagAssignment)
+                    <form method="POST" action="{{ route('assets.tags.assign', $asset) }}" class="flex flex-wrap items-end gap-3 mb-6 pb-6 border-b border-gray-100 dark:border-gray-700">
+                        @csrf
+                        <div>
+                            <x-input-label for="tag_id" value="Pick from pool" />
+                            <select id="tag_id" name="tag_id" class="mt-1 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                                <option value="">— Select available tag —</option>
+                                @foreach($availableTags as $tag)
+                                    <option value="{{ $tag->id }}">{{ $tag->tag_number }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <span class="text-xs text-gray-400 pb-2">or</span>
+                        <div>
+                            <x-input-label for="tag_number" value="Scan-to-assign (tag number)" />
+                            <x-text-input id="tag_number" name="tag_number" class="mt-1 block w-full" />
+                        </div>
+                        <x-primary-button type="submit">Assign Tag</x-primary-button>
+                        <x-input-error :messages="$errors->get('tag')" class="mt-1 w-full" />
+                        <x-input-error :messages="$errors->get('asset')" class="mt-1 w-full" />
+                    </form>
+                @endif
+            @endcan
+
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Tag History</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tag</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Assigned</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deactivated</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        @forelse($asset->tagAssignments as $assignment)
+                            <tr>
+                                <td class="px-4 py-2 font-mono text-gray-900 dark:text-gray-100">{{ $assignment->tag->tag_number }}</td>
+                                <td class="px-4 py-2">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ $assignment->status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' }}">
+                                        {{ ucfirst($assignment->status) }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $assignment->assigned_at->format('d M Y') }} &middot; {{ $assignment->assignedBy?->name ?? '—' }}</td>
+                                <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $assignment->deactivated_at?->format('d M Y') ?? '—' }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="px-4 py-8 text-center text-sm text-gray-400">No tag history.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
 

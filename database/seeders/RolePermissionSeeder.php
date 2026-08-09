@@ -38,8 +38,9 @@ class RolePermissionSeeder extends Seeder
             // Category fields
             'category_fields.manage',
 
-            // Tags
-            'tags.manage',
+            // Tags (M05)
+            'tags.generate', 'tags.assign', 'tags.view', 'tags.print', 'tags.replace',
+            'settings.manage',
 
             // Movement
             'movement.assign', 'movement.transfer', 'movement.verify',
@@ -79,7 +80,10 @@ class RolePermissionSeeder extends Seeder
             'assets.view', 'assets.create', 'assets.edit', 'assets.delete',
             'assets.bulk', 'assets.export', 'assets.view_financials',
             'category_fields.manage',
-            'tags.manage',
+            // Asset Manager is this app's operational-ownership role for physical assets —
+            // gets the full tag lifecycle, matching how M08 granted it workflow.approve.
+            'tags.generate', 'tags.assign', 'tags.view', 'tags.print', 'tags.replace',
+            'settings.manage',
             'movement.assign', 'movement.transfer', 'movement.verify',
             'audit.manage', 'audit.verify',
             'maintenance.manage',
