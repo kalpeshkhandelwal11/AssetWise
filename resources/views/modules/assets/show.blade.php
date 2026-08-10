@@ -23,6 +23,14 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
+                @can('disposal.request')
+                    @unless($asset->isDisposed() || $asset->hasPendingDisposal())
+                        <a href="{{ route('disposals.create', ['asset_id' => $asset->id]) }}"
+                           class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">
+                            Request Disposal
+                        </a>
+                    @endunless
+                @endcan
                 @can('assets.edit')
                     <a href="{{ route('assets.edit', $asset) }}"
                        class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">

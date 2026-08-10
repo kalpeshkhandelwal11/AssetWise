@@ -24,6 +24,7 @@ use App\Http\Controllers\Assets\ImportController;
 use App\Http\Controllers\Assets\PhotoController;
 use App\Http\Controllers\Assets\TagController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
+use App\Http\Controllers\Disposal\DisposalController;
 use App\Http\Controllers\Movement\MovementBatchController;
 use App\Http\Controllers\Movement\MovementController;
 use App\Http\Controllers\ProfileController;
@@ -82,6 +83,16 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::get('create', [MovementController::class, 'create'])->name('create');
         Route::post('/', [MovementController::class, 'store'])->name('store');
         Route::post('{movement}/verify', [MovementController::class, 'verify'])->name('verify');
+    });
+
+    // Disposal & Scrap (M13)
+    Route::prefix('disposals')->name('disposals.')->group(function () {
+        Route::get('/', [DisposalController::class, 'index'])->name('index');
+        Route::get('create', [DisposalController::class, 'create'])->name('create');
+        Route::post('/', [DisposalController::class, 'store'])->name('store');
+        Route::get('{disposal}', [DisposalController::class, 'show'])->name('show');
+        Route::post('{disposal}/write-off', [DisposalController::class, 'writeOff'])->name('write-off');
+        Route::post('{disposal}/scrap', [DisposalController::class, 'scrap'])->name('scrap');
     });
 
     // Approvals (M08) — the param is {approval_request}, not {request}, so it never

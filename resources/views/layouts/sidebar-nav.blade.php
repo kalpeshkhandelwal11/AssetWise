@@ -225,11 +225,11 @@
         </svg>
     </button>
     <div x-show="open" x-collapse class="pl-8 mt-1 space-y-1">
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        <a href="{{ route('disposals.create') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Requests</span>
         </a>
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+        <a href="{{ route('disposals.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">History</span>
         </a>

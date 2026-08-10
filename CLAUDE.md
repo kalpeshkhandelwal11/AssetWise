@@ -20,9 +20,10 @@ AssetWise is a **greenfield** Enterprise Asset Management System. It is a **sing
 | M06 Bulk Import / Export | ✅ done | Per-category Excel template (`AssetTemplateExport`), row-validated import (`AssetImport`, `import_batches`/`import_batch_rows`), filtered export (`AssetExport`), first `ShouldQueue` jobs in the codebase (`ProcessAssetImport`, `GenerateAssetExport`) |
 | M07 Shared UI & Services | ✅ done | Reusable Blade components (`x-data-table`, `x-filter-bar`, `x-status-badge`, `x-breadcrumb`, `x-confirm-modal`) retrofitted across all M01–M06 list/filter screens, eliminating duplicated table/filter markup; service interfaces (`WorkflowService`, `NotificationService`) already documented via M08 |
 | M09 Asset Movement | ✅ done | Assignment/Return/Transfer/Custodian Change/Inter-Company Transfer, all approval-gated via `MovementService` + `ApplyAssetMovement`/`MarkAssetMovementRejected` listeners on `ApprovalRequestApproved`/`Rejected`. Bulk multi-select gets one approval per batch (`AssetMovementBatch`, resolved P9.1) — the same model M17 will reuse for kit assignments |
-| M10–M17 | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
+| M13 Disposal & Scrap | ✅ done | `disposal_requests` lifecycle (pending → approved → written_off → scrapped) via `DisposalService` + `MarkDisposalApproved`/`MarkDisposalRejected` listeners; approval only unlocks write-off, it doesn't apply anything. Scrap sets `assets.status_id` to Disposed and appends to M09's `asset_status_histories` ledger. `disposal` still has no seeded workflow (deliberate, M08) |
+| M10–M12, M14–M17 | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
 
-Test suite: **382 passing**. For the full developer setup guide see `docs/developer-setup.md`.
+Test suite: **390 passing**. For the full developer setup guide see `docs/developer-setup.md`.
 
 **Stack:** Laravel 13, MySQL 8, Blade + Alpine.js + Tailwind CSS, PWA (vite-plugin-pwa)
 
@@ -202,6 +203,8 @@ Permissions follow `{module}.{action}` naming, except org masters and most admin
 - `roles.manage` — full role CRUD + permission matrix at `/admin/roles`
 - `departments.manage`, `branches.manage`, `designations.manage` — org master CRUD via `MasterController`'s registry (not dedicated controllers)
 - `activity_log.view` — global audit trail viewer at `/admin/activity-log`
+- `movement.assign` vs `movement.transfer` — split by movement type (Assignment/Return/Custodian Change vs Transfer/Inter-Company Transfer), not a single `movement.create`; see `MovementService::permissionFor()`
+- `disposal.approve` — broad visibility on `/disposals` (not act-on-approval eligibility, which is role-based via `WorkflowService::canAct()`); `disposal.complete` gates write-off/scrap
 
 Default roles seeded: Super Admin, Asset Manager, Department User, Auditor, Approver, Viewer. **These 6 seeded roles cannot be renamed or deleted** (`App\Models\Role::SEEDED`); Super Admin's permission set is additionally immutable — `RoleController` always forces it back to every permission, regardless of what's submitted. Custom roles created through `/admin/roles` have full CRUD, including delete, as long as they're not referenced by `approval_steps.approver_role` or held by any user.
 

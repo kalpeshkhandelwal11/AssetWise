@@ -134,6 +134,11 @@ class Asset extends Model
         return $this->hasMany(AssetStatusHistory::class)->latest('created_at');
     }
 
+    public function disposalRequests(): HasMany
+    {
+        return $this->hasMany(DisposalRequest::class)->latest('created_at');
+    }
+
     public function isDisposed(): bool
     {
         return $this->status?->code === 'DISPOSED';
@@ -142,6 +147,11 @@ class Asset extends Model
     public function hasPendingMovement(): bool
     {
         return $this->movements()->where('status', 'pending_approval')->exists();
+    }
+
+    public function hasPendingDisposal(): bool
+    {
+        return $this->disposalRequests()->whereIn('status', ['pending_approval', 'approved', 'written_off'])->exists();
     }
 
     /** The Tag behind this asset's current active AssetTagAssignment, if any. */

@@ -52,7 +52,7 @@ class RolePermissionSeeder extends Seeder
             'maintenance.manage',
 
             // Disposal
-            'disposal.request', 'disposal.approve',
+            'disposal.request', 'disposal.approve', 'disposal.complete',
 
             // Reports
             'reports.view', 'reports.export',
@@ -87,7 +87,7 @@ class RolePermissionSeeder extends Seeder
             'movement.assign', 'movement.transfer', 'movement.verify',
             'audit.manage', 'audit.verify',
             'maintenance.manage',
-            'disposal.request',
+            'disposal.request', 'disposal.complete',
             // The default transfer + tag_replacement workflows (WorkflowSeeder) both route
             // a step to Asset Manager, so the role needs to be able to act on approvals.
             'workflow.approve',

@@ -5,7 +5,7 @@
 
 This index splits the BRD into **18 independent modules (M00–M17)** so Developer 1 and Developer 2 can work in parallel after shared foundation.
 
-> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07, M08 and M09 are complete on `daniels_branch` (382 tests passing).
+> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07, M08, M09 and M13 are complete on `daniels_branch` (390 tests passing).
 
 ---
 
@@ -100,7 +100,7 @@ mysql --version
 | [M10](modules/M10-audit.md) | Audit & Verification | ⏳ pending | Dev 2 | 2 | M03 ✅, M05 | M09, M11 |
 | [M11](modules/M11-maintenance.md) | Maintenance | ⏳ unblocked | Dev 2 | 2 | M03 ✅ | M08, M09, M10 |
 | [M12](modules/M12-notifications.md) | Notifications | 🟡 stub built | Both | 1–3 | M00 | Any (stub early) |
-| [M13](modules/M13-disposal.md) | Disposal & Scrap | ⏳ unblocked | Dev 2 | 3 | M03 ✅, M08 ✅ | M14 |
+| [M13](modules/M13-disposal.md) | Disposal & Scrap | ✅ done | Dev 2 | 3 | M03 ✅, M08 ✅ | M14 |
 | [M14](modules/M14-reports-dashboard.md) | Reports & Dashboard | ⏳ pending | Dev 2 | 3 | M03+ | M13, M15 |
 | [M15](modules/M15-pwa.md) | PWA (Full Site) | ⏳ pending | Dev 2 | 3 | M00 UI | M14 |
 | [M16](modules/M16-depreciation.md) | Depreciation | ⏳ unblocked | Dev 2 | 2 | M03 ✅ | M09, M17 |
@@ -175,7 +175,7 @@ gantt
 ### Where to start today
 
 - **Dev 1** → M00–M07 are all done; M10 (Audit & Verification) is unblocked now that M05 and M09 have both shipped.
-- **Dev 2** → **M11** (Maintenance) and **M16** (Depreciation) are unblocked (M03 only); **M13** (Disposal) and **M17** (Asset Kits) are unblocked now that M09 has shipped — M17 in particular should build kit assignments on M09's `AssetMovementBatch` model rather than a new grouping table (see M09's decisions-log entry).
+- **Dev 2** → M08, M09 and M13 are all done; **M11** (Maintenance) and **M16** (Depreciation) are unblocked (M03 only); **M17** (Asset Kits) is unblocked now that M09 has shipped — build kit assignments on M09's `AssetMovementBatch` model rather than a new grouping table (see M09's decisions-log entry). **M14** (Reports & Dashboard) is unblocked now that M13 has shipped.
 - Before planning any module, read its spec in `modules/`, then the matching "Pending Decisions" block in [`../decisions-log.md`](../decisions-log.md) — resolve open `P#.#` items with the product owner *before* writing code.
 
 ---

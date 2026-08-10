@@ -35,33 +35,40 @@ class MovementService
             : 'movement.assign';
     }
 
-    /** Single-asset submission — the movement itself is the approvable. */
+    /**
+     * Single-asset submission — the movement itself is the approvable. Wrapped in a
+     * transaction so a WorkflowService::submit() failure (e.g. the module's active
+     * workflow gets deactivated between page load and submit) never leaves an orphaned
+     * pending_approval row that would then falsely trip hasPendingMovement().
+     */
     public function submit(Asset $asset, array $data, User $actor): AssetMovement
     {
         $movementType = MovementType::findOrFail($data['movement_type_id']);
         $this->assertMovable($asset, $movementType, $data);
 
-        $movement = AssetMovement::create([
-            'asset_id'           => $asset->id,
-            'movement_type_id'   => $movementType->id,
-            'from_company_id'    => $asset->company_id,
-            'to_company_id'      => $data['to_company_id'] ?? null,
-            'from_location_id'   => $asset->location_id,
-            'to_location_id'     => $data['to_location_id'] ?? null,
-            'from_custodian_id'  => $asset->custodian_id,
-            'to_custodian_id'    => $data['to_custodian_id'] ?? null,
-            'from_department_id' => $asset->department_id,
-            'to_department_id'   => $data['to_department_id'] ?? null,
-            'to_status_id'       => $data['to_status_id'] ?? null,
-            'status'             => 'pending_approval',
-            'notes'              => $data['notes'] ?? null,
-            'requested_by'       => $actor->id,
-        ]);
+        return DB::transaction(function () use ($asset, $data, $movementType, $actor) {
+            $movement = AssetMovement::create([
+                'asset_id'           => $asset->id,
+                'movement_type_id'   => $movementType->id,
+                'from_company_id'    => $asset->company_id,
+                'to_company_id'      => $data['to_company_id'] ?? null,
+                'from_location_id'   => $asset->location_id,
+                'to_location_id'     => $data['to_location_id'] ?? null,
+                'from_custodian_id'  => $asset->custodian_id,
+                'to_custodian_id'    => $data['to_custodian_id'] ?? null,
+                'from_department_id' => $asset->department_id,
+                'to_department_id'   => $data['to_department_id'] ?? null,
+                'to_status_id'       => $data['to_status_id'] ?? null,
+                'status'             => 'pending_approval',
+                'notes'              => $data['notes'] ?? null,
+                'requested_by'       => $actor->id,
+            ]);
 
-        $approvalRequest = $this->workflows->submit($movement, 'transfer', $actor);
-        $movement->update(['approval_request_id' => $approvalRequest->id]);
+            $approvalRequest = $this->workflows->submit($movement, 'transfer', $actor);
+            $movement->update(['approval_request_id' => $approvalRequest->id]);
 
-        return $movement;
+            return $movement;
+        });
     }
 
     /**
@@ -211,6 +218,12 @@ class MovementService
         if ($asset->hasPendingMovement()) {
             throw ValidationException::withMessages([
                 'asset' => "\"{$asset->name}\" already has a movement pending approval.",
+            ]);
+        }
+
+        if ($asset->hasPendingDisposal()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" has a disposal request in progress and cannot be moved.",
             ]);
         }
 
