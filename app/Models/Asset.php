@@ -124,6 +124,26 @@ class Asset extends Model
         return $this->hasMany(AssetTagAssignment::class)->latest('assigned_at');
     }
 
+    public function movements(): HasMany
+    {
+        return $this->hasMany(AssetMovement::class)->latest('created_at');
+    }
+
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(AssetStatusHistory::class)->latest('created_at');
+    }
+
+    public function isDisposed(): bool
+    {
+        return $this->status?->code === 'DISPOSED';
+    }
+
+    public function hasPendingMovement(): bool
+    {
+        return $this->movements()->where('status', 'pending_approval')->exists();
+    }
+
     /** The Tag behind this asset's current active AssetTagAssignment, if any. */
     public function activeTag(): ?Tag
     {

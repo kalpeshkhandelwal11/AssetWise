@@ -5,7 +5,7 @@
 
 This index splits the BRD into **18 independent modules (M00–M17)** so Developer 1 and Developer 2 can work in parallel after shared foundation.
 
-> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07 and M08 are complete on `daniels_branch` (372 tests passing).
+> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07, M08 and M09 are complete on `daniels_branch` (382 tests passing).
 
 ---
 
@@ -96,7 +96,7 @@ mysql --version
 | [M06](modules/M06-bulk-import-export.md) | Bulk Import / Export | ✅ done | Dev 1 | 1 | M03 ✅, M04 ✅ | M08 |
 | [M07](modules/M07-shared-ui-services.md) | Shared UI & Services | ✅ done | Dev 1 | 1 | M00 | All modules (ongoing) |
 | [M08](modules/M08-approval-workflow.md) | Approval Workflow | ✅ done | Dev 2 | 2 | M00, M01 | M02, M03, M04, M11 |
-| [M09](modules/M09-asset-movement.md) | Asset Movement | ⏳ unblocked | Dev 2 | 2 | M03 ✅, M08 ✅ | M10, M11 |
+| [M09](modules/M09-asset-movement.md) | Asset Movement | ✅ done | Dev 2 | 2 | M03 ✅, M08 ✅ | M10, M11 |
 | [M10](modules/M10-audit.md) | Audit & Verification | ⏳ pending | Dev 2 | 2 | M03 ✅, M05 | M09, M11 |
 | [M11](modules/M11-maintenance.md) | Maintenance | ⏳ unblocked | Dev 2 | 2 | M03 ✅ | M08, M09, M10 |
 | [M12](modules/M12-notifications.md) | Notifications | 🟡 stub built | Both | 1–3 | M00 | Any (stub early) |
@@ -158,7 +158,7 @@ gantt
 | `tags` pool + `/scan/{tag_number}` + `TagService` | M05 | M08 replacement, M10 audit scan |
 | `tag_replacement` workflow module | M08 | M05 replacement apply |
 | `DepreciationService` + calculators | M16 | M14 depreciation report |
-| `MovementService::applyBulk()` | M09 | M17 kit assignment |
+| `MovementService::applyBulk(AssetMovementBatch $batch)` | M09 | M17 kit assignment — build kit assignments on the same `AssetMovementBatch` model (set `kit_assignment_id`) rather than a new grouping table |
 | `kit_assignment_approval_mode` setting | M17 | M08 approval branching |
 
 ---
@@ -174,8 +174,8 @@ gantt
 
 ### Where to start today
 
-- **Dev 1** → **M05** (QR/Barcode) or **M06** (Bulk Import/Export). Both are unblocked and independent of each other, and can be built as two parallel tracks — see each module's detailed implementation plan: [M05-implementation-plan.md](modules/M05-implementation-plan.md), [M06-implementation-plan.md](modules/M06-implementation-plan.md). M05's tag-replacement phase can now go straight in, since M08 exists and already seeds a `tag_replacement` workflow.
-- **Dev 2** → **M09** (Asset Movement) is unblocked (M03 + M08 both done); **M11** and **M16** are also unblocked if you prefer to stay off M09's critical path.
+- **Dev 1** → M00–M07 are all done; M10 (Audit & Verification) is unblocked now that M05 and M09 have both shipped.
+- **Dev 2** → **M11** (Maintenance) and **M16** (Depreciation) are unblocked (M03 only); **M13** (Disposal) and **M17** (Asset Kits) are unblocked now that M09 has shipped — M17 in particular should build kit assignments on M09's `AssetMovementBatch` model rather than a new grouping table (see M09's decisions-log entry).
 - Before planning any module, read its spec in `modules/`, then the matching "Pending Decisions" block in [`../decisions-log.md`](../decisions-log.md) — resolve open `P#.#` items with the product owner *before* writing code.
 
 ---

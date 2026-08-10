@@ -110,6 +110,8 @@ class AssetController extends Controller
             'custodian', 'department', 'branch', 'photos', 'attachments', 'creator', 'updater',
             'fieldValues.categoryField.options',
             'tagAssignments.tag', 'tagAssignments.assignedBy',
+            'movements.movementType', 'movements.toCompany', 'movements.toLocation',
+            'movements.toCustodian', 'movements.toDepartment', 'movements.requestedBy',
         ]);
 
         $activities = Activity::where('subject_type', Asset::class)

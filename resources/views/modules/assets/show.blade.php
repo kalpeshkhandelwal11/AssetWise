@@ -43,7 +43,7 @@
         {{-- Tabs --}}
         <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
             <nav class="flex gap-6 -mb-px">
-                @foreach(['summary' => 'Summary', 'photos' => 'Photos ('.$asset->photos->count().')', 'attachments' => 'Attachments ('.$asset->attachments->count().')', 'tags' => 'Tags ('.$asset->tagAssignments->count().')', 'history' => 'History'] as $key => $label)
+                @foreach(['summary' => 'Summary', 'photos' => 'Photos ('.$asset->photos->count().')', 'attachments' => 'Attachments ('.$asset->attachments->count().')', 'tags' => 'Tags ('.$asset->tagAssignments->count().')', 'movements' => 'Movements ('.$asset->movements->count().')', 'history' => 'History'] as $key => $label)
                     <button @click="tab = '{{ $key }}'"
                             :class="tab === '{{ $key }}' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
                             class="pb-3 text-sm font-medium border-b-2 transition-colors">
@@ -270,6 +270,61 @@
                         @empty
                             <tr>
                                 <td colspan="4" class="px-4 py-8 text-center text-sm text-gray-400">No tag history.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- Movements tab (M09) --}}
+        <div x-show="tab === 'movements'" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+            <div class="flex items-center justify-between mb-5">
+                <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Movement History</p>
+                @canany(['movement.assign', 'movement.transfer'])
+                    @unless($asset->isDisposed())
+                        <a href="{{ route('movements.create', ['asset_id' => $asset->id]) }}"
+                           class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">
+                            Move This Asset
+                        </a>
+                    @endunless
+                @endcanany
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destination</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Requested By</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        @forelse($asset->movements as $movement)
+                            <tr>
+                                <td class="px-4 py-2 text-gray-900 dark:text-gray-100">{{ $movement->movementType?->name }}</td>
+                                <td class="px-4 py-2 text-gray-700 dark:text-gray-300 text-xs">
+                                    {{ collect([$movement->toCompany?->name, $movement->toLocation?->name, $movement->toCustodian?->name, $movement->toDepartment?->name])->filter()->join(' · ') ?: '—' }}
+                                </td>
+                                <td class="px-4 py-2">
+                                    @php
+                                        $moveStatusColor = match($movement->status) {
+                                            'completed' => 'green',
+                                            'rejected'  => 'red',
+                                            default     => 'amber',
+                                        };
+                                    @endphp
+                                    <x-status-badge :color="$moveStatusColor" :label="ucwords(str_replace('_', ' ', $movement->status))" />
+                                </td>
+                                <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $movement->requestedBy?->name ?? '—' }}</td>
+                                <td class="px-4 py-2 text-gray-500 dark:text-gray-400">{{ $movement->created_at->format('d M Y') }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-400">No movements recorded.</td>
                             </tr>
                         @endforelse
                     </tbody>

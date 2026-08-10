@@ -24,6 +24,8 @@ use App\Http\Controllers\Assets\ImportController;
 use App\Http\Controllers\Assets\PhotoController;
 use App\Http\Controllers\Assets\TagController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
+use App\Http\Controllers\Movement\MovementBatchController;
+use App\Http\Controllers\Movement\MovementController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -70,6 +72,17 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
 
     // Scan resolver (M05) — contract for M10 audit QR verification
     Route::get('/scan/{tag_number}', [ScanController::class, 'resolve'])->name('scan.resolve');
+
+    // Movements (M09) — bulk routes registered before "movements/create" resource-style
+    // route so "movements/bulk/create" isn't swallowed by anything wildcard-shaped.
+    Route::prefix('movements')->name('movements.')->group(function () {
+        Route::get('/', [MovementController::class, 'index'])->name('index');
+        Route::get('bulk/create', [MovementBatchController::class, 'create'])->name('bulk.create');
+        Route::post('bulk', [MovementBatchController::class, 'store'])->name('bulk.store');
+        Route::get('create', [MovementController::class, 'create'])->name('create');
+        Route::post('/', [MovementController::class, 'store'])->name('store');
+        Route::post('{movement}/verify', [MovementController::class, 'verify'])->name('verify');
+    });
 
     // Approvals (M08) — the param is {approval_request}, not {request}, so it never
     // shadows the Illuminate\Http\Request that approve/reject also need.

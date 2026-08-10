@@ -71,6 +71,7 @@ class SharedMastersSeeder extends Seeder
         // Movement types
         $movementTypes = [
             'Assignment',
+            'Custodian Change',
             'Transfer',
             'Inter-Company Transfer',
             'Return',

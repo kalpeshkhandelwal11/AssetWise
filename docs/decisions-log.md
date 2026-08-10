@@ -169,7 +169,20 @@ Full plan: `docs/planning/modules/M01-implementation-plan.md`. Four scope decisi
 
 | # | Question | Status |
 |---|----------|--------|
-| P9.1 | Bulk movement (multiple assets, non-kit): one approval request for the whole batch, or one per asset? Master plan notes "TBD: default per batch" — needs confirmation. | ❓ Pending |
+| P9.1 | Bulk movement (multiple assets, non-kit): one approval request for the whole batch, or one per asset? Master plan notes "TBD: default per batch" — needs confirmation. | ✅ Resolved 2026-08-12 — **one approval per batch**, confirmed with the user before build. See M09 section below. |
+
+### M09 — Asset Movement: implementation decisions (2026-08-12)
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| P9.1 — bulk approval granularity | **One approval per batch.** New `asset_movement_batches` table is the approvable for a multi-select bulk move; it groups N `asset_movements` rows via `batch_id` | User's explicit call. Matches the master plan's stated default and keeps the approver inbox to one entry per bulk action instead of N |
+| `asset_movement_batches` doubles as M17's future kit-assignment grouping | `kit_assignment_id` (nullable, unconstrained — no `kit_assignments` table yet) lives on the batch, denormalized down onto each `asset_movements` row at apply time | A17.11's "kit assignment approval mode: single vs per_asset" is the same shape as P9.1's bulk-vs-per-asset question. Building one grouping model now means M17 calls `MovementService::applyBulk()` directly instead of inventing a second batch table |
+| No `draft` / `approved` movement status | Enum is `pending_approval` \| `rejected` \| `completed` only | Neither wizard has a save-for-later step, and `apply()`/`applyBulk()` run synchronously inside the `ApprovalRequestApproved` listener — a row never rests in an "approved" state, it goes straight to `completed` |
+| Movement-type-code-driven `applyToAsset()` | `RETURN` explicitly clears `custodian_id`; it does not read `to_custodian_id` | A generic "if a to_* value is present, apply it" would silently no-op a Return (nothing was submitted to clear the custodian *to*), leaving the asset still assigned |
+| Reused existing `movement.assign` / `movement.transfer` / `movement.verify` permissions | No new permissions added. `movement.assign` gates Assignment/Return/Custodian Change, `movement.transfer` gates Transfer/Inter-Company Transfer. `assets.bulk` (already seeded for M06 export) gates the new multi-select bar | `RolePermissionSeeder` already seeded and assigned these three `movement.*` permissions ahead of M09 (visible per-role split: Department User only got `movement.assign`, Asset Manager got all three) — that shape was clearly anticipating exactly this assign/transfer split, so building `movement.create`/`movement.intercompany` as the module doc originally sketched would have duplicated it |
+| `MarkAssetMovementRejected` listener (new, not in the original sketch) | Second listener on `ApprovalRequestRejected`, flips `asset_movements.status` / `asset_movement_batches.status` to `rejected` | M05's `TagReplacementRequest` deliberately leaves its own status untouched on rejection because nothing else reads it. M09's "asset already has a pending movement" guard *does* read `asset_movements.status` directly — without this listener a rejected movement would permanently block the asset from any future movement |
+| No separate `GET /assets/{asset}/movements` route | Per-asset history is a tab on `assets.show`, backed by eager-loaded `$asset->movements` | Matches the existing Tags and History tabs, neither of which has its own route either — avoids a redundant page for data already shown in context |
+| Optional "New Status" field + `asset_status_histories` | Movement wizard has an optional target-status dropdown; if set, `applyToAsset()` writes `asset_status_histories` and updates `assets.status_id` | The module doc lists `asset_status_histories` as a real table and "append status history" as a task, but no movement type change implies a specific status transition in the BRD/spec — inferring one (e.g. Assignment always flips Available→Assigned) would be a state-machine invention with no request behind it. An explicit, optional field satisfies both the table and the task without guessing |
 
 ---
 

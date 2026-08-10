@@ -19,9 +19,10 @@ AssetWise is a **greenfield** Enterprise Asset Management System. It is a **sing
 | M05 QR / Barcode | ✅ done | Tag pool (`settings`, `tag_batches`, `tags`, `asset_tag_assignments`, `scan_logs`), generate/assign/scan, PDF + Word label sheets, Phase 2 replacement via `WorkflowService` + `ApplyTagReplacement` listener on `ApprovalRequestApproved` |
 | M06 Bulk Import / Export | ✅ done | Per-category Excel template (`AssetTemplateExport`), row-validated import (`AssetImport`, `import_batches`/`import_batch_rows`), filtered export (`AssetExport`), first `ShouldQueue` jobs in the codebase (`ProcessAssetImport`, `GenerateAssetExport`) |
 | M07 Shared UI & Services | ✅ done | Reusable Blade components (`x-data-table`, `x-filter-bar`, `x-status-badge`, `x-breadcrumb`, `x-confirm-modal`) retrofitted across all M01–M06 list/filter screens, eliminating duplicated table/filter markup; service interfaces (`WorkflowService`, `NotificationService`) already documented via M08 |
-| M09–M17 | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
+| M09 Asset Movement | ✅ done | Assignment/Return/Transfer/Custodian Change/Inter-Company Transfer, all approval-gated via `MovementService` + `ApplyAssetMovement`/`MarkAssetMovementRejected` listeners on `ApprovalRequestApproved`/`Rejected`. Bulk multi-select gets one approval per batch (`AssetMovementBatch`, resolved P9.1) — the same model M17 will reuse for kit assignments |
+| M10–M17 | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
 
-Test suite: **372 passing**. For the full developer setup guide see `docs/developer-setup.md`.
+Test suite: **382 passing**. For the full developer setup guide see `docs/developer-setup.md`.
 
 **Stack:** Laravel 13, MySQL 8, Blade + Alpine.js + Tailwind CSS, PWA (vite-plugin-pwa)
 
@@ -151,7 +152,7 @@ Implementation is split into 17 modules with defined dependencies. See `docs/pla
 | `ApprovalRequestApproved` event | M08 | M05, M09, M13, M17 — the *only* way M08 hands back to the domain |
 | `NotificationService::send($user, $type, $data)` | M12 (stub built in M08) | M08, M09, M10, M11, M13 |
 | `TagService` + `/scan/{tag_number}` route | M05 | M08 replacement, M10 audit scan |
-| `MovementService::applyBulk()` | M09 | M17 kit assignment |
+| `MovementService::applyBulk(AssetMovementBatch $batch)` | M09 | M17 kit assignment — reuse `AssetMovementBatch` (set `kit_assignment_id`) rather than a new grouping table |
 
 ## Key Design Decisions
 

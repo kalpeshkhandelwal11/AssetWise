@@ -17,6 +17,9 @@
         @endcan
     </div>
 
+    @php $canBulkMove = auth()->user()->can('assets.bulk') && auth()->user()->canAny(['movement.assign', 'movement.transfer']); @endphp
+    <div x-data="{ selected: [] }">
+
     {{-- Filters --}}
     <x-filter-bar :clear="route('assets.index')">
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search tag, name, serial…"
@@ -62,6 +65,12 @@
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
+                        @if($canBulkMove)
+                        <th class="px-4 py-3 w-8">
+                            <input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                   @change="selected = $event.target.checked ? @js($assets->pluck('id')) : []">
+                        </th>
+                        @endif
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asset</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Company</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
@@ -73,6 +82,11 @@
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     @forelse($assets as $asset)
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {{ $asset->trashed() ? 'opacity-60' : '' }}">
+                            @if($canBulkMove)
+                            <td class="px-4 py-3">
+                                <input type="checkbox" value="{{ $asset->id }}" x-model.number="selected" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            </td>
+                            @endif
                             <td class="px-4 py-3">
                                 <p class="font-medium text-gray-900 dark:text-gray-100">{{ $asset->name }}</p>
                                 <p class="text-xs text-gray-400 font-mono">{{ $asset->asset_tag ?? $asset->serial_number ?? '—' }}</p>
@@ -105,10 +119,23 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-12 text-center text-sm text-gray-400">No assets found.</td>
+                            <td colspan="{{ $canBulkMove ? 7 : 6 }}" class="px-4 py-12 text-center text-sm text-gray-400">No assets found.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
     </x-data-table>
+
+    @if($canBulkMove)
+        <div x-show="selected.length > 0" x-cloak x-transition
+             class="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 px-5 py-3 rounded-xl bg-gray-900 dark:bg-gray-800 text-white shadow-2xl border border-gray-700 z-40">
+            <span class="text-sm"><span x-text="selected.length"></span> selected</span>
+            <a :href="'{{ route('movements.bulk.create') }}?' + selected.map(id => 'asset_ids[]=' + id).join('&')"
+               class="px-3 py-1.5 text-sm font-medium bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">
+                Move Selected
+            </a>
+            <button type="button" @click="selected = []" class="text-gray-400 hover:text-white text-sm">Clear</button>
+        </div>
+    @endif
+    </div>
 </x-app-layout>
