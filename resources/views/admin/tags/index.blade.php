@@ -29,7 +29,7 @@
         </div>
     </div>
 
-    <form method="GET" class="flex flex-wrap gap-3 mb-5">
+    <x-filter-bar :clear="route('admin.tags.index')">
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search tag number…"
                class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
 
@@ -39,13 +39,9 @@
                 <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
             @endforeach
         </select>
+    </x-filter-bar>
 
-        <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">Filter</button>
-        <a href="{{ route('admin.tags.index') }}" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">Clear</a>
-    </form>
-
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
+    <x-data-table :paginator="$tags">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
@@ -63,15 +59,13 @@
                             <td class="px-4 py-3 text-gray-700 dark:text-gray-300">#{{ $tag->batch_id }}</td>
                             <td class="px-4 py-3">
                                 @php
-                                    $badge = match($tag->status) {
-                                        'available' => 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-                                        'assigned' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
-                                        default => 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
+                                    $badgeColor = match($tag->status) {
+                                        'available' => 'green',
+                                        'assigned' => 'indigo',
+                                        default => 'gray',
                                     };
                                 @endphp
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ $badge }}">
-                                    {{ ucfirst($tag->status) }}
-                                </span>
+                                <x-status-badge :color="$badgeColor" :label="ucfirst($tag->status)" :dot="false" />
                             </td>
                         </tr>
                     @empty
@@ -81,12 +75,5 @@
                     @endforelse
                 </tbody>
             </table>
-        </div>
-
-        @if($tags->hasPages())
-            <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-                {{ $tags->links() }}
-            </div>
-        @endif
-    </div>
+    </x-data-table>
 </x-app-layout>

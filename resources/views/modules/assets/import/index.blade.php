@@ -78,11 +78,10 @@
     </div>
 
     {{-- Batch history --}}
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+    <x-data-table :paginator="$batches">
+        <x-slot:header>
             <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Import history</p>
-        </div>
-        <div class="overflow-x-auto">
+        </x-slot:header>
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
@@ -100,14 +99,14 @@
                             <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ $batch->filename }}</td>
                             <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $batch->category?->name ?? '—' }}</td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-                                    {{ match($batch->status) {
-                                        'completed' => 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-                                        'failed'    => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                                        default     => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-                                    } }}">
-                                    {{ ucfirst($batch->status) }}
-                                </span>
+                                @php
+                                    $batchColor = match($batch->status) {
+                                        'completed' => 'green',
+                                        'failed'    => 'red',
+                                        default     => 'amber',
+                                    };
+                                @endphp
+                                <x-status-badge :color="$batchColor" :label="ucfirst($batch->status)" :dot="false" />
                             </td>
                             <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $batch->success_count }} / {{ $batch->error_count }}</td>
                             <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $batch->user?->name ?? '—' }}</td>
@@ -120,12 +119,5 @@
                     @endforelse
                 </tbody>
             </table>
-        </div>
-
-        @if($batches->hasPages())
-            <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-                {{ $batches->links() }}
-            </div>
-        @endif
-    </div>
+    </x-data-table>
 </x-app-layout>

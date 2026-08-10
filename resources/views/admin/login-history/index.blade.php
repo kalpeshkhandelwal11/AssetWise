@@ -9,7 +9,7 @@
     </div>
 
     {{-- Filters --}}
-    <form method="GET" class="flex flex-wrap gap-3 mb-5">
+    <x-filter-bar :clear="route('admin.login-history.index')">
         <select name="status" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
             <option value="">All Statuses</option>
             <option value="success" @selected(request('status') === 'success')>Success</option>
@@ -19,13 +19,10 @@
             class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
         <input type="date" name="date_to" value="{{ request('date_to') }}"
             class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
-        <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">Filter</button>
-        <a href="{{ route('admin.login-history.index') }}" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">Clear</a>
-    </form>
+    </x-filter-bar>
 
     {{-- Table --}}
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
+    <x-data-table :paginator="$histories">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
@@ -46,15 +43,7 @@
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ $entry->email }}</p>
                             </td>
                             <td class="px-4 py-3">
-                                @if($entry->status === 'success')
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Success
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Failed
-                                    </span>
-                                @endif
+                                <x-status-badge :color="$entry->status === 'success' ? 'green' : 'red'" :label="$entry->status === 'success' ? 'Success' : 'Failed'" />
                                 @if($entry->failure_reason)
                                     <p class="text-xs text-gray-400 mt-0.5">{{ $entry->failure_reason }}</p>
                                 @endif
@@ -76,12 +65,5 @@
                     @endforelse
                 </tbody>
             </table>
-        </div>
-
-        @if($histories->hasPages())
-            <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-                {{ $histories->links() }}
-            </div>
-        @endif
-    </div>
+    </x-data-table>
 </x-app-layout>

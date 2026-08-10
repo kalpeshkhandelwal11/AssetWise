@@ -5,6 +5,11 @@
 | **Developer** | Dev 1 (ongoing) |
 | **Phase** | 1 (continuous) |
 | **Depends on** | M00 |
+| **Status** | ✅ done — retrofit pass across all M01–M06 list/filter screens (2026-08-10) |
+
+> **Shipped:** `x-data-table` (card + pagination-footer wrapper, tolerates both paginators and plain collections), `x-filter-bar` (GET filter form chrome), `x-status-badge` (color/label/dot pill covering every active/inactive, success/failed, and multi-state badge in the app), `x-breadcrumb`, `x-confirm-modal` (self-contained Alpine confirm dialog, replacing native `confirm()` on delete actions). Retrofitted into `admin/masters`, `admin/companies`, `admin/categories`, `admin/category-fields`, `admin/login-history`, `admin/roles`, `admin/users`, `admin/tags`, `admin/activity-log`, `admin/workflows`, `approvals`, `modules/assets/index`, `modules/assets/import/index`, `modules/assets/import/show` — 372 tests still green after the pass.
+>
+> **Not built** (deferred, no current caller): a literal `x-master-form` component — the add/edit Alpine modal in `admin/masters/index.blade.php` still lives inline since its field set varies per entity (color picker, system-flag, etc.); `x-attachment-uploader` — no module needs a generic uploader yet; a standalone print layout component — M05's PDF/Word label sheets already have their own dedicated Blade/DomPDF views. `WorkflowService`/`NotificationService` interfaces were already documented for Dev 2 when M08 shipped.
 
 ## Scope
 

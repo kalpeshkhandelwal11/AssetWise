@@ -7,7 +7,7 @@
     </div>
 
     {{-- Filters --}}
-    <form method="GET" class="flex flex-wrap gap-3 mb-5">
+    <x-filter-bar :clear="route('admin.activity-log.index')">
         <select name="log_name" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
             <option value="">All Logs</option>
             @foreach($logNames as $name)
@@ -30,12 +30,9 @@
                class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
         <input type="date" name="date_to" value="{{ request('date_to') }}"
                class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
-        <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">Filter</button>
-        <a href="{{ route('admin.activity-log.index') }}" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">Clear</a>
-    </form>
+    </x-filter-bar>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
+    <x-data-table :paginator="$activities">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
@@ -53,7 +50,7 @@
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors align-top">
                             <td class="px-4 py-3 whitespace-nowrap text-gray-500 dark:text-gray-400">{{ $activity->created_at->format('Y-m-d H:i') }}</td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">{{ $activity->log_name }}</span>
+                                <x-status-badge color="indigo" :label="$activity->log_name" :dot="false" />
                             </td>
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $activity->event }}</td>
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
@@ -91,12 +88,5 @@
                     </tbody>
                 @endforelse
             </table>
-        </div>
-
-        @if($activities->hasPages())
-            <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-                {{ $activities->links() }}
-            </div>
-        @endif
-    </div>
+    </x-data-table>
 </x-app-layout>

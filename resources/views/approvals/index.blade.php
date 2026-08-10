@@ -6,13 +6,14 @@
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Requests awaiting your decision</p>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
-            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">My Inbox</h2>
-            <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">{{ $requests->count() }}</span>
-        </div>
+    <x-data-table>
+        <x-slot:header>
+            <div class="flex items-center gap-2">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">My Inbox</h2>
+                <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">{{ $requests->count() }}</span>
+            </div>
+        </x-slot:header>
 
-        <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
@@ -78,15 +79,14 @@
                     @endforelse
                 </tbody>
             </table>
-        </div>
-    </div>
+    </x-data-table>
 
     {{-- Requests this user submitted, so a submitter can follow their own items. --}}
-    <div class="mt-8 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+    <div class="mt-8">
+    <x-data-table>
+        <x-slot:header>
             <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">My Submissions</h2>
-        </div>
-        <div class="overflow-x-auto">
+        </x-slot:header>
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
@@ -117,6 +117,6 @@
                     @endforelse
                 </tbody>
             </table>
-        </div>
+    </x-data-table>
     </div>
 </x-app-layout>

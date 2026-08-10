@@ -5,7 +5,7 @@
 
 This index splits the BRD into **18 independent modules (M00–M17)** so Developer 1 and Developer 2 can work in parallel after shared foundation.
 
-> **Current status:** M00, M01, M02, M03, M04, M05, M06 and M08 are complete on `daniels_branch` (372 tests passing).
+> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07 and M08 are complete on `daniels_branch` (372 tests passing).
 
 ---
 
@@ -94,7 +94,7 @@ mysql --version
 | [M04](modules/M04-dynamic-fields.md) | Dynamic Fields | ✅ done | Dev 1 | 1 | M03 | M05, M11 |
 | [M05](modules/M05-qr-barcode.md) | QR / Barcode | ✅ done | Dev 1 | 1 | M03 ✅ | M04, M11 |
 | [M06](modules/M06-bulk-import-export.md) | Bulk Import / Export | ✅ done | Dev 1 | 1 | M03 ✅, M04 ✅ | M08 |
-| [M07](modules/M07-shared-ui-services.md) | Shared UI & Services | ⏳ pending | Dev 1 | 1 | M00 | All modules (ongoing) |
+| [M07](modules/M07-shared-ui-services.md) | Shared UI & Services | ✅ done | Dev 1 | 1 | M00 | All modules (ongoing) |
 | [M08](modules/M08-approval-workflow.md) | Approval Workflow | ✅ done | Dev 2 | 2 | M00, M01 | M02, M03, M04, M11 |
 | [M09](modules/M09-asset-movement.md) | Asset Movement | ⏳ unblocked | Dev 2 | 2 | M03 ✅, M08 ✅ | M10, M11 |
 | [M10](modules/M10-audit.md) | Audit & Verification | ⏳ pending | Dev 2 | 2 | M03 ✅, M05 | M09, M11 |

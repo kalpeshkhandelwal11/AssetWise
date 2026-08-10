@@ -16,7 +16,7 @@
     </div>
 
     {{-- Filters --}}
-    <form method="GET" class="flex flex-wrap gap-3 mb-5">
+    <x-filter-bar :clear="route('admin.companies.index')">
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or code…"
                class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
         <select name="status" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
@@ -24,12 +24,9 @@
             <option value="active"   @selected(request('status') === 'active')>Active</option>
             <option value="inactive" @selected(request('status') === 'inactive')>Inactive</option>
         </select>
-        <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">Filter</button>
-        <a href="{{ route('admin.companies.index') }}" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">Clear</a>
-    </form>
+    </x-filter-bar>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
+    <x-data-table :paginator="$companies">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
@@ -59,15 +56,7 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3">
-                                @if($company->is_active)
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Active
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Inactive
-                                    </span>
-                                @endif
+                                <x-status-badge :color="$company->is_active ? 'green' : 'gray'" :label="$company->is_active ? 'Active' : 'Inactive'" />
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-2">
@@ -102,12 +91,5 @@
                     @endforelse
                 </tbody>
             </table>
-        </div>
-
-        @if($companies->hasPages())
-            <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-                {{ $companies->links() }}
-            </div>
-        @endif
-    </div>
+    </x-data-table>
 </x-app-layout>

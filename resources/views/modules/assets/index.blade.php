@@ -18,7 +18,7 @@
     </div>
 
     {{-- Filters --}}
-    <form method="GET" class="flex flex-wrap gap-3 mb-5">
+    <x-filter-bar :clear="route('assets.index')">
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search tag, name, serial…"
                class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
 
@@ -56,13 +56,9 @@
             Show deleted
         </label>
         @endcan
+    </x-filter-bar>
 
-        <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">Filter</button>
-        <a href="{{ route('assets.index') }}" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">Clear</a>
-    </form>
-
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
+    <x-data-table :paginator="$assets">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
@@ -114,12 +110,5 @@
                     @endforelse
                 </tbody>
             </table>
-        </div>
-
-        @if($assets->hasPages())
-            <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-                {{ $assets->links() }}
-            </div>
-        @endif
-    </div>
+    </x-data-table>
 </x-app-layout>

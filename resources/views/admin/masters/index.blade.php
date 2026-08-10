@@ -1,5 +1,11 @@
 <x-app-layout>
     @section('page-title', $cfg['label'])
+    @section('breadcrumb')
+        <x-breadcrumb :items="[
+            ['label' => 'Masters', 'url' => route('admin.masters.landing')],
+            ['label' => $cfg['label']],
+        ]" />
+    @endsection
 
     <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-3">
@@ -25,7 +31,7 @@
     </div>
 
     {{-- Filters --}}
-    <form method="GET" class="flex flex-wrap gap-3 mb-5">
+    <x-filter-bar :clear="route('admin.masters.index', $entity)">
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or code…"
                class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
         <select name="status" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
@@ -33,12 +39,9 @@
             <option value="active"   @selected(request('status') === 'active')>Active</option>
             <option value="inactive" @selected(request('status') === 'inactive')>Inactive</option>
         </select>
-        <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">Filter</button>
-        <a href="{{ route('admin.masters.index', $entity) }}" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">Clear</a>
-    </form>
+    </x-filter-bar>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
+    <x-data-table :paginator="$items">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
@@ -70,15 +73,7 @@
                                 </td>
                             @endif
                             <td class="px-4 py-3">
-                                @if($item->is_active)
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Active
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Inactive
-                                    </span>
-                                @endif
+                                <x-status-badge :color="$item->is_active ? 'green' : 'gray'" :label="$item->is_active ? 'Active' : 'Inactive'" />
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-2">
@@ -104,17 +99,15 @@
                                     </form>
                                     {{-- Delete --}}
                                     @if(empty($cfg['has_system']) || !$item->is_system)
-                                        <form method="POST" action="{{ route('admin.masters.destroy', [$entity, $item->id]) }}"
-                                              onsubmit="return confirm('Delete this record?')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit"
-                                                    class="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                                    title="Delete">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                </svg>
-                                            </button>
-                                        </form>
+                                        <x-confirm-modal :action="route('admin.masters.destroy', [$entity, $item->id])"
+                                                          title="Delete this record?"
+                                                          message="This will permanently remove the record. This action cannot be undone."
+                                                          trigger-class="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                          trigger-title="Delete">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                        </x-confirm-modal>
                                     @endif
                                 </div>
                             </td>
@@ -126,14 +119,7 @@
                     @endforelse
                 </tbody>
             </table>
-        </div>
-
-        @if($items->hasPages())
-            <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-                {{ $items->links() }}
-            </div>
-        @endif
-    </div>
+    </x-data-table>
 
     {{-- Add / Edit Modal --}}
     <div x-data="{
