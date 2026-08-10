@@ -27,12 +27,13 @@ use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\Disposal\DisposalController;
 use App\Http\Controllers\Movement\MovementBatchController;
 use App\Http\Controllers\Movement\MovementController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('dashboard'));
 
-Route::get('/dashboard', fn () => view('dashboard'))
+Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified', 'force.password.change'])
     ->name('dashboard');
 
