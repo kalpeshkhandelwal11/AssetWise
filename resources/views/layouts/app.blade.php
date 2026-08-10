@@ -18,21 +18,21 @@
 {{-- ======== SIDEBAR ======== --}}
 <aside
     :class="sidebarCollapsed ? 'w-16' : 'w-64'"
-    class="fixed inset-y-0 left-0 z-40 flex flex-col bg-gray-900 dark:bg-gray-950 transition-all duration-300 ease-in-out
+    class="fixed inset-y-0 left-0 z-40 flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700/50 transition-all duration-300 ease-in-out
            -translate-x-full lg:translate-x-0"
     :style="sidebarOpen ? 'transform:translateX(0)' : ''">
 
     {{-- Logo --}}
-    <div class="flex h-16 items-center justify-between px-4 border-b border-gray-700/50 flex-shrink-0">
+    <div class="flex h-16 items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700/50 flex-shrink-0">
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2 overflow-hidden">
             <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
                 </svg>
             </div>
-            <span x-show="!sidebarCollapsed" class="text-white font-bold text-lg tracking-tight transition-opacity duration-200">AssetWise</span>
+            <span x-show="!sidebarCollapsed" class="text-gray-900 dark:text-white font-bold text-lg tracking-tight transition-opacity duration-200">AssetWise</span>
         </a>
-        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex text-gray-400 hover:text-white transition-colors">
+        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 12l-7-7 7-7"/>
             </svg>
@@ -44,15 +44,15 @@
         @include('layouts.sidebar-nav')
     </nav>
 
-    {{-- Bottom: user mini + version --}}
-    <div class="flex-shrink-0 border-t border-gray-700/50 p-3">
+    {{-- Bottom: user mini --}}
+    <div class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700/50 p-3">
         <div class="flex items-center gap-2 overflow-hidden">
             <div class="w-8 h-8 rounded-full bg-indigo-600 flex-shrink-0 flex items-center justify-center">
                 <span class="text-white text-xs font-semibold">{{ substr(auth()->user()->name ?? 'U', 0, 1) }}</span>
             </div>
             <div x-show="!sidebarCollapsed" class="min-w-0">
-                <p class="text-white text-sm font-medium truncate">{{ auth()->user()->name ?? '' }}</p>
-                <p class="text-gray-400 text-xs truncate">{{ auth()->user()->email ?? '' }}</p>
+                <p class="text-gray-900 dark:text-white text-sm font-medium truncate">{{ auth()->user()->name ?? '' }}</p>
+                <p class="text-gray-500 dark:text-gray-400 text-xs truncate">{{ auth()->user()->email ?? '' }}</p>
             </div>
         </div>
     </div>
@@ -92,6 +92,21 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
             </div>
+
+            {{-- Dark mode toggle --}}
+            <button
+                onclick="const d=document.documentElement.classList.toggle('dark');localStorage.setItem('theme',d?'dark':'light')"
+                class="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                title="Toggle light/dark mode">
+                {{-- Sun (shown in dark mode) --}}
+                <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+                </svg>
+                {{-- Moon (shown in light mode) --}}
+                <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                </svg>
+            </button>
 
             {{-- Notification bell --}}
             <div class="relative" x-data="{ open: false }">

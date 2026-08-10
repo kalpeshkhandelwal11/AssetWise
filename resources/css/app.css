@@ -9,5 +9,6 @@
 @layer utilities {
     .scrollbar-thin::-webkit-scrollbar { width: 4px; }
     .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-    .scrollbar-thumb-gray-700::-webkit-scrollbar-thumb { background-color: #374151; border-radius: 2px; }
+    .scrollbar-thumb-gray-700::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 2px; }
+    .dark .scrollbar-thumb-gray-700::-webkit-scrollbar-thumb { background-color: #374151; }
 }
