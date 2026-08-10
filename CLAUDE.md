@@ -23,7 +23,14 @@ AssetWise is a **greenfield** Enterprise Asset Management System. It is a **sing
 | M13 Disposal & Scrap | ✅ done | `disposal_requests` lifecycle (pending → approved → written_off → scrapped) via `DisposalService` + `MarkDisposalApproved`/`MarkDisposalRejected` listeners; approval only unlocks write-off, it doesn't apply anything. Scrap sets `assets.status_id` to Disposed and appends to M09's `asset_status_histories` ledger. `disposal` still has no seeded workflow (deliberate, M08) |
 | M10–M12, M14–M17 | ⏳ pending | See `docs/planning/MODULES_INDEX.md` |
 
-Test suite: **390 passing**. For the full developer setup guide see `docs/developer-setup.md`.
+Test suite: **394 passing**. For the full developer setup guide see `docs/developer-setup.md`; for the end-to-end browser integration pass (and the six defects it caught that the suite could not) see `docs/integration-testing.md`.
+
+## Blade + Alpine gotchas (learned the hard way — see `docs/integration-testing.md`)
+
+- **Never use `@json(...)` with a comma in the expression inside an HTML attribute.** Blade compiles `@json` via `explode(',', $expression)` and treats everything after the first comma as the *flags* argument, so `@json($x->pluck('code', 'id'))` silently drops `JSON_HEX_QUOT` and emits raw `"` that terminates the attribute — killing the whole Alpine component. Use **`@js(...)`** for anything embedded in `x-data` / `@click`. (`{{ json_encode(...) }}` is also safe, since `e()` escapes the quotes.)
+- **Approver eligibility is matched on Spatie *role*, not permission** (`WorkflowService::matchesStep()`). Holding `Super Admin` does not make a user an approver for a step routed to `Approver`. Seeded users and seeded workflow steps must be kept consistent — `AdminUserSeeder` grants `Super Admin` + `Asset Manager` + `Approver` for exactly this reason.
+- **`WorkflowService` reports configuration errors under the key `workflow`**, which matches no form field. Every form that calls `submit()` needs an explicit `@error('workflow')` block or the submission fails silently.
+- Any service that creates a row and then calls `WorkflowService::submit()` must wrap both in `DB::transaction()` — otherwise a missing/deactivated workflow leaves an orphaned `pending_approval` row that permanently trips the `hasPendingMovement()` / `hasPendingDisposal()` guards.
 
 **Stack:** Laravel 13, MySQL 8, Blade + Alpine.js + Tailwind CSS, PWA (vite-plugin-pwa)
 

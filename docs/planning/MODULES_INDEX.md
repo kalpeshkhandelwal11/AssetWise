@@ -5,7 +5,7 @@
 
 This index splits the BRD into **18 independent modules (M00–M17)** so Developer 1 and Developer 2 can work in parallel after shared foundation.
 
-> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07, M08, M09 and M13 are complete on `daniels_branch` (390 tests passing).
+> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07, M08, M09 and M13 are complete on `daniels_branch` (394 tests passing), and have been verified end to end in a browser — see [`../integration-testing.md`](../integration-testing.md) for that pass and the six defects it caught.
 
 ---
 

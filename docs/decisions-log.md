@@ -198,6 +198,26 @@ Full plan: `docs/planning/modules/M01-implementation-plan.md`. Four scope decisi
 
 ---
 
+## Integration pass — decisions made while fixing browser-only defects (2026-08-13)
+
+Full write-up: [`integration-testing.md`](integration-testing.md). Six defects were found
+against a 390/390-green suite; these are the judgement calls made while fixing them.
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Fix the seed, not the approval engine, when no one could approve anything | `AdminUserSeeder` now grants `Super Admin` + `Asset Manager` + `Approver`, rather than making `workflow.manage` a universal override in `canAct()` | Approver eligibility is role-matched by design (M08/P8.1), and an org may legitimately want Super Admin ≠ Approver. The engine was correct; the seed data was internally inconsistent with `WorkflowSeeder` |
+| `@js()` over `@json()` in Alpine attributes | Both movement wizards now use `@js(...)` | `@json` splits its expression on commas and reassigns the flags argument, silently dropping `JSON_HEX_QUOT`. `@js` passes the whole expression to `Js::from()` and always applies the required flags. Recorded in CLAUDE.md as a codebase-wide rule |
+| Show bulk batch members in Movement History rather than building a batch row | Dropped `whereNull('batch_id')`, added a "Bulk" badge per member | Every row in "Movement History" should be one asset actually moving. The batch-row design implied by the original comment was never built, so bulk submissions were invisible; one row per asset movement is both simpler and the more accurate reading of the screen's purpose |
+| Wrap submit-then-open-approval in a transaction | `DisposalService::submit()` and `MovementService::submit()` | A failed `WorkflowService::submit()` otherwise leaves an orphaned `pending_approval` row that permanently trips `hasPendingMovement()` / `hasPendingDisposal()`, locking the asset out of all future movement and disposal. Not hypothetical for `disposal`, which ships with no seeded workflow |
+| Drop `x-transition` from the bulk action bar | Plain `x-show` + `x-cloak` | Verified in-browser that Alpine's JS transition applied a stale state to this fixed-position element (bar stayed hidden while assets were selected, then appeared once cleared). The bar is a utility affordance; correctness beats a 150ms fade |
+| Regression tests assert on rendered HTML, not just DB state | `MovementViewRegressionTest` checks for `JSON.parse(` and the absence of `typeCodes: {"` | The `@json` defect was invisible to every existing test because they POST to endpoints and assert on the database. Asserting on markup is the cheapest way to catch this class without adding a headless-browser layer |
+
+**Acknowledged gap:** `x-transition` behaviour and Alpine plugin registration are not
+observable from phpunit. Covering them properly needs Dusk or Playwright — currently the
+largest hole in this project's testing strategy.
+
+---
+
 ## Cross-module Contracts (must not break)
 
 These are interfaces between modules. Changing them requires coordinating both sides.

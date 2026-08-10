@@ -55,7 +55,13 @@
                                 {{ $movement->asset?->name ?? 'Asset #' . $movement->asset_id }}
                             </a>
                         </td>
-                        <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $movement->movementType?->name }}</td>
+                        <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+                            {{ $movement->movementType?->name }}
+                            @if($movement->batch_id)
+                                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
+                                      title="Part of a bulk movement — one approval covers the whole batch">Bulk</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-gray-700 dark:text-gray-300 text-xs">
                             {{ collect([$movement->toCompany?->name, $movement->toLocation?->name, $movement->toCustodian?->name])->filter()->join(' · ') ?: '—' }}
                         </td>

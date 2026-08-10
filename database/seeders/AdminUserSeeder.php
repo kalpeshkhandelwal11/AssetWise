@@ -21,6 +21,14 @@ class AdminUserSeeder extends Seeder
             ]
         );
 
-        $admin->assignRole('Super Admin');
+        // Super Admin alone is NOT enough to run the app end to end. Approver eligibility is
+        // matched on Spatie *role* (WorkflowService::matchesStep -> $user->hasRole(...)), not
+        // on permissions, and WorkflowSeeder routes the default chains to Approver / Asset
+        // Manager / Super Admin. With only the Super Admin role, this — the sole seeded user —
+        // could not action any step of the transfer or tag_replacement workflows, so every
+        // movement, disposal and tag replacement submitted on a fresh install would sit
+        // pending forever. Granting the operational roles here keeps the seed self-consistent
+        // without weakening the engine's role-based separation of duties.
+        $admin->assignRole(['Super Admin', 'Asset Manager', 'Approver']);
     }
 }

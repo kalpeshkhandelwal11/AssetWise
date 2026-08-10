@@ -17,6 +17,17 @@
         <form method="POST" action="{{ route('disposals.store') }}" class="space-y-5">
             @csrf
 
+            {{-- WorkflowService::submit() reports configuration problems under the 'workflow'
+                 key, which matches no field on this form — without this block the submission
+                 fails silently. 'disposal' ships with no seeded workflow by design (M08), so
+                 this is the expected first-run experience, not an edge case. --}}
+            @error('workflow')
+                <div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+                    {{ $message }}
+                    <span class="block mt-1 text-xs opacity-80">An administrator must activate a <strong>disposal</strong> workflow under Administration &rarr; Workflows before disposal requests can be submitted.</span>
+                </div>
+            @enderror
+
             <div>
                 <x-input-label for="asset_id" value="Asset *" />
                 <select id="asset_id" name="asset_id" required class="mt-1 block w-full text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500">

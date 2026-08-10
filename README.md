@@ -21,7 +21,7 @@ Enterprise Asset Management System for a single organization.
 | M13 Disposal & Scrap (request/approve/write-off/scrap) | ✅ done |
 | M10–M12, M14–M17 | ⏳ pending |
 
-Test suite: **390 passing**. See [`docs/planning/MODULES_INDEX.md`](docs/planning/MODULES_INDEX.md) for the full dependency graph and [`docs/decisions-log.md`](docs/decisions-log.md) for the running record of decisions.
+Test suite: **394 passing**. See [`docs/planning/MODULES_INDEX.md`](docs/planning/MODULES_INDEX.md) for the full dependency graph, [`docs/decisions-log.md`](docs/decisions-log.md) for the running record of decisions, and [`docs/integration-testing.md`](docs/integration-testing.md) for the end-to-end browser integration pass.
 
 ## Planning
 
@@ -40,11 +40,18 @@ Full walkthrough: [`docs/developer-setup.md`](docs/developer-setup.md).
 2. `composer install && npm install`
 3. Copy `.env.example` to `.env`, `php artisan key:generate`, create the `assetwise` database
 4. `php artisan migrate --seed && php artisan storage:link && npm run build`
-5. Log in at `http://assetwise.test` as `admin@assetwise.test` / `Admin@1234`
+5. Log in at `http://assetwise.test` as `admin@assetwise.test` / `Admin@1234` — **the first
+   login redirects to a forced password change** (`must_change_password` is seeded true).
+   Set a new password there, or clear the flag on a throwaway dev box:
+   `php artisan tinker --execute="App\Models\User::where('email','admin@assetwise.test')->update(['must_change_password' => false]);"`
 
 ```powershell
-php artisan test    # 390 tests, in-memory SQLite — never touches your dev database
+php artisan test    # 394 tests, in-memory SQLite — never touches your dev database
 ```
+
+The suite does not render Blade or boot Alpine, so it cannot catch view/JS regressions —
+see [`docs/integration-testing.md`](docs/integration-testing.md) for the manual browser
+pass and the defects it found.
 
 ## Repository
 

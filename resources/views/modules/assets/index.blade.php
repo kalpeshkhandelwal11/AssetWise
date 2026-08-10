@@ -127,7 +127,11 @@
     </x-data-table>
 
     @if($canBulkMove)
-        <div x-show="selected.length > 0" x-cloak x-transition
+        {{-- No x-transition here on purpose: Alpine's JS transition engine applies a stale
+             state to this fixed-position element (verified in-browser — the bar showed the
+             previous value of selected.length, so it stayed hidden when assets were picked).
+             Plain x-show toggles reliably; the bar is a utility affordance, not an animation. --}}
+        <div x-show="selected.length > 0" x-cloak
              class="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 px-5 py-3 rounded-xl bg-gray-900 dark:bg-gray-800 text-white shadow-2xl border border-gray-700 z-40">
             <span class="text-sm"><span x-text="selected.length"></span> selected</span>
             <a :href="'{{ route('movements.bulk.create') }}?' + selected.map(id => 'asset_ids[]=' + id).join('&')"

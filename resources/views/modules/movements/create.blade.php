@@ -17,7 +17,11 @@
         <form method="POST" action="{{ route('movements.store') }}" class="space-y-5"
               x-data="{
                   movementTypeId: '{{ old('movement_type_id') }}',
-                  typeCodes: @json($movementTypes->pluck('code', 'id')),
+                  {{-- @js, not @json: Blade's @json splits its expression on commas, so the
+                       comma inside pluck('code', 'id') would be parsed as the flags argument,
+                       dropping JSON_HEX_QUOT and emitting raw quotes that terminate this
+                       x-data attribute (breaking the whole component). --}}
+                  typeCodes: @js($movementTypes->pluck('code', 'id')),
                   get code() { return this.typeCodes[this.movementTypeId] ?? null; },
                   get needsCustodian() { return ['ASSIGNMENT', 'CUSTODIAN_CHANGE'].includes(this.code); },
                   get needsLocation() { return this.code === 'TRANSFER'; },
@@ -25,6 +29,16 @@
                   get isReturn() { return this.code === 'RETURN'; },
               }">
             @csrf
+
+            {{-- WorkflowService::submit() reports configuration problems under the 'workflow'
+                 key, which matches no field on this form — without this block a missing or
+                 deactivated 'transfer' workflow makes the submission fail silently. --}}
+            @error('workflow')
+                <div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+                    {{ $message }}
+                    <span class="block mt-1 text-xs opacity-80">An administrator must activate a <strong>transfer</strong> workflow under Administration &rarr; Workflows before movements can be submitted.</span>
+                </div>
+            @enderror
 
             <div>
                 <x-input-label for="asset_id" value="Asset *" />

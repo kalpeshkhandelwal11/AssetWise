@@ -26,7 +26,9 @@
         <form method="POST" action="{{ route('movements.bulk.store') }}" class="space-y-5"
               x-data="{
                   movementTypeId: '{{ old('movement_type_id') }}',
-                  typeCodes: @json($movementTypes->pluck('code', 'id')),
+                  {{-- @js, not @json — see the note in create.blade.php: @json's comma
+                       splitting would drop JSON_HEX_QUOT and break this x-data attribute. --}}
+                  typeCodes: @js($movementTypes->pluck('code', 'id')),
                   get code() { return this.typeCodes[this.movementTypeId] ?? null; },
                   get needsCustodian() { return ['ASSIGNMENT', 'CUSTODIAN_CHANGE'].includes(this.code); },
                   get needsLocation() { return this.code === 'TRANSFER'; },
@@ -37,6 +39,15 @@
             @foreach($assets as $a)
                 <input type="hidden" name="asset_ids[]" value="{{ $a->id }}">
             @endforeach
+
+            {{-- See create.blade.php: 'workflow' matches no field, so without this the
+                 submission fails silently when no active transfer workflow exists. --}}
+            @error('workflow')
+                <div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+                    {{ $message }}
+                    <span class="block mt-1 text-xs opacity-80">An administrator must activate a <strong>transfer</strong> workflow under Administration &rarr; Workflows before movements can be submitted.</span>
+                </div>
+            @enderror
 
             <div>
                 <x-input-label for="movement_type_id" value="Movement Type *" />

@@ -25,9 +25,13 @@ class MovementController extends Controller
     {
         $this->authorize('assets.view');
 
+        // Every row here is one asset actually moving, including the members of a bulk
+        // batch. An earlier `whereNull('batch_id')` filter hid batch children on the
+        // assumption that the batch itself would get its own row — it never did, so a
+        // submitted bulk movement was invisible here. Children carry a "Bulk" badge
+        // instead, which keeps one row per asset movement without losing the grouping.
         $query = AssetMovement::query()
-            ->with(['asset', 'movementType', 'toCompany', 'toLocation', 'toCustodian', 'requestedBy'])
-            ->whereNull('batch_id'); // batch children are shown via the batch's own row, not individually
+            ->with(['asset', 'movementType', 'toCompany', 'toLocation', 'toCustodian', 'requestedBy', 'batch']);
 
         if ($request->filled('movement_type_id')) {
             $query->where('movement_type_id', $request->input('movement_type_id'));
