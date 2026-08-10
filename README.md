@@ -17,9 +17,10 @@ Enterprise Asset Management System for a single organization.
 | M06 Bulk Import / Export (per-category template, queued jobs) | ✅ done |
 | M07 Shared UI Components (`x-data-table`, `x-filter-bar`, `x-status-badge`, …) | ✅ done |
 | M08 Approval Workflow (multi-level, escalation, inbox) | ✅ done |
-| M09–M17 | ⏳ pending |
+| M09 Asset Movement (assignment/return/transfer/custodian change, inter-company transfer) | ✅ done |
+| M10–M17 | ⏳ pending |
 
-Test suite: **372 passing**. See [`docs/planning/MODULES_INDEX.md`](docs/planning/MODULES_INDEX.md) for the full dependency graph and [`docs/decisions-log.md`](docs/decisions-log.md) for the running record of decisions.
+Test suite: **382 passing**. See [`docs/planning/MODULES_INDEX.md`](docs/planning/MODULES_INDEX.md) for the full dependency graph and [`docs/decisions-log.md`](docs/decisions-log.md) for the running record of decisions.
 
 ## Planning
 
@@ -41,7 +42,7 @@ Full walkthrough: [`docs/developer-setup.md`](docs/developer-setup.md).
 5. Log in at `http://assetwise.test` as `admin@assetwise.test` / `Admin@1234`
 
 ```powershell
-php artisan test    # 372 tests, in-memory SQLite — never touches your dev database
+php artisan test    # 382 tests, in-memory SQLite — never touches your dev database
 ```
 
 ## Repository
