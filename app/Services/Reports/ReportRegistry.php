@@ -6,7 +6,7 @@ namespace App\Services\Reports;
  * Single source of truth for report types — drives the selector UI, route validation,
  * and ReportController's dispatch. "Coming soon" entries (enabled => false) have no
  * backing query/export/view because their data doesn't exist yet: Depreciation Schedule
- * needs M16, Maintenance needs M10/M11, Kit Assignment History needs M17.
+ * needs M16, Maintenance needs M11 (M10 has shipped), Kit Assignment History needs M17.
  */
 class ReportRegistry
 {
@@ -46,6 +46,11 @@ class ReportRegistry
             'description' => 'Asset status transition trail.',
             'enabled'     => true,
         ],
+        'audit_campaign' => [
+            'label'       => 'Audit Campaign',
+            'description' => 'Verification findings (verified/missing/damaged) across audit campaigns.',
+            'enabled'     => true,
+        ],
         'depreciation_schedule' => [
             'label'       => 'Depreciation Schedule',
             'description' => 'Coming soon — depends on Module M16 (Depreciation).',
@@ -53,7 +58,7 @@ class ReportRegistry
         ],
         'maintenance' => [
             'label'       => 'Maintenance Report',
-            'description' => 'Coming soon — depends on Modules M10/M11 (Maintenance).',
+            'description' => 'Coming soon — depends on Module M11 (Maintenance).',
             'enabled'     => false,
         ],
         'kit_assignment_history' => [

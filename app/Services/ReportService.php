@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exports\AssetAgingExport;
 use App\Exports\AssetExport;
+use App\Exports\AuditCampaignExport;
 use App\Exports\AuditComplianceExport;
 use App\Exports\DisposalReportExport;
 use App\Exports\InterCompanyTransferExport;
@@ -12,6 +13,7 @@ use App\Exports\UtilizationReportExport;
 use App\Models\Asset;
 use App\Models\AssetMovement;
 use App\Models\AssetStatusHistory;
+use App\Models\AuditItem;
 use App\Models\Company;
 use App\Models\DisposalRequest;
 use App\Services\Reports\Concerns\FiltersByCompany;
@@ -42,6 +44,7 @@ class ReportService
             'aging'                  => new AssetAgingExport($filters, $this),
             'utilization'            => new UtilizationReportExport($filters, $this),
             'audit_compliance'       => new AuditComplianceExport($filters, $this),
+            'audit_campaign'          => new AuditCampaignExport($filters, $this),
             default => throw new \InvalidArgumentException("Report type \"{$type}\" has no export class."),
         };
     }
@@ -55,6 +58,7 @@ class ReportService
             'disposal'               => $this->buildDisposalQuery($filters),
             'aging'                  => $this->buildAgingQuery($filters),
             'audit_compliance'       => $this->buildAuditComplianceQuery($filters),
+            'audit_campaign'          => $this->buildAuditCampaignQuery($filters),
             default => throw new \InvalidArgumentException("Report type \"{$type}\" has no query builder."),
         };
     }
@@ -251,6 +255,34 @@ class ReportService
         $this->applyDateRange($query, $filters, 'created_at');
 
         return $query->latest('created_at');
+    }
+
+    public function buildAuditCampaignQuery(array $filters): Builder
+    {
+        $query = AuditItem::query()->with([
+            'campaign.auditType', 'asset.company', 'expectedLocation', 'expectedCustodian', 'verifiedBy',
+        ]);
+
+        $this->scopeByRelatedAssetCompany($query, $this->intOrNull($filters, 'company_id'));
+
+        if (! empty($filters['campaign_id'])) {
+            $query->where('campaign_id', $filters['campaign_id']);
+        }
+
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (! empty($filters['search'])) {
+            $s = $filters['search'];
+            $query->whereHas('asset', fn ($q) => $q
+                ->where('asset_tag', 'like', "%$s%")
+                ->orWhere('name', 'like', "%$s%"));
+        }
+
+        $this->applyDateRange($query, $filters, 'verified_at');
+
+        return $query->latest('id');
     }
 
     private function applyMovementCommonFilters(Builder $query, array $filters): void

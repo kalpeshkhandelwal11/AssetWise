@@ -17,6 +17,9 @@ use App\Http\Controllers\Admin\WorkflowController;
 use App\Http\Controllers\Admin\WorkflowStepController;
 use App\Http\Controllers\Api\ScanController;
 use App\Http\Controllers\Approvals\ApprovalController;
+use App\Http\Controllers\Audit\AuditReportController;
+use App\Http\Controllers\Audit\CampaignController as AuditCampaignController;
+use App\Http\Controllers\Audit\VerificationController;
 use App\Http\Controllers\Assets\AssetController;
 use App\Http\Controllers\Assets\AttachmentController;
 use App\Http\Controllers\Assets\ExportController;
@@ -111,6 +114,24 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::get('create', [MovementController::class, 'create'])->name('create');
         Route::post('/', [MovementController::class, 'store'])->name('store');
         Route::post('{movement}/verify', [MovementController::class, 'verify'])->name('verify');
+    });
+
+    // Audit & Verification (M10) — "verify" and "items/{item}/verify" register before the
+    // campaigns resource-style routes so they aren't swallowed by "campaigns/{campaign}".
+    Route::get('audits/verify', [VerificationController::class, 'index'])->name('audits.verify');
+    Route::post('audits/items/{item}/verify', [VerificationController::class, 'store'])->name('audits.items.verify');
+    Route::prefix('audits/campaigns')->name('audits.campaigns.')->group(function () {
+        Route::get('/', [AuditCampaignController::class, 'index'])->name('index');
+        Route::get('create', [AuditCampaignController::class, 'create'])->name('create');
+        Route::post('/', [AuditCampaignController::class, 'store'])->name('store');
+        Route::get('{campaign}', [AuditCampaignController::class, 'show'])->name('show');
+        Route::get('{campaign}/edit', [AuditCampaignController::class, 'edit'])->name('edit');
+        Route::put('{campaign}', [AuditCampaignController::class, 'update'])->name('update');
+        Route::delete('{campaign}', [AuditCampaignController::class, 'destroy'])->name('destroy');
+        Route::post('{campaign}/activate', [AuditCampaignController::class, 'activate'])->name('activate');
+        Route::post('{campaign}/close', [AuditCampaignController::class, 'close'])->name('close');
+        Route::get('{campaign}/report', [AuditReportController::class, 'show'])->name('report');
+        Route::post('{campaign}/report/export', [AuditReportController::class, 'export'])->name('report.export');
     });
 
     // Maintenance / AMC / Warranty (M11) — global lists across every asset

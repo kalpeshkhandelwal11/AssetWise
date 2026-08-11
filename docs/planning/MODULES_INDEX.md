@@ -5,7 +5,7 @@
 
 This index splits the BRD into **18 independent modules (M00–M17)** so Developer 1 and Developer 2 can work in parallel after shared foundation.
 
-> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07, M08, M09, M11, M13 and M14 are complete on `daniels_branch` (455 tests passing). M00–M09 and M13 have been verified end to end in a browser — see [`../integration-testing.md`](../integration-testing.md) for that pass and the six defects it caught; M11 and M14 shipped after that pass and have not yet had a dedicated browser integration pass.
+> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07, M08, M09, M10, M11, M13 and M14 are complete on `daniels_branch` (490 tests passing). M00–M09 and M13 have been verified end to end in a browser — see [`../integration-testing.md`](../integration-testing.md) for that pass and the six defects it caught; M10, M11 and M14 shipped after that pass and have not yet had a dedicated browser integration pass.
 
 ---
 
@@ -97,7 +97,7 @@ mysql --version
 | [M07](modules/M07-shared-ui-services.md) | Shared UI & Services | ✅ done | Dev 1 | 1 | M00 | All modules (ongoing) |
 | [M08](modules/M08-approval-workflow.md) | Approval Workflow | ✅ done | Dev 2 | 2 | M00, M01 | M02, M03, M04, M11 |
 | [M09](modules/M09-asset-movement.md) | Asset Movement | ✅ done | Dev 2 | 2 | M03 ✅, M08 ✅ | M10, M11 |
-| [M10](modules/M10-audit.md) | Audit & Verification | ⏳ unblocked | Dev 2 | 2 | M03 ✅, M05 ✅ | M09, M11 |
+| [M10](modules/M10-audit.md) | Audit & Verification | ✅ done | Dev 2 | 2 | M03 ✅, M05 ✅ | M09, M11 |
 | [M11](modules/M11-maintenance.md) | Maintenance | ✅ done | Dev 2 | 2 | M03 ✅ | M08, M09, M10 |
 | [M12](modules/M12-notifications.md) | Notifications | 🟡 stub built | Both | 1–3 | M00 | Any (stub early) |
 | [M13](modules/M13-disposal.md) | Disposal & Scrap | ✅ done | Dev 2 | 3 | M03 ✅, M08 ✅ | M14 |
@@ -155,9 +155,9 @@ gantt
 | `Asset::hasCustomFieldData()` | M03 | M04 category lock |
 | `WorkflowService::submit/approve/reject` | M08 | M09, M13 |
 | `ApprovalRequestApproved` event (terminal step only) | M08 | M05, M09, M13, M17 — M08 never calls domain services directly; consumers listen and switch on `$event->request->workflow->module` |
-| `NotificationService::send($user, $type, $data)` | M12 (stub shipped in M08) | M08, M09, M10, M11 ✅, M13, M14 ✅ |
+| `NotificationService::send($user, $type, $data)` | M12 (stub shipped in M08) | M08, M09, M10 ✅, M11 ✅, M13, M14 ✅ |
 | Blade components (`x-data-table`, `x-dynamic-fields`) | M07 | All UI modules |
-| `tags` pool + `/scan/{tag_number}` + `TagService` | M05 | M08 replacement, M10 audit scan |
+| `tags` pool + `/scan/{tag_number}` + `TagService` | M05 | M08 replacement, M10 ✅ audit scan (`ScanController::resolve` routes an `audit.verify` holder with a pending item into `audits.verify`) |
 | `tag_replacement` workflow module | M08 | M05 replacement apply |
 | `DepreciationService` + calculators | M16 | M14 depreciation report |
 | `MovementService::applyBulk(AssetMovementBatch $batch)` | M09 | M17 kit assignment — build kit assignments on the same `AssetMovementBatch` model (set `kit_assignment_id`) rather than a new grouping table |
@@ -177,13 +177,12 @@ gantt
 ### Where to start today
 
 - **Dev 1** → M00–M07 are all done.
-- **Dev 2** → M08, M09, M11, M13 and M14 are all done. Remaining modules are all unblocked (no dependency is still outstanding):
-  - **M10** (Audit & Verification) — M03 and M05 have both shipped.
+- **Dev 2** → M08, M09, M10, M11, M13 and M14 are all done. Remaining modules are all unblocked (no dependency is still outstanding):
   - **M16** (Depreciation) — M03 only.
   - **M17** (Asset Kits) — M03, M08 and M09 have all shipped; build kit assignments on M09's `AssetMovementBatch` model rather than a new grouping table (see M09's decisions-log entry).
   - **M15** (PWA) — M00's UI shell has shipped.
   - **M12** (Notifications) — still just the Phase 1 stub (`NotificationService` + `GenericNotification`, database channel only); a full build (mail channel, per-type classes, preferences) has no blocking dependency either.
-- Once M10 (Audit) or M16 (Depreciation) ships, M14's disabled Audit/Depreciation-adjacent "coming soon" report entries can be revisited — M14 already exposed an Audit/Compliance report from M09's `asset_status_histories`, but a dedicated M10 audit-campaign report is a separate follow-up. The Maintenance Report entry can be promoted now that M11 has shipped.
+- M10 shipped with its own `audit_campaign` entry in `ReportRegistry` (cross-campaign verification findings, distinct from the M09-backed Audit/Compliance report). Once M16 (Depreciation) ships, its "coming soon" entry can be promoted the same way. The Maintenance Report entry can be promoted now that M11 has shipped.
 - Before planning any module, read its spec in `modules/`, then the matching "Pending Decisions" block in [`../decisions-log.md`](../decisions-log.md) — resolve open `P#.#` items with the product owner *before* writing code.
 
 ---

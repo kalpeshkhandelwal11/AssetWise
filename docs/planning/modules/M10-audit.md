@@ -4,6 +4,7 @@
 |--|--|
 | **Developer** | Dev 2 |
 | **Phase** | 2 |
+| **Status** | ✅ done |
 | **Depends on** | M03, M05 |
 | **Parallel with** | M09, M11 |
 
@@ -13,10 +14,12 @@ Audit campaigns, physical/QR/manual verification, missing/damaged tracking, comp
 
 ## DB Tables
 
-- `audit_campaigns` (name, audit_type_id, start_date, end_date, scope json, status, created_by)
-- `audit_items` (campaign_id, asset_id, status enum, verified_by, verified_at, notes, photo_path)
+- `audit_campaigns` (name, audit_type_id, description, start_date, end_date, scope json, status enum draft/active/closed, activated_at, closed_at, created_by, closed_by)
+- `audit_campaign_auditors` (campaign_id, user_id) — per-campaign auditor assignment (not in the original spec; see decisions-log)
+- `audit_items` (campaign_id, asset_id, status enum, verified_by, verified_at, notes, photo_path, expected_location_id, expected_custodian_id)
 
-Item status: pending, verified, missing, damaged.
+Item status: pending, verified, missing, damaged. `expected_location_id`/`expected_custodian_id`
+are snapshotted from the asset at activation time, not read live.
 
 ## Routes
 
@@ -31,22 +34,23 @@ Item status: pending, verified, missing, damaged.
 
 ## Tasks
 
-- [ ] Campaign CRUD with scope filters (location, category, branch)
-- [ ] Activate → snapshot assets into `audit_items`
-- [ ] Auditor UI: QR scan (M05 URL), manual search, exception notes + photo
-- [ ] Progress dashboard (% verified, exceptions)
-- [ ] Close campaign → lock items
-- [ ] Excel/PDF compliance report
-- [ ] Notify auditors on campaign activate (M12)
-- [ ] Permissions: `audit.manage`, `audit.verify`
+- [x] Campaign CRUD with scope filters (company, category, asset type, status, location, department, branch)
+- [x] Activate → snapshot assets into `audit_items`
+- [x] Auditor UI: QR scan (M05 `/scan/{tag_number}` URL, routes into verify when a pending item exists), manual search, exception notes + photo
+- [x] Progress dashboard (% verified, exceptions)
+- [x] Close campaign → lock items (verification rejected once `status = closed`)
+- [x] Excel/PDF compliance report (per-campaign at `/audits/campaigns/{id}/report`, plus a cross-campaign `audit_campaign` entry in M14's `ReportRegistry`)
+- [x] Notify auditors on campaign activate/close (via M08's `NotificationService` stub, same contract M11 uses — M12 hasn't shipped a full implementation yet)
+- [x] Permissions: `audit.manage`, `audit.verify` (both already seeded ahead of this module)
 
 ## Acceptance criteria
 
-- QR scan marks correct audit item verified
-- Missing/damaged captured with evidence
-- Campaign cannot verify after closed
-- Report lists all exceptions
+- [x] QR scan marks correct audit item verified
+- [x] Missing/damaged captured with evidence (notes required, photo optional)
+- [x] Campaign cannot verify after closed
+- [x] Report lists all exceptions
 
 ## User flow
 
-See parent plan UF-11.
+See parent plan UF-11. One addition beyond the diagram: activation is gated on the campaign
+having at least one assigned auditor and a non-empty scope (see decisions-log).

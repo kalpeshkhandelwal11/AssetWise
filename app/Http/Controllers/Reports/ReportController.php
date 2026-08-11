@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\GenerateReportExport;
 use App\Models\AssetCategory;
 use App\Models\AssetStatus;
+use App\Models\AuditCampaign;
 use App\Models\Company;
 use App\Models\DisposalType;
 use App\Models\ExportLog;
@@ -34,6 +35,7 @@ class ReportController extends Controller
         'aging'                  => ['company_id', 'category_id', 'status_id'],
         'utilization'            => ['company_id'],
         'audit_compliance'       => ['company_id', 'status', 'changed_by', 'date_from', 'date_to'],
+        'audit_campaign'          => ['campaign_id', 'company_id', 'status', 'search', 'date_from', 'date_to'],
     ];
 
     public function __construct(
@@ -105,6 +107,7 @@ class ReportController extends Controller
             'movementTypes' => MovementType::where('is_active', true)->orderBy('name')->get(),
             'disposalTypes' => DisposalType::where('is_active', true)->orderBy('name')->get(),
             'users'         => User::where('is_active', true)->orderBy('name')->get(),
+            'auditCampaigns' => AuditCampaign::orderBy('name')->get(),
         ];
     }
 }

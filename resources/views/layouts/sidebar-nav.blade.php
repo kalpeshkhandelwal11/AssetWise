@@ -155,8 +155,8 @@
 @endcanany
 
 {{-- AUDIT --}}
-@can('audit.manage')
-<div x-data="{ open: {{ $navGroupActive(['audit.']) ? 'true' : 'false' }} }">
+@canany(['audit.manage', 'audit.verify'])
+<div x-data="{ open: {{ $navGroupActive(['audits.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -168,17 +168,21 @@
         </svg>
     </button>
     <div x-show="open" x-collapse class="pl-8 mt-1 space-y-1">
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
+        @can('audit.manage')
+        <a href="{{ route('audits.campaigns.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('audits.campaigns.index') }} hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Campaigns</span>
         </a>
-        <a href="#" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
+        @endcan
+        @can('audit.verify')
+        <a href="{{ route('audits.verify') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('audits.verify') }} hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Verify Assets</span>
         </a>
+        @endcan
     </div>
 </div>
-@endcan
+@endcanany
 
 {{-- MAINTENANCE --}}
 @can('maintenance.manage')

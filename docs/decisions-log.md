@@ -198,6 +198,20 @@ Full plan: `docs/planning/modules/M01-implementation-plan.md`. Four scope decisi
 
 ---
 
+## M10 — Audit & Verification: implementation decisions (2026-08-15)
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Per-campaign auditor assignment | New `audit_campaign_auditors` pivot; only assigned auditors (or anyone holding `audit.manage`) see a campaign on the verify worklist or can act on its items | The module spec's table list has no auditor pivot, but UF-11 step 2 is explicitly "Assign auditors" and step 7 notifies them specifically — a pivot was the smallest structure that satisfies both without inventing a broader eligibility model |
+| No approval workflow | `AuditService` is plain `audit.manage`/`audit.verify`-gated CRUD, like M11 | M10 depends only on M03/M05 per the module map; there is no "who approves an audit" concept in the BRD, unlike M09/M13 which gate on approval before applying anything |
+| Missing/damaged findings never touch `assets.status_id` | Recorded on `audit_items` (and the compliance report) only | Keeps M10 free of the M09/M11/M13 status-ledger coupling — an audit finding is evidence, not an action; the Asset Manager decides what to do about a missing/damaged asset via the existing movement/maintenance/disposal flows |
+| Scan integration extends `ScanController::resolve()`, doesn't replace it | An `assigned`-tag scan by a user holding `audit.verify` with a pending item on an active assigned campaign redirects into `audits.verify` instead of `assets.show`; every other outcome (available/inactive tags, users without `audit.verify`, assets with no open item) is unchanged | Satisfies "QR scan marks correct audit item verified" without touching the `/scan/{tag_number}` URL contract M05 exposes to M08 and M10 alike |
+| Compliance report ships in two places | A per-campaign `/audits/campaigns/{id}/report` (inline Excel/PDF, reusing `ReportPdfExporter`) *and* a new enabled `audit_campaign` entry in M14's `ReportRegistry` for the cross-campaign filtered view, both backed by the same `AuditCampaignExport` + `ReportService::buildAuditCampaignQuery()` | M14 already promises "exports match on-screen filters" as an invariant (`ReportService` docblock); building two independent export paths would have broken that by construction. One export class serves both entry points, so M14's existing >500-row queueing behaviour is inherited for free by the registry path while the campaign-scoped path stays inline (campaigns are bounded by definition) |
+| `audit.manage` gates the campaign report, not `reports.export` | `AuditReportController` checks `audit.manage` only | The seeded Auditor role holds `audit.manage` + `reports.view` but not `reports.export`; an auditor must be able to pull the compliance report for a campaign they ran without also being granted the broader cross-module export permission |
+| Expected location/custodian snapshotted at activation | `audit_items.expected_location_id` / `expected_custodian_id` copied from the asset at the moment items are generated, not read live from `assets` at verify/report time | The auditor needs to see what the register *claimed* when the campaign started, and the report needs to show that even after the asset is later moved — same "capture now, read later" pattern as M11's `maintenance_records.previous_status_id` |
+
+---
+
 ## Integration pass — decisions made while fixing browser-only defects (2026-08-13)
 
 Full write-up: [`integration-testing.md`](integration-testing.md). Six defects were found
