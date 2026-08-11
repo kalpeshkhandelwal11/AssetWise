@@ -14,5 +14,9 @@ class SettingsSeeder extends Seeder
     public function run(): void
     {
         Setting::firstOrCreate(['key' => 'tag_code_type'], ['value' => 'qr']);
+
+        // M16: Companies Act Schedule II residual convention — used when a category/asset
+        // sets neither a fixed salvage value nor a salvage percent.
+        Setting::firstOrCreate(['key' => 'depreciation_default_salvage_percent'], ['value' => '5']);
     }
 }

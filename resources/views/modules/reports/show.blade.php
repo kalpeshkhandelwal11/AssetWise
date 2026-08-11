@@ -176,6 +176,29 @@
                 <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
                 <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
                 @break
+
+            @case('depreciation_schedule')
+                <select name="company_id" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">All Companies</option>
+                    @foreach($companies as $company)
+                        <option value="{{ $company->id }}" @selected(($filters['company_id'] ?? null) == $company->id)>{{ $company->name }}</option>
+                    @endforeach
+                </select>
+                <select name="category_id" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">All Categories</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}" @selected(($filters['category_id'] ?? null) == $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
+                <select name="status" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">All Lines</option>
+                    @foreach(['scheduled' => 'Scheduled', 'posted' => 'Posted'] as $value => $optionLabel)
+                        <option value="{{ $value }}" @selected(($filters['status'] ?? null) === $value)>{{ $optionLabel }}</option>
+                    @endforeach
+                </select>
+                <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search asset name or tag…"
+                       class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                @break
         @endswitch
     </x-filter-bar>
 

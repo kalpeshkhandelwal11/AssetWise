@@ -5,7 +5,7 @@
 
 This index splits the BRD into **18 independent modules (M00–M17)** so Developer 1 and Developer 2 can work in parallel after shared foundation.
 
-> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07, M08, M09, M11, M13 and M14 are complete on `daniels_branch` (455 tests passing). M00–M09 and M13 have been verified end to end in a browser — see [`../integration-testing.md`](../integration-testing.md) for that pass and the six defects it caught; M11 and M14 shipped after that pass and have not yet had a dedicated browser integration pass.
+> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07, M08, M09, M11, M13, M14 and M16 are complete on `daniels_branch` (474 tests passing). M00–M09 and M13 have been verified end to end in a browser — see [`../integration-testing.md`](../integration-testing.md) for that pass and the six defects it caught; M11, M14 and M16 shipped after that pass and have not yet had a dedicated browser integration pass.
 
 ---
 
@@ -103,14 +103,14 @@ mysql --version
 | [M13](modules/M13-disposal.md) | Disposal & Scrap | ✅ done | Dev 2 | 3 | M03 ✅, M08 ✅ | M14 |
 | [M14](modules/M14-reports-dashboard.md) | Reports & Dashboard | ✅ done | Dev 2 | 3 | M03+ | M13, M15 |
 | [M15](modules/M15-pwa.md) | PWA (Full Site) | ⏳ unblocked | Dev 2 | 3 | M00 UI ✅ | M14 |
-| [M16](modules/M16-depreciation.md) | Depreciation | ⏳ unblocked | Dev 2 | 2 | M03 ✅ | M09, M17 |
+| [M16](modules/M16-depreciation.md) | Depreciation | ✅ done | Dev 2 | 2 | M03 ✅ | M09, M17 |
 | [M17](modules/M17-asset-kits.md) | Asset Kits & Bundles | ⏳ unblocked | Dev 2 | 2 | M03 ✅, M08 ✅, M09 ✅ | M10, M16 |
 
 **Status key:** ✅ done · 🔄 next (start here) · ⏳ unblocked (dependencies met, not started) · ⏳ pending (still waiting on a dependency) · 🟡 partial
 
 M08 shipped ahead of M05–M07 because it is the Dev 2 track and gates M09, M13 and M17. Its `NotificationService` stub also covers M12's Phase 1 stub task.
 
-M14 shipped 7 of its 10 BRD reports (Asset Register, Movement, Inter-Company Transfer, Disposal, Asset Aging, Utilization, Audit/Compliance); Depreciation Schedule, Maintenance Report and Kit Assignment History are registered in `ReportRegistry` as disabled "coming soon" entries since M16/M11/M17 weren't done yet at build time. **M11 has since shipped — the Maintenance Report entry can be promoted to enabled in a follow-up.**
+M14 shipped 7 of its 10 BRD reports (Asset Register, Movement, Inter-Company Transfer, Disposal, Asset Aging, Utilization, Audit/Compliance); Maintenance Report and Kit Assignment History remain registered in `ReportRegistry` as disabled "coming soon" entries (M11/M17). **M16 has since shipped and enabled the Depreciation Schedule report; M11 has shipped too, so the Maintenance Report entry can be promoted to enabled in a follow-up.**
 
 ---
 
@@ -177,13 +177,12 @@ gantt
 ### Where to start today
 
 - **Dev 1** → M00–M07 are all done.
-- **Dev 2** → M08, M09, M11, M13 and M14 are all done. Remaining modules are all unblocked (no dependency is still outstanding):
+- **Dev 2** → M08, M09, M11, M13, M14 and M16 are all done. Remaining modules are all unblocked (no dependency is still outstanding):
   - **M10** (Audit & Verification) — M03 and M05 have both shipped.
-  - **M16** (Depreciation) — M03 only.
   - **M17** (Asset Kits) — M03, M08 and M09 have all shipped; build kit assignments on M09's `AssetMovementBatch` model rather than a new grouping table (see M09's decisions-log entry).
   - **M15** (PWA) — M00's UI shell has shipped.
   - **M12** (Notifications) — still just the Phase 1 stub (`NotificationService` + `GenericNotification`, database channel only); a full build (mail channel, per-type classes, preferences) has no blocking dependency either.
-- Once M10 (Audit) or M16 (Depreciation) ships, M14's disabled Audit/Depreciation-adjacent "coming soon" report entries can be revisited — M14 already exposed an Audit/Compliance report from M09's `asset_status_histories`, but a dedicated M10 audit-campaign report is a separate follow-up. The Maintenance Report entry can be promoted now that M11 has shipped.
+- M16 (Depreciation) has shipped and enabled M14's Depreciation Schedule report. Once M10 (Audit) ships, M14's Audit-adjacent "coming soon" entries can be revisited — M14 already exposed an Audit/Compliance report from M09's `asset_status_histories`, but a dedicated M10 audit-campaign report is a separate follow-up. The Maintenance Report entry can be promoted now that M11 has shipped.
 - Before planning any module, read its spec in `modules/`, then the matching "Pending Decisions" block in [`../decisions-log.md`](../decisions-log.md) — resolve open `P#.#` items with the product owner *before* writing code.
 
 ---

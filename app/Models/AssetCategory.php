@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AssetCategory extends Model
@@ -44,5 +45,10 @@ class AssetCategory extends Model
     public function fieldOverrides(): HasMany
     {
         return $this->hasMany(CategoryFieldOverride::class, 'category_id');
+    }
+
+    public function depreciationDefault(): HasOne
+    {
+        return $this->hasOne(CategoryDepreciationDefault::class, 'category_id');
     }
 }

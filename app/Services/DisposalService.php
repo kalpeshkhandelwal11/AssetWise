@@ -21,6 +21,7 @@ class DisposalService
     public function __construct(
         private WorkflowService $workflows,
         private NotificationService $notifications,
+        private DepreciationService $depreciation,
     ) {
     }
 
@@ -64,14 +65,39 @@ class DisposalService
             ]);
         }
 
+        $proceeds = isset($data['disposal_value']) ? (float) $data['disposal_value'] : null;
+
+        // M16: freeze depreciation at the disposal date and book the gain/loss on sale
+        // (proceeds - net book value). No active depreciation setting → leave the columns null.
+        [$netBookValue, $gainLoss] = $this->settleDepreciation($disposalRequest->asset, $proceeds);
+
         $disposalRequest->update([
-            'disposal_value' => $data['disposal_value'] ?? null,
-            'written_off_at' => now(),
-            'written_off_by' => $actor->id,
-            'status'         => 'written_off',
+            'disposal_value'             => $proceeds,
+            'net_book_value_at_disposal' => $netBookValue,
+            'gain_loss'                  => $gainLoss,
+            'written_off_at'             => now(),
+            'written_off_by'             => $actor->id,
+            'status'                     => 'written_off',
         ]);
 
         return $disposalRequest;
+    }
+
+    /**
+     * @return array{0: float|null, 1: float|null} [netBookValueAtDisposal, gainLoss]
+     */
+    private function settleDepreciation(Asset $asset, ?float $proceeds): array
+    {
+        $setting = $asset->activeDepreciationSetting();
+
+        if (! $setting) {
+            return [null, null];
+        }
+
+        $nbv = $this->depreciation->netBookValue($setting, now());
+        $this->depreciation->stop($setting, now());
+
+        return [$nbv, round(($proceeds ?? 0.0) - $nbv, 2)];
     }
 
     /** Terminal step: locks the asset out of movement/reassignment by flipping its status to Disposed. */

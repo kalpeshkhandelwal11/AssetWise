@@ -34,6 +34,7 @@ class ReportController extends Controller
         'aging'                  => ['company_id', 'category_id', 'status_id'],
         'utilization'            => ['company_id'],
         'audit_compliance'       => ['company_id', 'status', 'changed_by', 'date_from', 'date_to'],
+        'depreciation_schedule'  => ['company_id', 'category_id', 'department_id', 'status', 'search'],
     ];
 
     public function __construct(

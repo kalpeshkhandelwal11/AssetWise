@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exports\AssetAgingExport;
 use App\Exports\AssetExport;
 use App\Exports\AuditComplianceExport;
+use App\Exports\DepreciationReportExport;
 use App\Exports\DisposalReportExport;
 use App\Exports\InterCompanyTransferExport;
 use App\Exports\MovementReportExport;
@@ -13,6 +14,7 @@ use App\Models\Asset;
 use App\Models\AssetMovement;
 use App\Models\AssetStatusHistory;
 use App\Models\Company;
+use App\Models\DepreciationScheduleLine;
 use App\Models\DisposalRequest;
 use App\Services\Reports\Concerns\FiltersByCompany;
 use Illuminate\Database\Eloquent\Builder;
@@ -42,6 +44,7 @@ class ReportService
             'aging'                  => new AssetAgingExport($filters, $this),
             'utilization'            => new UtilizationReportExport($filters, $this),
             'audit_compliance'       => new AuditComplianceExport($filters, $this),
+            'depreciation_schedule'  => new DepreciationReportExport($filters, $this),
             default => throw new \InvalidArgumentException("Report type \"{$type}\" has no export class."),
         };
     }
@@ -55,6 +58,7 @@ class ReportService
             'disposal'               => $this->buildDisposalQuery($filters),
             'aging'                  => $this->buildAgingQuery($filters),
             'audit_compliance'       => $this->buildAuditComplianceQuery($filters),
+            'depreciation_schedule'  => $this->buildDepreciationScheduleQuery($filters),
             default => throw new \InvalidArgumentException("Report type \"{$type}\" has no query builder."),
         };
     }
@@ -228,6 +232,34 @@ class ReportService
                     'utilization_pct'  => $total > 0 ? round($assigned / $total * 100, 1) : 0.0,
                 ];
             });
+    }
+
+    public function buildDepreciationScheduleQuery(array $filters): Builder
+    {
+        $query = DepreciationScheduleLine::query()->with([
+            'asset.company', 'asset.category', 'asset.department', 'setting.method',
+        ]);
+
+        $this->scopeByRelatedAssetCompany($query, $this->intOrNull($filters, 'company_id'));
+
+        foreach (['category_id', 'department_id'] as $filter) {
+            if (! empty($filters[$filter])) {
+                $query->whereHas('asset', fn ($q) => $q->where($filter, $filters[$filter]));
+            }
+        }
+
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (! empty($filters['search'])) {
+            $s = $filters['search'];
+            $query->whereHas('asset', fn ($q) => $q
+                ->where('asset_tag', 'like', "%$s%")
+                ->orWhere('name', 'like', "%$s%"));
+        }
+
+        return $query->orderBy('asset_id')->orderBy('period_year')->orderBy('period_month');
     }
 
     public function buildAuditComplianceQuery(array $filters): Builder

@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Picked up by the single shared-hosting cron entry: * * * * * php artisan schedule:run
         $schedule->command('approvals:escalate')->daily();
         $schedule->command('alerts:expiry')->daily();
+        $schedule->command('depreciation:post-monthly')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

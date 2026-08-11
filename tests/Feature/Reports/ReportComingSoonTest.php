@@ -15,7 +15,6 @@ class ReportComingSoonTest extends TestCase
     public static function disabledTypes(): array
     {
         return [
-            ['depreciation_schedule'],
             ['maintenance'],
             ['kit_assignment_history'],
         ];

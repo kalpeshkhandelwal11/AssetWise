@@ -15,15 +15,19 @@ class MaintenanceRecord extends Model
     protected $fillable = [
         'asset_id', 'maintenance_type_id', 'status',
         'scheduled_date', 'performed_date', 'vendor', 'cost', 'description',
+        'is_capitalized', 'capitalized_amount', 'additional_useful_life_months',
         'previous_status_id', 'logged_by',
     ];
 
     protected function casts(): array
     {
         return [
-            'scheduled_date' => 'date',
-            'performed_date' => 'date',
-            'cost'           => 'decimal:2',
+            'scheduled_date'                => 'date',
+            'performed_date'                => 'date',
+            'cost'                          => 'decimal:2',
+            'is_capitalized'                => 'boolean',
+            'capitalized_amount'            => 'decimal:2',
+            'additional_useful_life_months' => 'integer',
         ];
     }
 
