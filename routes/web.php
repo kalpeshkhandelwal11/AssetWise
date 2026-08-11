@@ -27,6 +27,7 @@ use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\Disposal\DisposalController;
 use App\Http\Controllers\Movement\MovementBatchController;
 use App\Http\Controllers\Movement\MovementController;
+use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -94,6 +95,13 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::get('{disposal}', [DisposalController::class, 'show'])->name('show');
         Route::post('{disposal}/write-off', [DisposalController::class, 'writeOff'])->name('write-off');
         Route::post('{disposal}/scrap', [DisposalController::class, 'scrap'])->name('scrap');
+    });
+
+    // Reports & Dashboard (M14)
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('{type}', [ReportController::class, 'show'])->name('show');
+        Route::post('{type}/export', [ReportController::class, 'export'])->name('export');
     });
 
     // Approvals (M08) — the param is {approval_request}, not {request}, so it never

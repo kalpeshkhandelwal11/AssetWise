@@ -1,6 +1,15 @@
 <x-app-layout>
     @section('page-title', 'Dashboard')
 
+    <x-filter-bar :clear="route('dashboard')" class="mb-4">
+        <select name="company_id" onchange="this.form.submit()" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+            <option value="">All Companies</option>
+            @foreach($companies as $company)
+                <option value="{{ $company->id }}" @selected($selectedCompany == $company->id)>{{ $company->name }}</option>
+            @endforeach
+        </select>
+    </x-filter-bar>
+
     {{-- KPI Stats row 1 --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
         <x-stat-card label="Total Assets" :value="$totalAssets" color="indigo"
