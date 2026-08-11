@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CategoryFieldController;
+use App\Http\Controllers\Admin\CategoryDepreciationController;
 use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\Admin\DepreciationMethodController;
 use App\Http\Controllers\Admin\FieldOverrideController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\ActivityLogController;
@@ -21,6 +23,7 @@ use App\Http\Controllers\Audit\AuditReportController;
 use App\Http\Controllers\Audit\CampaignController as AuditCampaignController;
 use App\Http\Controllers\Audit\VerificationController;
 use App\Http\Controllers\Assets\AssetController;
+use App\Http\Controllers\Assets\AssetDepreciationController;
 use App\Http\Controllers\Assets\AttachmentController;
 use App\Http\Controllers\Assets\ExportController;
 use App\Http\Controllers\Assets\ImportController;
@@ -102,6 +105,13 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::delete('{warranty}', [WarrantyController::class, 'destroy'])->name('destroy');
     });
 
+    // Depreciation (M16) — per-asset override request + schedule view
+    Route::prefix('assets/{asset}/depreciation')->name('assets.depreciation.')->group(function () {
+        Route::get('/', [AssetDepreciationController::class, 'edit'])->name('edit');
+        Route::put('/', [AssetDepreciationController::class, 'update'])->name('update');
+        Route::get('schedule', [AssetDepreciationController::class, 'schedule'])->name('schedule');
+    });
+
     // Scan resolver (M05) — contract for M10 audit QR verification
     Route::get('/scan/{tag_number}', [ScanController::class, 'resolve'])->name('scan.resolve');
 
@@ -180,6 +190,12 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
 
         // Asset categories
         Route::resource('categories', CategoryController::class)->except(['show']);
+
+        // Depreciation methods master + category defaults (M16)
+        Route::get('depreciation-methods', [DepreciationMethodController::class, 'index'])->name('depreciation-methods.index');
+        Route::patch('depreciation-methods/{method}/toggle', [DepreciationMethodController::class, 'toggle'])->name('depreciation-methods.toggle');
+        Route::get('categories/{category}/depreciation', [CategoryDepreciationController::class, 'edit'])->name('categories.depreciation.edit');
+        Route::put('categories/{category}/depreciation', [CategoryDepreciationController::class, 'update'])->name('categories.depreciation.update');
 
         // Category custom fields (M04)
         Route::prefix('categories/{category}/fields')->name('categories.fields.')->group(function () {

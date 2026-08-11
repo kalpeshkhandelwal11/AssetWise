@@ -25,6 +25,7 @@ class MovementService
     public function __construct(
         private WorkflowService $workflows,
         private NotificationService $notifications,
+        private DepreciationService $depreciation,
     ) {
     }
 
@@ -191,6 +192,12 @@ class MovementService
 
         if ($updates) {
             $asset->update($updates);
+        }
+
+        // M16: an inter-company transfer is a disposal-for-seller / acquisition-for-buyer, so
+        // the old schedule stops and a fresh one starts for the receiver at net book value.
+        if ($movement->movementType->code === 'INTER_COMPANY_TRANSFER') {
+            $this->depreciation->resetForTransfer($asset, now());
         }
 
         if ($movement->to_status_id && $movement->to_status_id !== $asset->status_id) {

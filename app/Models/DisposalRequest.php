@@ -15,16 +15,19 @@ class DisposalRequest extends Model
     protected $fillable = [
         'asset_id', 'disposal_type_id', 'reason', 'status',
         'approval_request_id', 'requested_by',
-        'disposal_value', 'written_off_at', 'written_off_by',
+        'disposal_value', 'net_book_value_at_disposal', 'gain_loss',
+        'written_off_at', 'written_off_by',
         'scrapped_at', 'scrapped_by',
     ];
 
     protected function casts(): array
     {
         return [
-            'disposal_value' => 'decimal:2',
-            'written_off_at' => 'datetime',
-            'scrapped_at'    => 'datetime',
+            'disposal_value'             => 'decimal:2',
+            'net_book_value_at_disposal' => 'decimal:2',
+            'gain_loss'                  => 'decimal:2',
+            'written_off_at'             => 'datetime',
+            'scrapped_at'                => 'datetime',
         ];
     }
 

@@ -157,6 +157,33 @@ class Asset extends Model
         return $this->hasMany(WarrantyRecord::class)->latest('end_date');
     }
 
+    /** Full history of depreciation settings — a new active row supersedes the old on transfer/capitalization. */
+    public function depreciationSettings(): HasMany
+    {
+        return $this->hasMany(AssetDepreciationSetting::class)->latest('id');
+    }
+
+    public function depreciationScheduleLines(): HasMany
+    {
+        return $this->hasMany(DepreciationScheduleLine::class);
+    }
+
+    public function depreciationRequests(): HasMany
+    {
+        return $this->hasMany(DepreciationSettingRequest::class)->latest('id');
+    }
+
+    /** The single active depreciation setting driving the current schedule, if any. */
+    public function activeDepreciationSetting(): ?AssetDepreciationSetting
+    {
+        return $this->depreciationSettings()->where('is_active', true)->first();
+    }
+
+    public function hasPendingDepreciationRequest(): bool
+    {
+        return $this->depreciationRequests()->where('status', 'pending_approval')->exists();
+    }
+
     public function isDisposed(): bool
     {
         return $this->status?->code === 'DISPOSED';

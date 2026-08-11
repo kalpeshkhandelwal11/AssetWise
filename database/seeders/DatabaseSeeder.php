@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             SharedMastersSeeder::class,
             WorkflowSeeder::class, // must follow RolePermissionSeeder — steps reference role names
             SettingsSeeder::class,
+            DepreciationMethodSeeder::class,
             SingareenipallyAssetSeeder::class,
         ]);
     }

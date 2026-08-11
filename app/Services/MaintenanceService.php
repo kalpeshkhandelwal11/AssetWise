@@ -20,6 +20,10 @@ use Illuminate\Validation\ValidationException;
  */
 class MaintenanceService
 {
+    public function __construct(private DepreciationService $depreciation)
+    {
+    }
+
     public function log(Asset $asset, array $data, User $actor): MaintenanceRecord
     {
         return DB::transaction(function () use ($asset, $data, $actor) {
@@ -30,6 +34,8 @@ class MaintenanceService
 
             if ($record->status === 'in_progress') {
                 $this->startMaintenance($asset, $record, $actor);
+            } elseif ($record->status === 'completed') {
+                $this->capitalizeIfFlagged($record, $actor);
             }
 
             return $record;
@@ -47,6 +53,10 @@ class MaintenanceService
                 $this->startMaintenance($record->asset, $record, $actor);
             } elseif ($previousStatus === 'in_progress' && in_array($newStatus, ['completed', 'cancelled'], true)) {
                 $this->restoreAssetStatus($record->asset, $record, $actor);
+            }
+
+            if ($previousStatus !== 'completed' && $newStatus === 'completed') {
+                $this->capitalizeIfFlagged($record, $actor);
             }
 
             return $record;
@@ -68,6 +78,21 @@ class MaintenanceService
     public function costRollup(Asset $asset): float
     {
         return (float) $asset->maintenanceRecords()->sum('cost');
+    }
+
+    /**
+     * M16 bridge: a completed record flagged for capitalization adds its capitalized amount to
+     * the asset's depreciation cost basis and extends the useful life. The actual change is
+     * approval-gated, so this just raises the depreciation request (no-op if the asset isn't
+     * being depreciated or nothing was capitalized).
+     */
+    private function capitalizeIfFlagged(MaintenanceRecord $record, User $actor): void
+    {
+        if (! $record->is_capitalized || (float) $record->capitalized_amount <= 0) {
+            return;
+        }
+
+        $this->depreciation->capitalize($record, $actor);
     }
 
     private function startMaintenance(Asset $asset, MaintenanceRecord $record, User $actor): void

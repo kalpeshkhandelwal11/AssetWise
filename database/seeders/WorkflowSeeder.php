@@ -31,6 +31,13 @@ class WorkflowSeeder extends Seeder
             ['level' => 1, 'approver_type' => 'role', 'approver_role' => 'Asset Manager', 'escalation_hours' => 48],
             ['level' => 2, 'approver_type' => 'role', 'approver_role' => 'Super Admin',   'escalation_hours' => 48],
         ]);
+
+        // M16: depreciation-settings changes (method/life/salvage, capitalization) are
+        // approval-gated. Asset Manager submits, so the step routes to Approver to keep
+        // submitter and approver distinct — same rationale as the transfer workflow.
+        $this->seedWorkflow('Standard Depreciation Approval', 'depreciation', [
+            ['level' => 1, 'approver_type' => 'role', 'approver_role' => 'Approver', 'escalation_hours' => 48],
+        ]);
     }
 
     private function seedWorkflow(string $name, string $module, array $steps): void

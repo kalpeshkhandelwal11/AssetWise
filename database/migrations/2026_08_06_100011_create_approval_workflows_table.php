@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('approval_workflows', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->enum('module', ['transfer', 'disposal', 'tag_replacement', 'kit_assignment']);
+            $table->enum('module', ['transfer', 'disposal', 'tag_replacement', 'kit_assignment', 'depreciation']);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
