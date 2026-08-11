@@ -18,11 +18,12 @@ Enterprise Asset Management System for a single organization.
 | M07 Shared UI Components (`x-data-table`, `x-filter-bar`, `x-status-badge`, …) | ✅ done |
 | M08 Approval Workflow (multi-level, escalation, inbox) | ✅ done |
 | M09 Asset Movement (assignment/return/transfer/custodian change, inter-company transfer) | ✅ done |
+| M11 Maintenance (records/AMC/warranty, EOL, expiry alerts — no approval workflow) | ✅ done |
 | M13 Disposal & Scrap (request/approve/write-off/scrap) | ✅ done |
 | M14 Reports & Dashboard (company-scoped KPIs, 7 exportable reports, Excel/PDF) | ✅ done |
-| M10–M12, M15–M17 | ⏳ pending |
+| M10, M12, M15–M17 | ⏳ pending |
 
-Test suite: **432 passing**. See [`docs/planning/MODULES_INDEX.md`](docs/planning/MODULES_INDEX.md) for the full dependency graph, [`docs/decisions-log.md`](docs/decisions-log.md) for the running record of decisions, and [`docs/integration-testing.md`](docs/integration-testing.md) for the end-to-end browser integration pass.
+Test suite: **455 passing**. See [`docs/planning/MODULES_INDEX.md`](docs/planning/MODULES_INDEX.md) for the full dependency graph, [`docs/decisions-log.md`](docs/decisions-log.md) for the running record of decisions, and [`docs/integration-testing.md`](docs/integration-testing.md) for the end-to-end browser integration pass.
 
 ## Planning
 

@@ -51,7 +51,7 @@
         {{-- Tabs --}}
         <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
             <nav class="flex gap-6 -mb-px">
-                @foreach(['summary' => 'Summary', 'photos' => 'Photos ('.$asset->photos->count().')', 'attachments' => 'Attachments ('.$asset->attachments->count().')', 'tags' => 'Tags ('.$asset->tagAssignments->count().')', 'movements' => 'Movements ('.$asset->movements->count().')', 'history' => 'History'] as $key => $label)
+                @foreach(['summary' => 'Summary', 'photos' => 'Photos ('.$asset->photos->count().')', 'attachments' => 'Attachments ('.$asset->attachments->count().')', 'tags' => 'Tags ('.$asset->tagAssignments->count().')', 'movements' => 'Movements ('.$asset->movements->count().')', 'maintenance' => 'Maintenance ('.($asset->maintenanceRecords->count() + $asset->amcContracts->count() + $asset->warrantyRecords->count()).')', 'history' => 'History'] as $key => $label)
                     <button @click="tab = '{{ $key }}'"
                             :class="tab === '{{ $key }}' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
                             class="pb-3 text-sm font-medium border-b-2 transition-colors">
@@ -86,6 +86,11 @@
                 @endcan
                 <div><dt class="text-gray-400 text-xs uppercase tracking-wide">Warranty Expiry</dt><dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ optional($asset->warranty_expiry)->format('d M Y') ?? '—' }}</dd></div>
                 <div><dt class="text-gray-400 text-xs uppercase tracking-wide">AMC Expiry</dt><dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ optional($asset->amc_expiry)->format('d M Y') ?? '—' }}</dd></div>
+                <div><dt class="text-gray-400 text-xs uppercase tracking-wide">End of Life</dt><dd class="mt-0.5">
+                    @if($asset->is_eol)
+                        <x-status-badge color="red" label="{{ 'EOL'.($asset->eol_projected_date ? ' · '.$asset->eol_projected_date->format('d M Y') : '') }}" />
+                    @else — @endif
+                </dd></div>
                 <div><dt class="text-gray-400 text-xs uppercase tracking-wide">Created By</dt><dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ $asset->creator?->name ?? '—' }}</dd></div>
             </dl>
             @if($asset->description)
@@ -337,6 +342,145 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        {{-- Maintenance tab (M11) --}}
+        <div x-show="tab === 'maintenance'" class="space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+                <div class="flex items-center justify-between mb-5">
+                    <div>
+                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Maintenance Records</p>
+                        <p class="text-xs text-gray-400 mt-0.5">Total repair/maintenance cost: {{ number_format($asset->maintenanceRecords->sum('cost'), 2) }}</p>
+                    </div>
+                    @can('maintenance.manage')
+                        <a href="{{ route('assets.maintenance.create', $asset) }}"
+                           class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">
+                            Log Maintenance
+                        </a>
+                    @endcan
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vendor</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cost</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                                @can('maintenance.manage')<th class="px-4 py-2"></th>@endcan
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @forelse($asset->maintenanceRecords as $record)
+                                <tr>
+                                    <td class="px-4 py-2 text-gray-900 dark:text-gray-100">{{ $record->maintenanceType?->name }}</td>
+                                    <td class="px-4 py-2">
+                                        @php
+                                            $maintStatusColor = match($record->status) {
+                                                'completed' => 'green', 'in_progress' => 'amber', 'cancelled' => 'red', default => 'gray',
+                                            };
+                                        @endphp
+                                        <x-status-badge :color="$maintStatusColor" :label="ucwords(str_replace('_', ' ', $record->status))" />
+                                    </td>
+                                    <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $record->vendor ?? '—' }}</td>
+                                    <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $record->cost !== null ? number_format($record->cost, 2) : '—' }}</td>
+                                    <td class="px-4 py-2 text-gray-500 dark:text-gray-400">{{ $record->created_at->format('d M Y') }}</td>
+                                    @can('maintenance.manage')
+                                    <td class="px-4 py-2 text-right">
+                                        <a href="{{ route('assets.maintenance.edit', [$asset, $record]) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">Edit</a>
+                                    </td>
+                                    @endcan
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="px-4 py-8 text-center text-sm text-gray-400">No maintenance records.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+                <div class="flex items-center justify-between mb-5">
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">AMC Contracts</p>
+                    @can('maintenance.manage')
+                        <a href="{{ route('assets.amc.create', $asset) }}"
+                           class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">
+                            Add AMC Contract
+                        </a>
+                    @endcan
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vendor</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Coverage Period</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cost</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                @can('maintenance.manage')<th class="px-4 py-2"></th>@endcan
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @forelse($asset->amcContracts as $contract)
+                                <tr>
+                                    <td class="px-4 py-2 text-gray-900 dark:text-gray-100">{{ $contract->vendor }}</td>
+                                    <td class="px-4 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $contract->start_date->format('d M Y') }} &ndash; {{ $contract->end_date->format('d M Y') }}</td>
+                                    <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $contract->cost !== null ? number_format($contract->cost, 2) : '—' }}</td>
+                                    <td class="px-4 py-2"><x-status-badge :color="$contract->end_date->isPast() ? 'red' : 'green'" :label="$contract->end_date->isPast() ? 'Expired' : 'Active'" /></td>
+                                    @can('maintenance.manage')
+                                    <td class="px-4 py-2 text-right">
+                                        <a href="{{ route('assets.amc.edit', [$asset, $contract]) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">Edit</a>
+                                    </td>
+                                    @endcan
+                                </tr>
+                            @empty
+                                <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-400">No AMC contracts.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+                <div class="flex items-center justify-between mb-5">
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Warranty Records</p>
+                    @can('maintenance.manage')
+                        <a href="{{ route('assets.warranty.create', $asset) }}"
+                           class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">
+                            Add Warranty Record
+                        </a>
+                    @endcan
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Provider</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Coverage Period</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                @can('maintenance.manage')<th class="px-4 py-2"></th>@endcan
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @forelse($asset->warrantyRecords as $warranty)
+                                <tr>
+                                    <td class="px-4 py-2 text-gray-900 dark:text-gray-100">{{ $warranty->provider }}</td>
+                                    <td class="px-4 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ optional($warranty->start_date)->format('d M Y') ?? '—' }} &ndash; {{ $warranty->end_date->format('d M Y') }}</td>
+                                    <td class="px-4 py-2"><x-status-badge :color="$warranty->end_date->isPast() ? 'red' : 'green'" :label="$warranty->end_date->isPast() ? 'Expired' : 'Active'" /></td>
+                                    @can('maintenance.manage')
+                                    <td class="px-4 py-2 text-right">
+                                        <a href="{{ route('assets.warranty.edit', [$asset, $warranty]) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">Edit</a>
+                                    </td>
+                                    @endcan
+                                </tr>
+                            @empty
+                                <tr><td colspan="4" class="px-4 py-8 text-center text-sm text-gray-400">No warranty records.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 

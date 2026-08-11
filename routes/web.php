@@ -25,6 +25,9 @@ use App\Http\Controllers\Assets\PhotoController;
 use App\Http\Controllers\Assets\TagController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\Disposal\DisposalController;
+use App\Http\Controllers\Maintenance\AmcController;
+use App\Http\Controllers\Maintenance\MaintenanceController;
+use App\Http\Controllers\Maintenance\WarrantyController;
 use App\Http\Controllers\Movement\MovementBatchController;
 use App\Http\Controllers\Movement\MovementController;
 use App\Http\Controllers\Reports\ReportController;
@@ -73,6 +76,29 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::get('assets/{asset}/tags/replace', [TagController::class, 'replaceForm'])->name('assets.tags.replace');
     Route::post('assets/{asset}/tags/replace', [TagController::class, 'submitReplacement'])->name('assets.tags.replace.submit');
 
+    // Maintenance / AMC / Warranty (M11) — nested per-asset CRUD
+    Route::prefix('assets/{asset}/maintenance')->name('assets.maintenance.')->group(function () {
+        Route::get('create', [MaintenanceController::class, 'create'])->name('create');
+        Route::post('/', [MaintenanceController::class, 'store'])->name('store');
+        Route::get('{maintenance}/edit', [MaintenanceController::class, 'edit'])->name('edit');
+        Route::put('{maintenance}', [MaintenanceController::class, 'update'])->name('update');
+        Route::delete('{maintenance}', [MaintenanceController::class, 'destroy'])->name('destroy');
+    });
+    Route::prefix('assets/{asset}/amc')->name('assets.amc.')->group(function () {
+        Route::get('create', [AmcController::class, 'create'])->name('create');
+        Route::post('/', [AmcController::class, 'store'])->name('store');
+        Route::get('{amc}/edit', [AmcController::class, 'edit'])->name('edit');
+        Route::put('{amc}', [AmcController::class, 'update'])->name('update');
+        Route::delete('{amc}', [AmcController::class, 'destroy'])->name('destroy');
+    });
+    Route::prefix('assets/{asset}/warranty')->name('assets.warranty.')->group(function () {
+        Route::get('create', [WarrantyController::class, 'create'])->name('create');
+        Route::post('/', [WarrantyController::class, 'store'])->name('store');
+        Route::get('{warranty}/edit', [WarrantyController::class, 'edit'])->name('edit');
+        Route::put('{warranty}', [WarrantyController::class, 'update'])->name('update');
+        Route::delete('{warranty}', [WarrantyController::class, 'destroy'])->name('destroy');
+    });
+
     // Scan resolver (M05) — contract for M10 audit QR verification
     Route::get('/scan/{tag_number}', [ScanController::class, 'resolve'])->name('scan.resolve');
 
@@ -86,6 +112,11 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::post('/', [MovementController::class, 'store'])->name('store');
         Route::post('{movement}/verify', [MovementController::class, 'verify'])->name('verify');
     });
+
+    // Maintenance / AMC / Warranty (M11) — global lists across every asset
+    Route::get('maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
+    Route::get('amc', [AmcController::class, 'index'])->name('amc.index');
+    Route::get('warranty', [WarrantyController::class, 'index'])->name('warranty.index');
 
     // Disposal & Scrap (M13)
     Route::prefix('disposals')->name('disposals.')->group(function () {

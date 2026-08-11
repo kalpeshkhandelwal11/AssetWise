@@ -20,17 +20,20 @@ class Asset extends Model
         'location_id', 'building_id', 'floor_id', 'room_id',
         'custodian_id', 'department_id', 'branch_id',
         'purchase_date', 'purchase_cost', 'vendor', 'warranty_expiry', 'amc_expiry',
+        'is_eol', 'eol_projected_date',
         'notes', 'is_active', 'created_by', 'updated_by',
     ];
 
     protected function casts(): array
     {
         return [
-            'purchase_date'    => 'date',
-            'warranty_expiry'  => 'date',
-            'amc_expiry'       => 'date',
-            'purchase_cost'    => 'decimal:2',
-            'is_active'        => 'boolean',
+            'purchase_date'       => 'date',
+            'warranty_expiry'     => 'date',
+            'amc_expiry'          => 'date',
+            'eol_projected_date'  => 'date',
+            'purchase_cost'       => 'decimal:2',
+            'is_active'           => 'boolean',
+            'is_eol'              => 'boolean',
         ];
     }
 
@@ -139,9 +142,29 @@ class Asset extends Model
         return $this->hasMany(DisposalRequest::class)->latest('created_at');
     }
 
+    public function maintenanceRecords(): HasMany
+    {
+        return $this->hasMany(MaintenanceRecord::class)->latest('created_at');
+    }
+
+    public function amcContracts(): HasMany
+    {
+        return $this->hasMany(AmcContract::class)->latest('end_date');
+    }
+
+    public function warrantyRecords(): HasMany
+    {
+        return $this->hasMany(WarrantyRecord::class)->latest('end_date');
+    }
+
     public function isDisposed(): bool
     {
         return $this->status?->code === 'DISPOSED';
+    }
+
+    public function isUnderMaintenance(): bool
+    {
+        return $this->status?->code === 'MAINTENANCE';
     }
 
     public function hasPendingMovement(): bool

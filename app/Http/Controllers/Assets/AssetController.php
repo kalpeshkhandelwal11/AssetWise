@@ -112,6 +112,8 @@ class AssetController extends Controller
             'tagAssignments.tag', 'tagAssignments.assignedBy',
             'movements.movementType', 'movements.toCompany', 'movements.toLocation',
             'movements.toCustodian', 'movements.toDepartment', 'movements.requestedBy',
+            'maintenanceRecords.maintenanceType', 'maintenanceRecords.loggedBy',
+            'amcContracts.createdBy', 'warrantyRecords.createdBy',
         ]);
 
         $activities = Activity::where('subject_type', Asset::class)
@@ -156,6 +158,10 @@ class AssetController extends Controller
         $resolved = $data['_resolved_fields'];
         $fieldInput = $data['fields'];
         unset($data['fields'], $data['_resolved_fields']);
+
+        // Checkboxes omit themselves from the request when unchecked, so 'sometimes|boolean'
+        // alone can never turn is_eol back off — read it explicitly, same as WorkflowController.
+        $data['is_eol'] = $request->boolean('is_eol');
 
         $this->assets->update($asset, $data, $request->user());
         $this->fields->saveValues($asset, $fieldInput, $resolved);
@@ -243,6 +249,8 @@ class AssetController extends Controller
             'vendor'           => 'nullable|string|max:255',
             'warranty_expiry'  => 'nullable|date',
             'amc_expiry'       => 'nullable|date',
+            'is_eol'           => 'sometimes|boolean',
+            'eol_projected_date' => 'nullable|date',
             'notes'            => 'nullable|string',
         ];
     }

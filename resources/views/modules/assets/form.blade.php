@@ -296,6 +296,16 @@
                         <x-text-input id="amc_expiry" type="date" name="amc_expiry" class="mt-1 block w-full" :value="old('amc_expiry', optional($asset->amc_expiry)->format('Y-m-d'))" />
                         <x-input-error :messages="$errors->get('amc_expiry')" class="mt-1" />
                     </div>
+                    <div>
+                        <x-input-label for="eol_projected_date" value="EOL Projected Date" />
+                        <x-text-input id="eol_projected_date" type="date" name="eol_projected_date" class="mt-1 block w-full" :value="old('eol_projected_date', optional($asset->eol_projected_date)->format('Y-m-d'))" />
+                        <x-input-error :messages="$errors->get('eol_projected_date')" class="mt-1" />
+                    </div>
+                    <div class="flex items-center gap-2 pt-6">
+                        <input type="checkbox" id="is_eol" name="is_eol" value="1" @checked(old('is_eol', $asset->is_eol)) class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <x-input-label for="is_eol" value="End of Life" />
+                        <x-input-error :messages="$errors->get('is_eol')" class="mt-1" />
+                    </div>
                 </div>
             </div>
 
