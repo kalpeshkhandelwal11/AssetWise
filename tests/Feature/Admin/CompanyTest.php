@@ -194,4 +194,83 @@ class CompanyTest extends TestCase
 
         $this->assertTrue($company->refresh()->is_active);
     }
+
+    // --- Company Info: hierarchy + legal/tax + registered address ---
+
+    public function test_store_persists_company_info_fields(): void
+    {
+        $parent = Company::factory()->create(['code' => 'PARENT']);
+
+        $this->actingAs($this->admin())
+             ->post(route('admin.companies.store'), [
+                 'name'               => 'Subsidiary Co',
+                 'legal_name'         => 'Subsidiary Co Private Limited',
+                 'code'               => 'SUBCO',
+                 'parent_company_id'  => $parent->id,
+                 'is_head_office'     => '1',
+                 'gstin'              => '27AAAAA0000A1Z5',
+                 'pan'                => 'AAAAA0000A',
+                 'cin'                => 'U00000MH2020PTC000000',
+                 'registered_address' => '1 Reg Street',
+                 'registered_city'    => 'Mumbai',
+                 'registered_state'   => 'Maharashtra',
+                 'registered_pincode' => '400001',
+                 'registered_country' => 'India',
+             ])
+             ->assertRedirect(route('admin.companies.index'))
+             ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('companies', [
+            'code'              => 'SUBCO',
+            'legal_name'        => 'Subsidiary Co Private Limited',
+            'parent_company_id' => $parent->id,
+            'is_head_office'    => true,
+            'gstin'             => '27AAAAA0000A1Z5',
+            'registered_state'  => 'Maharashtra',
+        ]);
+    }
+
+    public function test_unchecked_head_office_stores_false(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('admin.companies.store'), ['name' => 'Plain Co', 'code' => 'PLAIN']);
+
+        $this->assertDatabaseHas('companies', ['code' => 'PLAIN', 'is_head_office' => false]);
+    }
+
+    public function test_company_cannot_be_its_own_parent(): void
+    {
+        $company = Company::factory()->create(['code' => 'SELF']);
+
+        $this->actingAs($this->admin())
+             ->put(route('admin.companies.update', $company), [
+                 'name'              => 'Self Co',
+                 'code'              => 'SELF',
+                 'parent_company_id' => $company->id,
+             ])
+             ->assertSessionHasErrors('parent_company_id');
+
+        $this->assertNull($company->refresh()->parent_company_id);
+    }
+
+    public function test_store_rejects_bad_length_tax_ids(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('admin.companies.store'), [
+                 'name'  => 'Bad Tax Co',
+                 'code'  => 'BADTAX',
+                 'gstin' => 'TOOSHORT',
+                 'pan'   => 'X',
+             ])
+             ->assertSessionHasErrors(['gstin', 'pan']);
+    }
+
+    public function test_parent_company_relationship_resolves(): void
+    {
+        $parent = Company::factory()->create(['code' => 'HOLDCO']);
+        $child = Company::factory()->create(['code' => 'CHILDCO', 'parent_company_id' => $parent->id]);
+
+        $this->assertTrue($child->parentCompany->is($parent));
+        $this->assertTrue($parent->childCompanies->contains($child));
+    }
 }

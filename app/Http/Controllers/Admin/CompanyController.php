@@ -34,25 +34,20 @@ class CompanyController extends Controller
     {
         $this->authorize('companies.manage');
 
-        return view('admin.companies.form', ['company' => new Company()]);
+        return view('admin.companies.form', [
+            'company'   => new Company(),
+            'companies' => Company::where('is_active', true)->orderBy('name')->get(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $this->authorize('companies.manage');
 
-        $data = $request->validate([
-            'name'          => 'required|string|max:255',
-            'code'          => 'required|string|max:50|unique:companies,code|alpha_dash',
-            'address'       => 'nullable|string|max:500',
-            'city'          => 'nullable|string|max:100',
-            'country'       => 'nullable|string|max:100',
-            'contact_name'  => 'nullable|string|max:150',
-            'contact_email' => 'nullable|email|max:150',
-            'contact_phone' => 'nullable|string|max:50',
-        ]);
+        $data = $request->validate($this->rules());
 
         $data['code'] = strtoupper($data['code']);
+        $data['is_head_office'] = $request->boolean('is_head_office');
         Company::create($data);
 
         return redirect()->route('admin.companies.index')
@@ -63,29 +58,67 @@ class CompanyController extends Controller
     {
         $this->authorize('companies.manage');
 
-        return view('admin.companies.form', compact('company'));
+        return view('admin.companies.form', [
+            'company'   => $company,
+            'companies' => Company::where('is_active', true)
+                ->where('id', '!=', $company->id)
+                ->orderBy('name')->get(),
+        ]);
     }
 
     public function update(Request $request, Company $company): RedirectResponse
     {
         $this->authorize('companies.manage');
 
-        $data = $request->validate([
-            'name'          => 'required|string|max:255',
-            'code'          => 'required|string|max:50|alpha_dash|unique:companies,code,' . $company->id,
-            'address'       => 'nullable|string|max:500',
-            'city'          => 'nullable|string|max:100',
-            'country'       => 'nullable|string|max:100',
-            'contact_name'  => 'nullable|string|max:150',
-            'contact_email' => 'nullable|email|max:150',
-            'contact_phone' => 'nullable|string|max:50',
-        ]);
+        $data = $request->validate($this->rules($company));
+
+        // A company cannot be its own parent.
+        if ((int) ($data['parent_company_id'] ?? 0) === $company->id) {
+            return back()->withInput()
+                ->withErrors(['parent_company_id' => 'A company cannot be its own parent.']);
+        }
 
         $data['code'] = strtoupper($data['code']);
+        $data['is_head_office'] = $request->boolean('is_head_office');
         $company->update($data);
 
         return redirect()->route('admin.companies.index')
             ->with('success', 'Company updated successfully.');
+    }
+
+    /**
+     * Shared validation rules for store/update. Pass the current company on update
+     * so its own code and parent are excluded from the uniqueness/self checks.
+     */
+    private function rules(?Company $company = null): array
+    {
+        $codeUnique = 'unique:companies,code' . ($company ? ',' . $company->id : '');
+        $parentRule = ['nullable', 'exists:companies,id'];
+        if ($company) {
+            $parentRule[] = 'not_in:' . $company->id;
+        }
+
+        return [
+            'name'               => 'required|string|max:255',
+            'legal_name'         => 'nullable|string|max:255',
+            'code'               => "required|string|max:50|alpha_dash|$codeUnique",
+            'parent_company_id'  => $parentRule,
+            'is_head_office'     => 'boolean',
+            'address'            => 'nullable|string|max:500',
+            'city'               => 'nullable|string|max:100',
+            'country'            => 'nullable|string|max:100',
+            'gstin'              => 'nullable|string|size:15',
+            'pan'                => 'nullable|string|size:10',
+            'cin'                => 'nullable|string|size:21',
+            'registered_address' => 'nullable|string|max:500',
+            'registered_city'    => 'nullable|string|max:100',
+            'registered_state'   => 'nullable|string|max:100',
+            'registered_pincode' => 'nullable|string|max:12',
+            'registered_country' => 'nullable|string|max:100',
+            'contact_name'       => 'nullable|string|max:150',
+            'contact_email'      => 'nullable|email|max:150',
+            'contact_phone'      => 'nullable|string|max:50',
+        ];
     }
 
     public function toggleActive(Company $company): RedirectResponse

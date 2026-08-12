@@ -41,8 +41,15 @@
                     @forelse($companies as $company)
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                             <td class="px-4 py-3">
-                                <p class="font-medium text-gray-900 dark:text-gray-100">{{ $company->name }}</p>
-                                @if($company->city || $company->country)
+                                <p class="font-medium text-gray-900 dark:text-gray-100">
+                                    {{ $company->name }}
+                                    @if($company->is_head_office)
+                                        <span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">HO</span>
+                                    @endif
+                                </p>
+                                @if($company->parentCompany)
+                                    <p class="text-xs text-gray-400">Parent: {{ $company->parentCompany->name }}</p>
+                                @elseif($company->city || $company->country)
                                     <p class="text-xs text-gray-400">{{ collect([$company->city, $company->country])->filter()->join(', ') }}</p>
                                 @endif
                             </td>
