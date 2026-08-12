@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CategoryDepreciationController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\DepreciationMethodController;
 use App\Http\Controllers\Admin\FieldOverrideController;
+use App\Http\Controllers\Admin\KitSettingController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\LoginHistoryController;
@@ -31,6 +32,8 @@ use App\Http\Controllers\Assets\PhotoController;
 use App\Http\Controllers\Assets\TagController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\Disposal\DisposalController;
+use App\Http\Controllers\Kits\KitAssignmentController;
+use App\Http\Controllers\Kits\KitController;
 use App\Http\Controllers\Maintenance\AmcController;
 use App\Http\Controllers\Maintenance\MaintenanceController;
 use App\Http\Controllers\Maintenance\WarrantyController;
@@ -167,6 +170,19 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::get('amc', [AmcController::class, 'index'])->name('amc.index');
     Route::get('warranty', [WarrantyController::class, 'index'])->name('warranty.index');
 
+    // Asset Kits & Bundles (M17)
+    Route::resource('kits', KitController::class)->except(['show']);
+    Route::post('kits/{kit}/items', [KitController::class, 'storeItem'])->name('kits.items.store');
+    Route::delete('kits/{kit}/items/{item}', [KitController::class, 'destroyItem'])->name('kits.items.destroy');
+    Route::post('kits/{kit}/items/{item}/assets', [KitController::class, 'linkAsset'])->name('kits.items.assets.store');
+    Route::delete('kits/{kit}/items/{item}/assets/{kitAsset}', [KitController::class, 'unlinkAsset'])->name('kits.items.assets.destroy');
+
+    Route::get('kit-assignments', [KitAssignmentController::class, 'index'])->name('kit-assignments.index');
+    Route::get('kit-assignments/create', [KitAssignmentController::class, 'create'])->name('kit-assignments.create');
+    Route::post('kit-assignments', [KitAssignmentController::class, 'store'])->name('kit-assignments.store');
+    Route::get('kit-assignments/{kitAssignment}', [KitAssignmentController::class, 'show'])->name('kit-assignments.show');
+    Route::post('kit-assignments/{kitAssignment}/return', [KitAssignmentController::class, 'returnKit'])->name('kit-assignments.return');
+
     // Disposal & Scrap (M13)
     Route::prefix('disposals')->name('disposals.')->group(function () {
         Route::get('/', [DisposalController::class, 'index'])->name('index');
@@ -245,6 +261,8 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         });
         Route::get('/settings/tags', [SettingController::class, 'edit'])->name('settings.tags.edit');
         Route::patch('/settings/tags', [SettingController::class, 'update'])->name('settings.tags.update');
+        Route::get('/settings/kits', [KitSettingController::class, 'edit'])->name('settings.kits.edit');
+        Route::patch('/settings/kits', [KitSettingController::class, 'update'])->name('settings.kits.update');
 
         // Companies
         Route::resource('companies', CompanyController::class)->except(['show']);

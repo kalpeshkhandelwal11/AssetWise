@@ -18,5 +18,9 @@ class SettingsSeeder extends Seeder
         // M16: Companies Act Schedule II residual convention — used when a category/asset
         // sets neither a fixed salvage value nor a salvage percent.
         Setting::firstOrCreate(['key' => 'depreciation_default_salvage_percent'], ['value' => '5']);
+
+        // M17: kit assignment approval granularity — 'single' (one approval per kit) or
+        // 'per_asset' (one approval per asset in the kit).
+        Setting::firstOrCreate(['key' => 'kit_assignment_approval_mode'], ['value' => 'single']);
     }
 }

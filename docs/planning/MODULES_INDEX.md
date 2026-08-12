@@ -5,7 +5,7 @@
 
 This index splits the BRD into **18 independent modules (M00–M17)** so Developer 1 and Developer 2 can work in parallel after shared foundation.
 
-> **Current status:** M00, M01, M02, M03, M04, M05, M06, M07, M08, M09, M10, M11, M13, M14 and M16 are complete on `daniels_branch` (509 tests passing). M00–M09 and M13 have been verified end to end in a browser — see [`../integration-testing.md`](../integration-testing.md) for that pass and the six defects it caught; M10, M11, M14 and M16 shipped after that pass and have not yet had a dedicated browser integration pass.
+> **Current status:** **All modules M00–M17 are complete** on `daniels_branch` (577 tests passing). M00–M09 and M13 have been verified end to end in a browser — see [`../integration-testing.md`](../integration-testing.md) for that pass and the six defects it caught; M10, M11, M12, M14, M15, M16 and M17 shipped after that pass and have not yet had a dedicated browser integration pass.
 
 ---
 
@@ -104,7 +104,7 @@ mysql --version
 | [M14](modules/M14-reports-dashboard.md) | Reports & Dashboard | ✅ done | Dev 2 | 3 | M03+ | M13, M15 |
 | [M15](modules/M15-pwa.md) | PWA (Full Site) | ✅ done | Dev 2 | 3 | M00 UI ✅ | M14 |
 | [M16](modules/M16-depreciation.md) | Depreciation | ✅ done | Dev 2 | 2 | M03 ✅ | M09, M17 |
-| [M17](modules/M17-asset-kits.md) | Asset Kits & Bundles | ⏳ unblocked | Dev 2 | 2 | M03 ✅, M08 ✅, M09 ✅ | M10, M16 |
+| [M17](modules/M17-asset-kits.md) | Asset Kits & Bundles | ✅ done | Dev 2 | 2 | M03 ✅, M08 ✅, M09 ✅ | M10, M16 |
 
 **Status key:** ✅ done · 🔄 next (start here) · ⏳ unblocked (dependencies met, not started) · ⏳ pending (still waiting on a dependency) · 🟡 partial
 
@@ -177,9 +177,8 @@ gantt
 ### Where to start today
 
 - **Dev 1** → M00–M07 are all done.
-- **Dev 2** → M08, M09, M10, M11, M12, M13, M14, M15 and M16 are all done. Remaining module is unblocked (no dependency outstanding):
-  - **M17** (Asset Kits) — M03, M08 and M09 have all shipped; build kit assignments on M09's `AssetMovementBatch` model rather than a new grouping table (see M09's decisions-log entry).
-- M10 shipped with its own `audit_campaign` entry in `ReportRegistry` (cross-campaign verification findings, distinct from the M09-backed Audit/Compliance report), and M16 shipped with a `depreciation_schedule` entry — both promoted from "coming soon" to enabled. The Maintenance Report entry can be promoted too now that M11 has shipped.
+- **Dev 2** → M08–M17 are all done. **Every planned module (M00–M17) has shipped.** M17 built kit assignments on M09's `AssetMovementBatch` (`kit_assignment_id`) rather than a new grouping table, so the spec's `kit_assignment_items` table was dropped.
+- M10 shipped with its own `audit_campaign` entry in `ReportRegistry` (cross-campaign verification findings, distinct from the M09-backed Audit/Compliance report), and M16 shipped with a `depreciation_schedule` entry — both promoted from "coming soon" to enabled. The **Maintenance Report** entry is still `enabled => false` and can be promoted now that M11 has shipped (deferred by the owner).
 - Before planning any module, read its spec in `modules/`, then the matching "Pending Decisions" block in [`../decisions-log.md`](../decisions-log.md) — resolve open `P#.#` items with the product owner *before* writing code.
 
 ---

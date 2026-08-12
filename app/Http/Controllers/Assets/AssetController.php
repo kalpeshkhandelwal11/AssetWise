@@ -114,6 +114,7 @@ class AssetController extends Controller
             'movements.toCustodian', 'movements.toDepartment', 'movements.requestedBy',
             'maintenanceRecords.maintenanceType', 'maintenanceRecords.loggedBy',
             'amcContracts.createdBy', 'warrantyRecords.createdBy',
+            'kitAssets.kitItem.kit',
         ]);
 
         $activities = Activity::where('subject_type', Asset::class)

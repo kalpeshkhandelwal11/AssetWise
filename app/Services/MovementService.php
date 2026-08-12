@@ -76,8 +76,30 @@ class MovementService
      * Bulk multi-select submission (P9.1 — one approval for the whole batch). Creates the
      * child asset_movements rows up front so the approver inbox and per-asset movement
      * tabs already show "pending" entries; apply() of each one waits for applyBulk().
+     *
+     * The whole thing stays in one transaction so a WorkflowService::submit() failure never
+     * leaves an orphaned batch (CLAUDE.md orphan-guard). buildBatch()'s inner transaction is
+     * a savepoint under this outer one, so an outer failure still rolls the batch back.
      */
     public function submitBatch(Collection $assets, array $data, User $actor): AssetMovementBatch
+    {
+        return DB::transaction(function () use ($assets, $data, $actor) {
+            $batch = $this->buildBatch($assets, $data, $actor);
+
+            $approvalRequest = $this->workflows->submit($batch, 'transfer', $actor);
+            $batch->update(['approval_request_id' => $approvalRequest->id]);
+
+            return $batch;
+        });
+    }
+
+    /**
+     * Create an AssetMovementBatch + its child asset_movements WITHOUT submitting a workflow.
+     * Shared by submitBatch() (transfer approval) and M17's KitAssignmentService, which submits
+     * the owning kit_assignment to the 'kit_assignment' workflow instead. Pass $kitAssignmentId
+     * to tag the batch so applyBulk() denormalizes it onto each movement on approval.
+     */
+    public function buildBatch(Collection $assets, array $data, User $actor, ?int $kitAssignmentId = null): AssetMovementBatch
     {
         $movementType = MovementType::findOrFail($data['movement_type_id']);
 
@@ -85,17 +107,18 @@ class MovementService
             $this->assertMovable($asset, $movementType, $data);
         }
 
-        return DB::transaction(function () use ($assets, $data, $movementType, $actor) {
+        return DB::transaction(function () use ($assets, $data, $movementType, $actor, $kitAssignmentId) {
             $batch = AssetMovementBatch::create([
-                'movement_type_id' => $movementType->id,
-                'to_company_id'    => $data['to_company_id'] ?? null,
-                'to_location_id'   => $data['to_location_id'] ?? null,
-                'to_custodian_id'  => $data['to_custodian_id'] ?? null,
-                'to_department_id' => $data['to_department_id'] ?? null,
-                'to_status_id'     => $data['to_status_id'] ?? null,
-                'status'           => 'pending_approval',
-                'notes'            => $data['notes'] ?? null,
-                'requested_by'     => $actor->id,
+                'movement_type_id'  => $movementType->id,
+                'to_company_id'     => $data['to_company_id'] ?? null,
+                'to_location_id'    => $data['to_location_id'] ?? null,
+                'to_custodian_id'   => $data['to_custodian_id'] ?? null,
+                'to_department_id'  => $data['to_department_id'] ?? null,
+                'to_status_id'      => $data['to_status_id'] ?? null,
+                'kit_assignment_id' => $kitAssignmentId,
+                'status'            => 'pending_approval',
+                'notes'             => $data['notes'] ?? null,
+                'requested_by'      => $actor->id,
             ]);
 
             foreach ($assets as $asset) {
@@ -116,9 +139,6 @@ class MovementService
                     'requested_by'       => $actor->id,
                 ]);
             }
-
-            $approvalRequest = $this->workflows->submit($batch, 'transfer', $actor);
-            $batch->update(['approval_request_id' => $approvalRequest->id]);
 
             return $batch;
         });

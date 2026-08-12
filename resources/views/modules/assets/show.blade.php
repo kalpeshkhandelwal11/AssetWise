@@ -51,7 +51,8 @@
         {{-- Tabs --}}
         <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
             <nav class="flex gap-6 -mb-px">
-                @foreach(['summary' => 'Summary', 'photos' => 'Photos ('.$asset->photos->count().')', 'attachments' => 'Attachments ('.$asset->attachments->count().')', 'tags' => 'Tags ('.$asset->tagAssignments->count().')', 'movements' => 'Movements ('.$asset->movements->count().')', 'maintenance' => 'Maintenance ('.($asset->maintenanceRecords->count() + $asset->amcContracts->count() + $asset->warrantyRecords->count()).')', 'history' => 'History'] as $key => $label)
+                @php $kitMemberships = $asset->kitAssets->pluck('kitItem.kit')->filter()->unique('id')->values(); @endphp
+                @foreach(['summary' => 'Summary', 'photos' => 'Photos ('.$asset->photos->count().')', 'attachments' => 'Attachments ('.$asset->attachments->count().')', 'tags' => 'Tags ('.$asset->tagAssignments->count().')', 'movements' => 'Movements ('.$asset->movements->count().')', 'maintenance' => 'Maintenance ('.($asset->maintenanceRecords->count() + $asset->amcContracts->count() + $asset->warrantyRecords->count()).')', 'kits' => 'Kits ('.$kitMemberships->count().')', 'history' => 'History'] as $key => $label)
                     <button @click="tab = '{{ $key }}'"
                             :class="tab === '{{ $key }}' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
                             class="pb-3 text-sm font-medium border-b-2 transition-colors">
@@ -482,6 +483,28 @@
                     </table>
                 </div>
             </div>
+        </div>
+
+        {{-- Kits tab (M17) — which kit templates include this asset --}}
+        <div x-show="tab === 'kits'" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Kit Memberships</p>
+            @if($kitMemberships->isEmpty())
+                <p class="text-sm text-gray-400">This asset isn't linked to any kit template.</p>
+            @else
+                <ul class="divide-y divide-gray-100 dark:divide-gray-700">
+                    @foreach($kitMemberships as $kit)
+                        <li class="flex items-center justify-between py-2.5 text-sm">
+                            <div>
+                                <span class="font-medium text-gray-900 dark:text-gray-100">{{ $kit->name }}</span>
+                                <span class="text-xs text-gray-400 ml-2 font-mono">{{ $kit->code }}</span>
+                            </div>
+                            @can('kits.manage')
+                                <a href="{{ route('kits.edit', $kit) }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Open kit</a>
+                            @endcan
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
         </div>
 
         {{-- History tab --}}

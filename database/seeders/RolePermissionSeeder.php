@@ -57,6 +57,9 @@ class RolePermissionSeeder extends Seeder
             // Depreciation (M16)
             'depreciation.manage', 'depreciation.view',
 
+            // Asset Kits (M17)
+            'kits.manage', 'kits.assign', 'kits.view',
+
             // Reports
             'reports.view', 'reports.export',
 
@@ -91,6 +94,7 @@ class RolePermissionSeeder extends Seeder
             'audit.manage', 'audit.verify',
             'maintenance.manage',
             'depreciation.manage', 'depreciation.view',
+            'kits.manage', 'kits.assign', 'kits.view',
             'disposal.request', 'disposal.complete',
             // The default transfer + tag_replacement workflows (WorkflowSeeder) both route
             // a step to Asset Manager, so the role needs to be able to act on approvals.
@@ -108,6 +112,7 @@ class RolePermissionSeeder extends Seeder
             'assets.view',
             'movement.assign',
             'depreciation.view',
+            'kits.view',
             'reports.view',
         ]);
 
@@ -123,6 +128,7 @@ class RolePermissionSeeder extends Seeder
             // own test had to grant the permission by hand).
             'tags.view',
             'depreciation.view',
+            'kits.view',
             'reports.view',
             'masters.view',
             'activity_log.view',
@@ -137,6 +143,7 @@ class RolePermissionSeeder extends Seeder
             'movement.verify',
             'disposal.approve',
             'depreciation.view',
+            'kits.view',
             'reports.view',
         ]);
 
@@ -146,6 +153,7 @@ class RolePermissionSeeder extends Seeder
         $viewer->syncPermissions([
             'assets.view',
             'depreciation.view',
+            'kits.view',
             'reports.view',
         ]);
     }

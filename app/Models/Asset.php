@@ -184,6 +184,12 @@ class Asset extends Model
         return $this->depreciationRequests()->where('status', 'pending_approval')->exists();
     }
 
+    /** Kit-template slots this asset is linked to (M17) — drives the asset's "Kits" tab. */
+    public function kitAssets(): HasMany
+    {
+        return $this->hasMany(KitAsset::class);
+    }
+
     public function isDisposed(): bool
     {
         return $this->status?->code === 'DISPOSED';
