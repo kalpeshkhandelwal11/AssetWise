@@ -1,0 +1,13 @@
+{
+  "name": "assetwise-screenshots",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Regenerates the AssetWise user-handbook screenshots by driving the app with Playwright.",
+  "scripts": {
+    "capture": "node capture.cjs",
+    "annotate": "node annotate.cjs"
+  },
+  "dependencies": {
+    "playwright": "^1.62.0"
+  }
+}
