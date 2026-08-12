@@ -14,10 +14,13 @@ use App\Models\Employee;
 use App\Models\Location;
 use App\Models\Tag;
 use App\Models\User;
+use App\Models\ApprovalWorkflow;
 use App\Services\AssetNamingService;
 use App\Services\AssetService;
 use App\Services\DynamicFieldService;
 use App\Services\TagService;
+use App\Services\WorkflowService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -31,6 +34,7 @@ class AssetController extends Controller
         private readonly DynamicFieldService $fields,
         private readonly TagService $tags,
         private readonly AssetNamingService $naming,
+        private readonly WorkflowService $workflows,
     ) {
     }
 
@@ -110,15 +114,52 @@ class AssetController extends Controller
             'tag_id'         => 'nullable|exists:tags,id',
         ]);
 
-        $asset = $this->assets->create($data, $request->user());
-        $this->fields->saveValues($asset, $fieldInput, $resolved);
+        // Create + (optionally) submit for creation approval atomically, so a WorkflowService
+        // misconfiguration never leaves a live asset with no request (CLAUDE.md orphan guard).
+        $asset = DB::transaction(function () use ($data, $fieldInput, $resolved, $request) {
+            $asset = $this->assets->create($data, $request->user());
+            $this->fields->saveValues($asset, $fieldInput, $resolved);
+
+            if ($this->hasActiveCreationWorkflow()) {
+                if ($draft = AssetStatus::where('code', 'DRAFT')->first()) {
+                    $asset->update(['status_id' => $draft->id]);
+                }
+                $this->workflows->submit($asset, 'asset_creation', $request->user());
+            }
+
+            return $asset;
+        });
+
         $this->storeMedia($asset, $request);
 
         if (! empty($extras['tag_id']) && $request->user()->can('tags.assign')) {
             $this->tags->assignToAsset(Tag::findOrFail($extras['tag_id']), $asset, $request->user());
         }
 
-        return redirect()->route('assets.show', $asset)->with('success', 'Asset created.');
+        $message = $asset->fresh()->isDraft()
+            ? 'Asset saved as draft and submitted for approval.'
+            : 'Asset created.';
+
+        return redirect()->route('assets.show', $asset)->with('success', $message);
+    }
+
+    /** Resubmit a draft (e.g. after a rejection) for creation approval. */
+    public function submitForApproval(Asset $asset): RedirectResponse
+    {
+        $this->authorize('update', $asset);
+
+        if (! $asset->isDraft() || $asset->hasPendingCreationApproval()) {
+            return back()->with('error', 'This asset is not a draft awaiting submission.');
+        }
+
+        $this->workflows->submit($asset, 'asset_creation', request()->user());
+
+        return back()->with('success', 'Asset submitted for approval.');
+    }
+
+    private function hasActiveCreationWorkflow(): bool
+    {
+        return ApprovalWorkflow::where('module', 'asset_creation')->where('is_active', true)->exists();
     }
 
     /** Save each uploaded create-form media file as a labelled AssetAttachment (reuses AttachmentController's storage layout). */

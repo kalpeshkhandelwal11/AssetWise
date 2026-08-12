@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -190,9 +191,34 @@ class Asset extends Model
         return $this->hasMany(KitAsset::class);
     }
 
+    public function approvalRequests(): MorphMany
+    {
+        return $this->morphMany(ApprovalRequest::class, 'approvable');
+    }
+
     public function isDisposed(): bool
     {
         return $this->status?->code === 'DISPOSED';
+    }
+
+    /** In the creation-approval holding state (M-create): saved but not yet approved live. */
+    public function isDraft(): bool
+    {
+        return $this->status?->code === 'DRAFT';
+    }
+
+    public function hasPendingCreationApproval(): bool
+    {
+        return $this->approvalRequests()
+            ->where('status', 'pending')
+            ->whereHas('workflow', fn ($q) => $q->where('module', 'asset_creation'))
+            ->exists();
+    }
+
+    /** Consumed by ApprovalRequest::getApprovableLabelAttribute() for the approver inbox. */
+    public function getApprovalLabel(): string
+    {
+        return 'New asset — ' . $this->name;
     }
 
     public function isUnderMaintenance(): bool

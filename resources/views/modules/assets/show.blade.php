@@ -4,12 +4,35 @@
         'warranty_card' => 'Warranty Card',
         'manual' => 'Manual',
         'agreement' => 'Agreement',
+        'photo' => 'Photo',
     ];
 @endphp
 <x-app-layout>
     @section('page-title', $asset->name)
 
     <div x-data="{ tab: 'summary' }">
+        @if($asset->isDraft())
+            <div class="mb-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex items-center justify-between gap-3">
+                <p class="text-sm text-amber-800 dark:text-amber-300">
+                    This asset is a <strong>draft</strong>.
+                    @if($asset->hasPendingCreationApproval())
+                        It is pending creation approval.
+                    @else
+                        It has not been approved yet — edit if needed and resubmit.
+                    @endif
+                </p>
+                @can('assets.edit')
+                    @unless($asset->hasPendingCreationApproval())
+                        <form method="POST" action="{{ route('assets.submit-approval', $asset) }}" class="flex-shrink-0">
+                            @csrf
+                            <button type="submit" class="px-3 py-1.5 text-xs font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700">
+                                Submit for approval
+                            </button>
+                        </form>
+                    @endunless
+                @endcan
+            </div>
+        @endif
         <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-3">
                 <a href="{{ route('assets.index') }}" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">

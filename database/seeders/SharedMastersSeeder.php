@@ -47,6 +47,7 @@ class SharedMastersSeeder extends Seeder
 
         // Asset statuses (system = cannot be deleted/deactivated)
         $statuses = [
+            ['name' => 'Draft',           'code' => 'DRAFT',          'color' => '#9ca3af', 'is_system' => true],
             ['name' => 'Available',       'code' => 'AVAILABLE',      'color' => '#22c55e', 'is_system' => true],
             ['name' => 'Assigned',        'code' => 'ASSIGNED',       'color' => '#3b82f6', 'is_system' => true],
             ['name' => 'In Maintenance',  'code' => 'MAINTENANCE',    'color' => '#f59e0b', 'is_system' => true],

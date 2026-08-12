@@ -242,6 +242,12 @@ class MovementService
             ]);
         }
 
+        if ($asset->isDraft()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" is a draft pending creation approval and cannot be moved.",
+            ]);
+        }
+
         if ($asset->hasPendingMovement()) {
             throw ValidationException::withMessages([
                 'asset' => "\"{$asset->name}\" already has a movement pending approval.",

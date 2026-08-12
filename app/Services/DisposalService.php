@@ -151,6 +151,12 @@ class DisposalService
             ]);
         }
 
+        if ($asset->isDraft()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" is a draft pending creation approval and cannot be disposed.",
+            ]);
+        }
+
         if ($asset->hasPendingMovement()) {
             throw ValidationException::withMessages([
                 'asset' => "\"{$asset->name}\" has a movement pending approval and cannot be disposed.",

@@ -175,7 +175,10 @@
                             class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
                         <option value="">— Select —</option>
                         @foreach($statuses as $status)
-                            <option value="{{ $status->id }}" @selected(old('status_id', $asset->status_id) == $status->id)>{{ $status->name }}</option>
+                            {{-- DRAFT is system-managed by the creation-approval flow, not chosen manually. --}}
+                            @if($status->code !== 'DRAFT')
+                                <option value="{{ $status->id }}" @selected(old('status_id', $asset->status_id) == $status->id)>{{ $status->name }}</option>
+                            @endif
                         @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('status_id')" class="mt-1" />

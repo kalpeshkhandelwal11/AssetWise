@@ -434,10 +434,12 @@ class WorkflowServiceTest extends TestCase
     {
         $this->seedRolesAndPermissions();
         $this->workflow();
-        $asset = $this->asset();
+        // A model with no getApprovalLabel() exercises the class-#id fallback. (Asset now
+        // defines getApprovalLabel() for the creation-approval inbox, so it no longer does.)
+        $company = \App\Models\Company::factory()->create();
 
-        $request = $this->service()->submit($asset, 'transfer', User::factory()->create());
+        $request = $this->service()->submit($company, 'transfer', User::factory()->create());
 
-        $this->assertSame('Asset #' . $asset->id, ApprovalRequest::find($request->id)->approvable_label);
+        $this->assertSame('Company #' . $company->id, ApprovalRequest::find($request->id)->approvable_label);
     }
 }

@@ -90,6 +90,7 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::post('assets/export', [ExportController::class, 'store'])->name('assets.export.store');
 
     Route::resource('assets', AssetController::class);
+    Route::post('assets/{asset}/submit-approval', [AssetController::class, 'submitForApproval'])->name('assets.submit-approval');
     Route::post('assets/{asset}/photos', [PhotoController::class, 'store'])->name('assets.photos.store');
     Route::delete('assets/{asset}/photos/{photo}', [PhotoController::class, 'destroy'])->name('assets.photos.destroy');
     Route::patch('assets/{asset}/photos/{photo}/primary', [PhotoController::class, 'setPrimary'])->name('assets.photos.primary');
