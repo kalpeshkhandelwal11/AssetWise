@@ -12,7 +12,12 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('asset_id')->constrained('assets')->restrictOnDelete();
-            $table->foreignId('asset_depreciation_setting_id')->constrained('asset_depreciation_settings')->cascadeOnDelete();
+            // Explicit short FK name — the auto-generated
+            // "depreciation_schedule_lines_asset_depreciation_setting_id_foreign" is 65 chars,
+            // over MySQL's 64-char identifier limit (SQLite in tests doesn't enforce it).
+            $table->foreignId('asset_depreciation_setting_id')
+                ->constrained('asset_depreciation_settings', indexName: 'dep_lines_setting_fk')
+                ->cascadeOnDelete();
 
             $table->unsignedSmallInteger('period_year');
             $table->unsignedTinyInteger('period_month');
