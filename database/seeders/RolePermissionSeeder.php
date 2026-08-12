@@ -117,6 +117,11 @@ class RolePermissionSeeder extends Seeder
         $auditor->syncPermissions([
             'assets.view',
             'audit.manage', 'audit.verify',
+            // M15 — scanning is how an auditor reaches a campaign item in the field, and
+            // ScanController::resolve() gates on tags.view. Without this the M10 branch that
+            // routes an auditor into verification was unreachable for the seeded role (its
+            // own test had to grant the permission by hand).
+            'tags.view',
             'depreciation.view',
             'reports.view',
             'masters.view',

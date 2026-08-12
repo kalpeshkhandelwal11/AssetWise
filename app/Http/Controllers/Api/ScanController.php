@@ -20,6 +20,34 @@ class ScanController extends Controller
     }
 
     /**
+     * GET /scan — M15's camera scan screen. Before this, nothing in the UI could start a
+     * scan: /scan/{tag_number} only resolved when a tag number was already in the URL, i.e.
+     * from a label scanned with the phone's native camera app.
+     */
+    public function index(): View
+    {
+        $this->authorize('tags.view');
+
+        return view('scan.index');
+    }
+
+    /**
+     * POST /scan — manual tag entry from <x-qr-scanner>. Exists because scan.resolve takes
+     * the tag in the path, which a plain HTML form cannot build; this keeps the fallback
+     * working with no JavaScript at all.
+     */
+    public function lookup(Request $request): RedirectResponse
+    {
+        $this->authorize('tags.view');
+
+        $data = $request->validate([
+            'tag_number' => 'required|string|max:100',
+        ]);
+
+        return redirect()->route('scan.resolve', ['tag_number' => trim($data['tag_number'])]);
+    }
+
+    /**
      * GET /scan/{tag_number} — web-session authenticated, matching every other route in
      * this app. Resolves by status: assigned -> straight to the asset detail page (or, for
      * an auditor with a pending audit item on this asset, into verification instead —

@@ -39,9 +39,16 @@ use App\Http\Controllers\Movement\MovementController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PwaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('dashboard'));
+
+// PWA (M15) — public by design: the worker, manifest and offline fallback must all resolve
+// for a logged-out or disconnected user. See PwaController for why /sw.js is proxied.
+Route::get('/sw.js', [PwaController::class, 'serviceWorker'])->name('pwa.sw');
+Route::get('/manifest.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest');
+Route::get('/offline', [PwaController::class, 'offline'])->name('pwa.offline');
 
 Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified', 'force.password.change'])
@@ -112,7 +119,11 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::get('schedule', [AssetDepreciationController::class, 'schedule'])->name('schedule');
     });
 
-    // Scan resolver (M05) — contract for M10 audit QR verification
+    // Scan (M05 resolver + M15 camera screen) — contract for M10 audit QR verification.
+    // "scan" and "scan" POST register before "/scan/{tag_number}" so the wildcard doesn't
+    // swallow the scan page itself.
+    Route::get('/scan', [ScanController::class, 'index'])->name('scan.index');
+    Route::post('/scan', [ScanController::class, 'lookup'])->name('scan.lookup');
     Route::get('/scan/{tag_number}', [ScanController::class, 'resolve'])->name('scan.resolve');
 
     // Movements (M09) — bulk routes registered before "movements/create" resource-style

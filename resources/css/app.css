@@ -4,6 +4,10 @@
 
 @layer base {
     body { font-family: 'Inter', sans-serif; }
+
+    /* Alpine hides x-show elements only once it has initialised. Without this the install
+       banner (and every other x-cloak block in the app) flashes on first paint. */
+    [x-cloak] { display: none !important; }
 }
 
 @layer utilities {

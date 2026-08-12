@@ -102,7 +102,7 @@ mysql --version
 | [M12](modules/M12-notifications.md) | Notifications | 🟡 stub built | Both | 1–3 | M00 | Any (stub early) |
 | [M13](modules/M13-disposal.md) | Disposal & Scrap | ✅ done | Dev 2 | 3 | M03 ✅, M08 ✅ | M14 |
 | [M14](modules/M14-reports-dashboard.md) | Reports & Dashboard | ✅ done | Dev 2 | 3 | M03+ | M13, M15 |
-| [M15](modules/M15-pwa.md) | PWA (Full Site) | ⏳ unblocked | Dev 2 | 3 | M00 UI ✅ | M14 |
+| [M15](modules/M15-pwa.md) | PWA (Full Site) | ✅ done | Dev 2 | 3 | M00 UI ✅ | M14 |
 | [M16](modules/M16-depreciation.md) | Depreciation | ✅ done | Dev 2 | 2 | M03 ✅ | M09, M17 |
 | [M17](modules/M17-asset-kits.md) | Asset Kits & Bundles | ⏳ unblocked | Dev 2 | 2 | M03 ✅, M08 ✅, M09 ✅ | M10, M16 |
 
@@ -177,9 +177,8 @@ gantt
 ### Where to start today
 
 - **Dev 1** → M00–M07 are all done.
-- **Dev 2** → M08, M09, M10, M11, M13, M14 and M16 are all done. Remaining modules are all unblocked (no dependency is still outstanding):
+- **Dev 2** → M08, M09, M10, M11, M13, M14, M15 and M16 are all done. Remaining modules are all unblocked (no dependency is still outstanding):
   - **M17** (Asset Kits) — M03, M08 and M09 have all shipped; build kit assignments on M09's `AssetMovementBatch` model rather than a new grouping table (see M09's decisions-log entry).
-  - **M15** (PWA) — M00's UI shell has shipped.
   - **M12** (Notifications) — still just the Phase 1 stub (`NotificationService` + `GenericNotification`, database channel only); a full build (mail channel, per-type classes, preferences) has no blocking dependency either.
 - M10 shipped with its own `audit_campaign` entry in `ReportRegistry` (cross-campaign verification findings, distinct from the M09-backed Audit/Compliance report), and M16 shipped with a `depreciation_schedule` entry — both promoted from "coming soon" to enabled. The Maintenance Report entry can be promoted too now that M11 has shipped.
 - Before planning any module, read its spec in `modules/`, then the matching "Pending Decisions" block in [`../decisions-log.md`](../decisions-log.md) — resolve open `P#.#` items with the product owner *before* writing code.

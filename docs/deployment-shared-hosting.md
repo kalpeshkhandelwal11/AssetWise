@@ -40,6 +40,12 @@ npm run build
 
 `--no-dev` excludes dev-only packages (PHPUnit, Faker, etc.) to reduce upload size.
 
+> **`npm run build` is mandatory, not just cosmetic (M15).** Besides CSS/JS it emits
+> `public/build/sw.js` — the service worker `GET /sw.js` proxies. Without a build the app
+> still runs, but it is not installable and has no offline fallback: `/sw.js` returns a clean
+> 404 by design. `public/build/` is gitignored, so a deploy that only pulls from Git must run
+> the build (locally, then upload, or on the server if Node is available).
+
 ---
 
 ## 2. Upload to server
@@ -289,6 +295,15 @@ Run through this checklist after deploying:
 - [ ] File upload works (try attaching a file on any form)
 - [ ] Queue table exists: `php artisan queue:work --stop-when-empty` exits cleanly
 - [ ] Cron is running: check `storage/logs/laravel.log` after one minute for scheduler output
+- [ ] **PWA (M15):** `/manifest.webmanifest` returns JSON and `/sw.js` returns 200 (not 404 —
+      a 404 means `npm run build` did not run or `public/build/` was not uploaded)
+- [ ] **PWA:** DevTools → Application → Service Workers shows `/sw.js` activated with
+      **scope `/`**. A scope of `/build/` means the worker is being loaded from the build
+      directory directly instead of through the route, and it will not control navigations
+- [ ] **PWA:** DevTools → Application → Manifest reports the app as installable with no icon
+      warnings, and Network → Offline then reload shows the branded `/offline` page
+- [ ] **PWA:** requires HTTPS (§11) — service workers and the camera scanner are both
+      secure-context-only. Over plain HTTP neither will work
 
 ---
 

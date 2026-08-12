@@ -212,6 +212,29 @@ Full plan: `docs/planning/modules/M01-implementation-plan.md`. Four scope decisi
 
 ---
 
+## M15 — PWA: implementation decisions (2026-08-12)
+
+Full module notes: [`planning/modules/M15-pwa.md`](planning/modules/M15-pwa.md).
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Service worker is served by Laravel, not statically | `GET /sw.js` → `PwaController@serviceWorker`, streaming `public/build/sw.js` with `Service-Worker-Allowed: /` and `Cache-Control: no-cache` | A worker's scope defaults to its own directory. `vite-plugin-pwa` writes into `public/build/`, so a statically-served worker gets scope `/build/` and controls no navigation in the app. The alternatives were an `.htaccess` `Service-Worker-Allowed` header (silently absent on nginx and on hosts that strip it) or moving the build output (fights `laravel-vite-plugin`). A route works identically on every host and is assertable in a feature test |
+| **Authenticated HTML is never cached** | Navigations are `fetch()` with `.catch(() => caches.match('/offline'))`; nothing HTML is ever written to the cache | This deliberately tightens CLAUDE.md's "network-first for pages" wording. Literal network-first caches each page as a fallback — on a shared warehouse device that means the next user can be served a permission-gated page belonging to the previous one. Offline data sync is out of scope for M15 anyway, so a cached page buys nothing it could not get from `/offline` |
+| Hand-written service worker, no workbox runtime | ~50 lines in `resources/js/sw.js`; `injectManifest` only substitutes the precache list | The entire policy is three rules. Pulling in `workbox-routing`/`-strategies`/`-precaching` to express them would trade an auditable file for a dependency whose behaviour has to be inferred from config |
+| Laravel owns the manifest | `config/pwa.php` → `GET /manifest.webmanifest`; plugin runs with `manifest: false` | The manifest has no build-time input at all. Generating it keeps one source of truth, lets it read `config('app.name')`, and makes it testable without `npm run build` having run |
+| One scanner component, one destination | `<x-qr-scanner>` on `/scan` and embedded in `/audits/verify`, both navigating to `scan.resolve` | M10 already taught `ScanController::resolve()` to redirect an `audit.verify` holder with a pending item into verification. Both consumers point at the same route and that existing branch does the right thing — no second code path, no per-consumer special-casing |
+| Manual tag entry is a real server-side POST | `POST /scan` → `ScanController@lookup`, redirecting to `scan.resolve` | UF-18 step 4 requires a fallback that works when the camera does not. `scan.resolve` takes the tag in the path, which a plain HTML form cannot build, so a JS-only fallback would have failed exactly when the camera did |
+| `html5-qrcode` lazy-loads from a bundled module | `resources/js/qr-scanner.js`, registered as `Alpine.data('qrScanner', …)` | It is ~370 kB and must not load on every page. The `import()` cannot live inline in the Blade `x-data`: Vite never sees an expression inside an HTML attribute, so the bare specifier would reach the browser unresolved. A registered Alpine component keeps the Blade side declarative and lets Vite code-split |
+| Precache URLs need an explicit prefix | `injectManifest.modifyURLPrefix: { '': '/build/' }` | Found in-browser, not by the suite: the injected list is relative to `globDirectory`, so a root-scoped worker resolved `assets/app-x.js` to `/assets/app-x.js` and every entry 404'd — silently, because `Promise.allSettled` swallows the rejections. The cache looked "installed" while being empty |
+| Fix the seeded `Auditor` role rather than the scan gate | `RolePermissionSeeder` grants `Auditor` the `tags.view` permission | `ScanController::resolve()` gates on `tags.view`, so M10's auditor branch was unreachable for the seeded Auditor role — `AuditScanVerificationTest` had to grant it by hand, which hid the gap. Loosening the gate instead would have let any role scan the tag pool |
+
+**Verified in-browser** (localhost, production build): worker activates at scope `/` — not
+`/build/` — and Cache Storage holds exactly `/offline` plus the three build assets after
+navigating authenticated and unauthenticated pages, confirming the no-HTML-caching policy.
+**Not yet verified:** camera decode on a physical phone over LAN HTTPS against a printed tag.
+
+---
+
 ## Integration pass — decisions made while fixing browser-only defects (2026-08-13)
 
 Full write-up: [`integration-testing.md`](integration-testing.md). Six defects were found

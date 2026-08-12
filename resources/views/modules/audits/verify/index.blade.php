@@ -6,27 +6,37 @@
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Scan a QR tag or search below to mark an asset verified, missing, or damaged.</p>
     </div>
 
+    {{-- M15 — same component as /scan. Scanning an in-scope tag lands back here with that
+         item focused, via the branch M10 already built into ScanController::resolve(). --}}
+    @can('tags.view')
+        <div class="mb-6 max-w-lg">
+            <x-qr-scanner heading="Scan to verify" hint="Scan an asset's tag to jump straight to its checklist item below." />
+        </div>
+    @endcan
+
     @if($campaigns->isEmpty())
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-8 text-center text-sm text-gray-400">
             You are not assigned to any active audit campaign right now.
         </div>
     @else
+        {{-- M15 responsive pass: the controls kept their intrinsic widths and wrapped into a
+             ragged stack at 375px. Full-width on phones, inline from sm up. --}}
         <form method="GET" action="{{ route('audits.verify') }}" class="flex flex-wrap gap-3 mb-5">
             <select name="campaign" onchange="this.form.submit()"
-                    class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    class="w-full sm:w-auto text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
                 @foreach($campaigns as $campaign)
                     <option value="{{ $campaign->id }}" @selected(optional($selectedCampaign)->id === $campaign->id)>{{ $campaign->name }}</option>
                 @endforeach
             </select>
             <input type="text" name="search" value="{{ request('search') }}" placeholder="Search asset name or tag…"
-                   class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
-            <select name="status" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                   class="w-full sm:w-auto text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+            <select name="status" class="w-full sm:w-auto text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
                 <option value="">All Statuses</option>
                 @foreach(['pending' => 'Pending', 'verified' => 'Verified', 'missing' => 'Missing', 'damaged' => 'Damaged'] as $value => $label)
                     <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
                 @endforeach
             </select>
-            <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">Filter</button>
+            <button type="submit" class="w-full sm:w-auto px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">Filter</button>
         </form>
 
         @if($selectedCampaign)

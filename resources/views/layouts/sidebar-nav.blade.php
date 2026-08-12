@@ -83,6 +83,12 @@
     </button>
     <div x-show="open" x-collapse class="pl-8 mt-1 space-y-1">
         @can('tags.view')
+        {{-- M15 — the first scan entry point in the UI; before this a scan could only start
+             from the phone's native camera app hitting a printed label. --}}
+        <a href="{{ route('scan.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('scan.index') }} hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
+            <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
+            <span x-show="!sidebarCollapsed">Scan</span>
+        </a>
         <a href="{{ route('admin.tags.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.tags.index') }} hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Tag Pool</span>

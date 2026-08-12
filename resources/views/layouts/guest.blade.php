@@ -7,6 +7,15 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
+        {{-- PWA (M15) — the login screen is the first page a field user sees on a fresh
+             device, and Chrome only offers to install from a page that links a manifest.
+             Without this the app is only installable after signing in. --}}
+        <link rel="manifest" href="/manifest.webmanifest">
+        <meta name="theme-color" content="{{ config('pwa.theme_color') }}">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-title" content="{{ config('pwa.short_name') }}">
+        <link rel="apple-touch-icon" href="{{ config('pwa.apple_touch_icon') }}">
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />

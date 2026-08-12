@@ -77,7 +77,9 @@
                 The asset's current custodian will be cleared on approval.
             </p>
 
-            <div x-show="needsLocation" x-cloak class="grid grid-cols-2 gap-4">
+            {{-- M15 responsive pass: two selects side by side leaves ~150px each at 375px,
+                 which truncates every location and department name. Stack on phones. --}}
+            <div x-show="needsLocation" x-cloak class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <x-input-label for="to_location_id" value="New Location" />
                     <select id="to_location_id" name="to_location_id" class="mt-1 block w-full text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500">
@@ -96,7 +98,9 @@
                         @endforeach
                     </select>
                 </div>
-                <x-input-error :messages="$errors->get('to_location_id')" class="col-span-2" />
+                {{-- col-span-full, not col-span-2: in the single-column mobile grid a
+                     2-track span would create an implicit second column. --}}
+                <x-input-error :messages="$errors->get('to_location_id')" class="col-span-full" />
             </div>
 
             <div x-show="needsCompany" x-cloak>

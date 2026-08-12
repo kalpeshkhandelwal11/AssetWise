@@ -75,7 +75,8 @@
                 Every selected asset's current custodian will be cleared on approval.
             </p>
 
-            <div x-show="needsLocation" x-cloak class="grid grid-cols-2 gap-4">
+            {{-- M15 responsive pass — see movements/create.blade.php --}}
+            <div x-show="needsLocation" x-cloak class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <x-input-label for="to_location_id" value="New Location" />
                     <select id="to_location_id" name="to_location_id" class="mt-1 block w-full text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500">
