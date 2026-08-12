@@ -259,6 +259,26 @@ contract could not change under any of them.
 
 ---
 
+## M14 — Pending Reports: implementation decisions (2026-08-16)
+
+Full plan: [`planning/modules/M14-pending-reports-plan.md`](planning/modules/M14-pending-reports-plan.md).
+Two of M14's registered report types were still disabled — `maintenance` (blocked on M11,
+which has since shipped) and `kit_assignment_history` (still blocked on M17). This follow-up
+closes the first and documents the second for M17 to pick up.
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| D14.1 — Report scope | **Two** reports, not one: promote `maintenance` to enabled as service history (`maintenance_records`), and add a **new `amc_warranty`** entry for contract coverage | The BRD's "Maintenance Reports" line spans three tables (`maintenance_records`, `amc_contracts`, `warranty_records`) with different shapes. A single entry with a sub-type filter would make the column set change per selection, breaking the one-heading-set-per-Export-class assumption every existing export relies on |
+| D14.2 — Repair cost | Detail rows only — each maintenance record is a row with its own `cost`; no aggregate/rollup report, no totals footer | Keeps both new reports plain Eloquent `Builder`s, so pagination, the 500-row queue threshold, and `ReportPdfExporter`'s generic table view all work unchanged. `ReportPdfExporter` has no footer hook, and adding one is a change to shared export infrastructure for one report's benefit |
+| D14.3 — End of Life | `assets.is_eol`/`eol_projected_date` (M11) become **columns on the existing Asset Register report**, not a new report | Both fields already live on `assets`, so no new query or eager-load — but see the finding below, this one had a wider blast radius than it looked |
+| D14.4 — Kit Assignment History | Documented, not built | `kit_assignments`/`kit_assignment_items` don't exist. The registry entry stays disabled and `ReportComingSoonTest` keeps guarding it; the exact 6-step checklist to enable it is recorded in `M17-asset-kits.md` so it ships as part of that module rather than becoming a second orphan |
+| `AssetExport` is shared between M14 and M06 | Adding the two EOL columns to `AssetExport::CORE_HEADINGS`/`map()` (for the Asset Register report) also changed M06's standalone asset export, since both features use the same class | Almost certainly desirable, but worth recording as a deliberate call: a change made "for M14" changed another module's user-facing export file layout. `AssetExport::buildQuery()` also duplicates (and has drifted from) `ReportService::buildAssetRegisterQuery()` — pre-existing debt, explicitly left alone here |
+| A UNION filter must be applied to both legs, never once on the combined builder | `ReportService::buildAmcWarrantyQuery()` filters each leg independently via `applyCoverageFilters()`, called once per leg, before `->union()` | **Verified, not assumed:** a `->whereHas('asset', ...)` company filter applied to the builder before `->union()` constrains only that first leg. Prototyped with real rows before writing the plan: filtering to company "Acme" with the naive single-filter version returned Acme's AMC row, Acme's warranty row, **and another company's warranty row** — a cross-company data leak on a report whose entire purpose is company-scoped visibility. `AmcWarrantyCompanyScopeTest` was confirmed to fail against the naive version (temporarily reverted during implementation to prove it) and pass only with both-legs filtering. Recorded in CLAUDE.md as a codebase-wide gotcha — this is the kind of thing that would otherwise resurface the next time anyone reaches for a UNION |
+| `CoverageContract` read-only model, not `AmcContract` directly | New `App\Models\Reports\CoverageContract` (`$table = 'amc_contracts'`, no timestamps) is the union's hydration target | Basing the union on `App\Models\AmcContract` also works mechanically (verified), but every warranty row then hydrates as an `AmcContract` instance — a lie that misleads anyone reading `map()`'s `@param` type, and one that silently inherits any cast later added to the real `AmcContract` model |
+| `ExpiryAlertService::THRESHOLD_DAYS` made `public` | Was `private const [30, 7, 1]` | `ReportService::expiryStatus()`'s 30-day "expiring" bucket references the same tier M11's alert emails already use, rather than re-hard-coding 30 in a second place |
+
+---
+
 ## Integration pass — decisions made while fixing browser-only defects (2026-08-13)
 
 Full write-up: [`integration-testing.md`](integration-testing.md). Six defects were found

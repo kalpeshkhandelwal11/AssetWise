@@ -22,7 +22,7 @@ class AssetExport implements FromCollection, WithHeadings, WithMapping
         'Asset Tag', 'Name', 'Description', 'Serial Number', 'Model', 'Manufacturer',
         'Company Code', 'Company Name', 'Category', 'Asset Type', 'Status', 'Location',
         'Custodian', 'Department', 'Branch', 'Purchase Date', 'Purchase Cost', 'Vendor',
-        'Warranty Expiry', 'AMC Expiry', 'Notes',
+        'Warranty Expiry', 'AMC Expiry', 'End of Life', 'EOL Projected Date', 'Notes',
     ];
 
     private Collection $assets;
@@ -123,6 +123,8 @@ class AssetExport implements FromCollection, WithHeadings, WithMapping
             $asset->vendor,
             optional($asset->warranty_expiry)->format('Y-m-d'),
             optional($asset->amc_expiry)->format('Y-m-d'),
+            $asset->is_eol ? 'Yes' : 'No',
+            optional($asset->eol_projected_date)->format('Y-m-d'),
             $asset->notes,
         ];
 

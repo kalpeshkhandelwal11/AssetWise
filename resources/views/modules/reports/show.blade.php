@@ -124,6 +124,60 @@
                 <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
                 @break
 
+            @case('maintenance')
+                <select name="company_id" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">All Companies</option>
+                    @foreach($companies as $company)
+                        <option value="{{ $company->id }}" @selected(($filters['company_id'] ?? null) == $company->id)>{{ $company->name }}</option>
+                    @endforeach
+                </select>
+                <select name="maintenance_type_id" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">All Types</option>
+                    @foreach($maintenanceTypes as $maintenanceType)
+                        <option value="{{ $maintenanceType->id }}" @selected(($filters['maintenance_type_id'] ?? null) == $maintenanceType->id)>{{ $maintenanceType->name }}</option>
+                    @endforeach
+                </select>
+                <select name="status" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">All Statuses</option>
+                    @foreach(['scheduled' => 'Scheduled', 'in_progress' => 'In Progress', 'completed' => 'Completed', 'cancelled' => 'Cancelled'] as $value => $optionLabel)
+                        <option value="{{ $value }}" @selected(($filters['status'] ?? null) === $value)>{{ $optionLabel }}</option>
+                    @endforeach
+                </select>
+                <select name="is_capitalized" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">Capitalized: Any</option>
+                    <option value="1" @selected(($filters['is_capitalized'] ?? null) === '1')>Capitalized Only</option>
+                    <option value="0" @selected(($filters['is_capitalized'] ?? null) === '0')>Not Capitalized</option>
+                </select>
+                <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" placeholder="Performed from" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" placeholder="Performed to" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search asset name or tag…"
+                       class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                @break
+
+            @case('amc_warranty')
+                <select name="company_id" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">All Companies</option>
+                    @foreach($companies as $company)
+                        <option value="{{ $company->id }}" @selected(($filters['company_id'] ?? null) == $company->id)>{{ $company->name }}</option>
+                    @endforeach
+                </select>
+                <select name="kind" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">All Kinds</option>
+                    <option value="amc" @selected(($filters['kind'] ?? null) === 'amc')>AMC</option>
+                    <option value="warranty" @selected(($filters['kind'] ?? null) === 'warranty')>Warranty</option>
+                </select>
+                <select name="expiry_status" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">Any Expiry Status</option>
+                    <option value="expired" @selected(($filters['expiry_status'] ?? null) === 'expired')>Expired</option>
+                    <option value="expiring" @selected(($filters['expiry_status'] ?? null) === 'expiring')>Expiring Soon</option>
+                    <option value="active" @selected(($filters['expiry_status'] ?? null) === 'active')>Active</option>
+                </select>
+                <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" placeholder="Ends from" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" placeholder="Ends to" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search asset name or tag…"
+                       class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                @break
+
             @case('aging')
                 <select name="company_id" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
                     <option value="">All Companies</option>

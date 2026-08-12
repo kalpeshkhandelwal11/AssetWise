@@ -110,7 +110,7 @@ mysql --version
 
 M08 shipped ahead of M05–M07 because it is the Dev 2 track and gates M09, M13 and M17. Its `NotificationService` stub also covers M12's Phase 1 stub task.
 
-M14 shipped 7 of its 10 BRD reports (Asset Register, Movement, Inter-Company Transfer, Disposal, Asset Aging, Utilization, Audit/Compliance); Maintenance Report and Kit Assignment History remain registered in `ReportRegistry` as disabled "coming soon" entries (M11/M17). **M16 has since shipped and enabled the Depreciation Schedule report; M11 has shipped too, so the Maintenance Report entry can be promoted to enabled in a follow-up.**
+M14 shipped 7 of its 10 BRD reports initially (Asset Register, Movement, Inter-Company Transfer, Disposal, Asset Aging, Utilization, Audit/Compliance); M16 then enabled the Depreciation Schedule report. A follow-up (`docs/planning/modules/M14-pending-reports-plan.md`) promoted Maintenance to enabled once M11 landed and added a new AMC & Warranty report (a UNION of `amc_contracts`/`warranty_records`), bringing the total to 11 enabled reports. Only Kit Assignment History remains registered in `ReportRegistry` as a disabled "coming soon" entry — the checklist to enable it lives in `M17-asset-kits.md`.
 
 ---
 

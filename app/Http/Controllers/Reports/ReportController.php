@@ -10,6 +10,7 @@ use App\Models\AuditCampaign;
 use App\Models\Company;
 use App\Models\DisposalType;
 use App\Models\ExportLog;
+use App\Models\MaintenanceType;
 use App\Models\MovementType;
 use App\Models\User;
 use App\Services\Reports\ReportPdfExporter;
@@ -32,6 +33,8 @@ class ReportController extends Controller
         'movement'               => ['company_id', 'movement_type_id', 'status', 'date_from', 'date_to', 'search'],
         'intercompany_transfer'  => ['from_company_id', 'to_company_id', 'date_from', 'date_to', 'search'],
         'disposal'               => ['company_id', 'disposal_type_id', 'status', 'date_from', 'date_to', 'search'],
+        'maintenance'            => ['company_id', 'maintenance_type_id', 'status', 'is_capitalized', 'date_from', 'date_to', 'search'],
+        'amc_warranty'           => ['company_id', 'kind', 'expiry_status', 'date_from', 'date_to', 'search'],
         'aging'                  => ['company_id', 'category_id', 'status_id'],
         'utilization'            => ['company_id'],
         'audit_compliance'       => ['company_id', 'status', 'changed_by', 'date_from', 'date_to'],
@@ -107,6 +110,7 @@ class ReportController extends Controller
             'statuses'      => AssetStatus::orderBy('name')->get(),
             'movementTypes' => MovementType::where('is_active', true)->orderBy('name')->get(),
             'disposalTypes' => DisposalType::where('is_active', true)->orderBy('name')->get(),
+            'maintenanceTypes' => MaintenanceType::where('is_active', true)->orderBy('name')->get(),
             'users'         => User::where('is_active', true)->orderBy('name')->get(),
             'auditCampaigns' => AuditCampaign::orderBy('name')->get(),
         ];

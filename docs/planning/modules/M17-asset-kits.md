@@ -60,6 +60,13 @@ Admin UI under Settings (M17).
 - M09 `MovementService::applyBulk($assets, $target)` called on kit approval
 - M08 supports the `kit_assignment` module enum; **no default workflow is seeded** — configure one via `/admin/workflows` before the `single` mode can be used. `WorkflowService::submit()` throws if zero or multiple active workflows exist for a module.
 - Submit `single` mode with `WorkflowService::submit($kitAssignment, 'kit_assignment', $actor)`; `per_asset` mode submits one `transfer` request per item. Apply from a listener on `App\Events\ApprovalRequestApproved` filtered on `$event->request->workflow->module` — M08 never calls back into M17/M09 directly.
+- **M14's `kit_assignment_history` report entry is registered but disabled** (`ReportRegistry::REPORTS`), pending this module. M14's other 10 report types shipped in the M14 pending-reports follow-up (`docs/planning/modules/M14-pending-reports-plan.md`) using the `AssetMovementBatch` model this module is meant to reuse (per M09's decisions-log entry) — so the query below likely joins `kit_assignments` → `asset_movement_batches` → `asset_movements` rather than reading a bespoke history table. Checklist to light it up:
+  1. `ReportRegistry`: flip `'kit_assignment_history' => 'enabled'` to `true`, drop the now-stale "depends on Module M17" note from the class docblock
+  2. `ReportService::buildKitAssignmentHistoryQuery()` + an arm in both `queryFor()` and `exportFor()`
+  3. `app/Exports/KitAssignmentHistoryExport.php` — copy `DisposalReportExport`'s shape (`FromCollection`, `WithHeadings`, `WithMapping`, `rowCount()`)
+  4. `resources/views/modules/reports/types/kit_assignment_history.blade.php` — copy `disposal.blade.php`'s `<x-data-table>` shape
+  5. `ReportController::FILTER_KEYS['kit_assignment_history']` + any new `lookups()` entry the filter bar needs
+  6. Remove `'kit_assignment_history'` from `tests/Feature/Reports/ReportComingSoonTest::disabledTypes()` — **don't delete the test itself**, it's the guard that a disabled entry 404s instead of 500ing, and it stays useful for the next module that ships with a stub registry entry
 
 ## User flow
 

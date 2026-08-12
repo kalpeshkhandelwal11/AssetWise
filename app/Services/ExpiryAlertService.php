@@ -15,7 +15,8 @@ use Illuminate\Support\Collection;
  */
 class ExpiryAlertService
 {
-    private const THRESHOLD_DAYS = [30, 7, 1];
+    /** Public: ReportService::expiryStatus() (M14) reads the 30-day tier for its "expiring" bucket. */
+    public const THRESHOLD_DAYS = [30, 7, 1];
 
     public function __construct(private readonly NotificationService $notifications)
     {

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exports\AmcWarrantyExport;
 use App\Exports\AssetAgingExport;
 use App\Exports\AssetExport;
 use App\Exports\AuditCampaignExport;
@@ -9,6 +10,7 @@ use App\Exports\AuditComplianceExport;
 use App\Exports\DepreciationReportExport;
 use App\Exports\DisposalReportExport;
 use App\Exports\InterCompanyTransferExport;
+use App\Exports\MaintenanceReportExport;
 use App\Exports\MovementReportExport;
 use App\Exports\UtilizationReportExport;
 use App\Models\Asset;
@@ -18,6 +20,9 @@ use App\Models\AuditItem;
 use App\Models\Company;
 use App\Models\DepreciationScheduleLine;
 use App\Models\DisposalRequest;
+use App\Models\MaintenanceRecord;
+use App\Models\Reports\CoverageContract;
+use App\Models\WarrantyRecord;
 use App\Services\Reports\Concerns\FiltersByCompany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -43,6 +48,8 @@ class ReportService
             'movement'               => new MovementReportExport($filters, $this),
             'intercompany_transfer'  => new InterCompanyTransferExport($filters, $this),
             'disposal'               => new DisposalReportExport($filters, $this),
+            'maintenance'            => new MaintenanceReportExport($filters, $this),
+            'amc_warranty'           => new AmcWarrantyExport($filters, $this),
             'aging'                  => new AssetAgingExport($filters, $this),
             'utilization'            => new UtilizationReportExport($filters, $this),
             'audit_compliance'       => new AuditComplianceExport($filters, $this),
@@ -59,6 +66,8 @@ class ReportService
             'movement'               => $this->buildMovementQuery($filters),
             'intercompany_transfer'  => $this->buildInterCompanyTransferQuery($filters),
             'disposal'               => $this->buildDisposalQuery($filters),
+            'maintenance'            => $this->buildMaintenanceQuery($filters),
+            'amc_warranty'           => $this->buildAmcWarrantyQuery($filters),
             'aging'                  => $this->buildAgingQuery($filters),
             'audit_compliance'       => $this->buildAuditComplianceQuery($filters),
             'audit_campaign'          => $this->buildAuditCampaignQuery($filters),
@@ -164,6 +173,119 @@ class ReportService
         $this->applyDateRange($query, $filters, 'created_at');
 
         return $query->latest('id');
+    }
+
+    public function buildMaintenanceQuery(array $filters): Builder
+    {
+        $query = MaintenanceRecord::query()->with([
+            'asset.company', 'asset.category', 'maintenanceType', 'loggedBy',
+        ]);
+
+        $this->scopeByRelatedAssetCompany($query, $this->intOrNull($filters, 'company_id'));
+
+        foreach (['maintenance_type_id', 'status'] as $filter) {
+            if (! empty($filters[$filter])) {
+                $query->where($filter, $filters[$filter]);
+            }
+        }
+
+        if (isset($filters['is_capitalized']) && $filters['is_capitalized'] !== '') {
+            $query->where('is_capitalized', (bool) $filters['is_capitalized']);
+        }
+
+        if (! empty($filters['search'])) {
+            $s = $filters['search'];
+            $query->whereHas('asset', fn ($q) => $q
+                ->where('asset_tag', 'like', "%$s%")
+                ->orWhere('name', 'like', "%$s%"));
+        }
+
+        // performed_date, not created_at: a maintenance record is scheduled on one date and
+        // performed on another, and "show me March's servicing" means work DONE in March.
+        // This implicitly excludes 'scheduled' rows (performed_date is null) whenever a
+        // date range is applied — correct for a service-history report.
+        $this->applyDateRange($query, $filters, 'performed_date');
+
+        return $query->latest('id');
+    }
+
+    /**
+     * One row per coverage contract, AMC and warranty combined via UNION with a 'kind'
+     * discriminator — the two tables have near-identical semantics (per-asset coverage
+     * window) but different column names and no shared parent table.
+     *
+     * TRAP, verified during planning: a whereHas()/filter applied to a builder BEFORE
+     * ->union() constrains only that first leg — rows from the unioned leg sail through
+     * unfiltered, which is a cross-company data leak on a company-scoped report. Every
+     * filter here goes through applyCoverageFilters() called once per leg, never once on
+     * the combined builder, so the two legs cannot drift out of sync.
+     */
+    public function buildAmcWarrantyQuery(array $filters): Builder
+    {
+        $kind = $filters['kind'] ?? null;
+
+        $amc = CoverageContract::query()->selectRaw(
+            "id, asset_id, 'amc' as kind, vendor as provider_name, coverage as terms_text, start_date, end_date, cost"
+        );
+        $this->applyCoverageFilters($amc, $filters, 'vendor');
+
+        $warranty = WarrantyRecord::query()->selectRaw(
+            "id, asset_id, 'warranty' as kind, provider as provider_name, terms as terms_text, start_date, end_date, null as cost"
+        );
+        $this->applyCoverageFilters($warranty, $filters, 'provider');
+
+        $query = match ($kind) {
+            'amc'      => $amc,
+            'warranty' => $warranty,
+            default    => $amc->union($warranty),
+        };
+
+        return $query->with('asset.company')->orderBy('end_date');
+    }
+
+    private function applyCoverageFilters(Builder $query, array $filters, string $providerColumn): void
+    {
+        $this->scopeByRelatedAssetCompany($query, $this->intOrNull($filters, 'company_id'));
+
+        if (! empty($filters['search'])) {
+            $s = $filters['search'];
+            $query->where(fn ($q) => $q
+                ->where($providerColumn, 'like', "%$s%")
+                ->orWhereHas('asset', fn ($aq) => $aq
+                    ->where('asset_tag', 'like', "%$s%")
+                    ->orWhere('name', 'like', "%$s%")));
+        }
+
+        // The "coverage window" — end_date is the meaningful business date here, not
+        // created_at, mirroring buildMaintenanceQuery()'s performed_date choice.
+        $this->applyDateRange($query, $filters, 'end_date');
+
+        $today = now()->startOfDay();
+        $expiringBy = now()->addDays(ExpiryAlertService::THRESHOLD_DAYS[0])->startOfDay();
+
+        match ($filters['expiry_status'] ?? null) {
+            'expired'  => $query->whereDate('end_date', '<', $today),
+            'expiring' => $query->whereDate('end_date', '>=', $today)->whereDate('end_date', '<=', $expiringBy),
+            'active'   => $query->whereDate('end_date', '>', $expiringBy),
+            default    => null,
+        };
+    }
+
+    /** Coverage-window status for a single AMC/warranty row — shared by screen, Excel, PDF, mirrors ageBucket(). */
+    public static function expiryStatus(?\Illuminate\Support\Carbon $endDate): string
+    {
+        if (! $endDate) {
+            return 'unknown';
+        }
+
+        $today = now()->startOfDay();
+        $expiringBy = now()->addDays(ExpiryAlertService::THRESHOLD_DAYS[0])->startOfDay();
+
+        return match (true) {
+            $endDate->lt($today)       => 'expired',
+            $endDate->lte($expiringBy) => 'expiring',
+            default                    => 'active',
+        };
     }
 
     public function buildAgingQuery(array $filters): Builder

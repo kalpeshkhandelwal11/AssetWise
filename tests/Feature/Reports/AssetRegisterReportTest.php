@@ -46,4 +46,40 @@ class AssetRegisterReportTest extends TestCase
 
         Excel::assertDownloaded('/^asset_register-report-.*\.xlsx$/', fn ($export) => $export->rowCount() === 2);
     }
+
+    public function test_screen_shows_eol_status_and_projected_date(): void
+    {
+        $admin = $this->createUserWithRole('Super Admin');
+        Asset::factory()->create(['name' => 'EOL Asset', 'is_eol' => true, 'eol_projected_date' => '2027-01-15']);
+
+        $response = $this->actingAs($admin)->get(route('reports.show', ['type' => 'asset_register']));
+
+        $response->assertOk();
+        $response->assertSee('EOL Asset');
+        $response->assertSee('EOL');
+        $response->assertSee('15 Jan 2027');
+    }
+
+    public function test_export_includes_eol_columns(): void
+    {
+        Excel::fake();
+        Excel::matchByRegex();
+
+        $admin = $this->createUserWithRole('Super Admin');
+        Asset::factory()->create(['is_eol' => true, 'eol_projected_date' => '2027-01-15']);
+
+        $this->actingAs($admin)->post(route('reports.export', 'asset_register'))->assertOk();
+
+        Excel::assertDownloaded('/^asset_register-report-.*\.xlsx$/', function ($export) {
+            $headings = $export->headings();
+            $this->assertContains('End of Life', $headings);
+            $this->assertContains('EOL Projected Date', $headings);
+
+            $row = $export->map($export->collection()->first());
+            $eolIndex = array_search('End of Life', $headings, true);
+            $eolDateIndex = array_search('EOL Projected Date', $headings, true);
+
+            return $row[$eolIndex] === 'Yes' && $row[$eolDateIndex] === '2027-01-15';
+        });
+    }
 }

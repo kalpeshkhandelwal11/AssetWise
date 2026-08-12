@@ -6,6 +6,7 @@
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Company</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EOL</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Custodian</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Custom Fields</th>
             </tr>
@@ -20,6 +21,18 @@
                     <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $asset->company?->name }}</td>
                     <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $asset->category?->name }}</td>
                     <td class="px-4 py-3"><x-status-badge :label="$asset->status?->name" /></td>
+                    <td class="px-4 py-3">
+                        @if($asset->is_eol)
+                            <x-status-badge color="red" label="EOL" />
+                            @if($asset->eol_projected_date)
+                                <div class="text-xs text-gray-400 mt-0.5">{{ $asset->eol_projected_date->format('d M Y') }}</div>
+                            @endif
+                        @elseif($asset->eol_projected_date)
+                            <div class="text-xs text-gray-500 dark:text-gray-400">{{ $asset->eol_projected_date->format('d M Y') }}</div>
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $asset->custodian?->name ?? '—' }}</td>
                     <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
                         @forelse($asset->fieldValues->filter(fn ($fv) => $fv->categoryField) as $fieldValue)
@@ -30,7 +43,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="px-4 py-12 text-center text-sm text-gray-400">No assets found.</td></tr>
+                <tr><td colspan="7" class="px-4 py-12 text-center text-sm text-gray-400">No assets found.</td></tr>
             @endforelse
         </tbody>
     </table>

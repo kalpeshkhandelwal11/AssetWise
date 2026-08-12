@@ -14,8 +14,9 @@ class ReportComingSoonTest extends TestCase
 
     public static function disabledTypes(): array
     {
+        // 'maintenance' promoted to enabled and 'amc_warranty' added in the M14 pending
+        // reports follow-up — only 'kit_assignment_history' remains blocked, on M17.
         return [
-            ['maintenance'],
             ['kit_assignment_history'],
         ];
     }
@@ -50,7 +51,7 @@ class ReportComingSoonTest extends TestCase
         $response = $this->actingAs($admin)->get(route('reports.index'));
 
         $response->assertOk();
-        $response->assertDontSee(route('reports.show', 'maintenance'), false);
+        $response->assertDontSee(route('reports.show', 'kit_assignment_history'), false);
         $response->assertSee('Coming soon');
     }
 }

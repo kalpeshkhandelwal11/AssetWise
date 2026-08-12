@@ -316,7 +316,7 @@ php artisan test tests/Feature/Auth/
 php artisan test --coverage
 ```
 
-Expected output: **565 tests, 0 failures**.
+Expected output: **578 tests, 0 failures**.
 
 ### Test conventions
 

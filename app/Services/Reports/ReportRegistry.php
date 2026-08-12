@@ -5,8 +5,8 @@ namespace App\Services\Reports;
 /**
  * Single source of truth for report types — drives the selector UI, route validation,
  * and ReportController's dispatch. "Coming soon" entries (enabled => false) have no
- * backing query/export/view because their data doesn't exist yet: Maintenance needs
- * M11, Kit Assignment History needs M17.
+ * backing query/export/view because their data doesn't exist yet: Kit Assignment History
+ * needs M17.
  */
 class ReportRegistry
 {
@@ -58,8 +58,13 @@ class ReportRegistry
         ],
         'maintenance' => [
             'label'       => 'Maintenance Report',
-            'description' => 'Coming soon — depends on Module M11 (Maintenance).',
-            'enabled'     => false,
+            'description' => 'Service history: preventive and corrective maintenance, vendor, and repair cost.',
+            'enabled'     => true,
+        ],
+        'amc_warranty' => [
+            'label'       => 'AMC & Warranty',
+            'description' => 'AMC contracts and warranty records with coverage window and expiry status.',
+            'enabled'     => true,
         ],
         'kit_assignment_history' => [
             'label'       => 'Kit Assignment History',
