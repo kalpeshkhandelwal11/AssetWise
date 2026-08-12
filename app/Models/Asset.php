@@ -79,7 +79,7 @@ class Asset extends Model
 
     public function custodian(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'custodian_id');
+        return $this->belongsTo(Employee::class, 'custodian_id');
     }
 
     public function department(): BelongsTo

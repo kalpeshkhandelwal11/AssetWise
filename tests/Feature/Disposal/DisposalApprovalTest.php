@@ -8,6 +8,7 @@ use App\Models\ApprovalStep;
 use App\Models\ApprovalWorkflow;
 use App\Models\DisposalRequest;
 use App\Models\DisposalType;
+use App\Models\Employee;
 use App\Models\MovementType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsRolesAndPermissions;
@@ -87,7 +88,7 @@ class DisposalApprovalTest extends TestCase
 
         $asset = Asset::factory()->create();
         $requester = $this->createUserWithRole('Asset Manager');
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
 
         $this->actingAs($requester)->post(route('movements.store'), [
             'asset_id'         => $asset->id,
@@ -202,7 +203,7 @@ class DisposalApprovalTest extends TestCase
         ApprovalStep::factory()->forRole('Approver', 1)->create(['workflow_id' => $transferWorkflow->id]);
 
         $requester = $this->createUserWithRole('Asset Manager');
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $asset = Asset::factory()->create();
 
         $this->actingAs($requester)->post(route('disposals.store'), [

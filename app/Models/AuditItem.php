@@ -47,7 +47,7 @@ class AuditItem extends Model
 
     public function expectedCustodian(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'expected_custodian_id');
+        return $this->belongsTo(Employee::class, 'expected_custodian_id');
     }
 
     public function isPending(): bool

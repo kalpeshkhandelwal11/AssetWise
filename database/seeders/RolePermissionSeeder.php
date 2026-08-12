@@ -28,6 +28,7 @@ class RolePermissionSeeder extends Seeder
             // Masters
             'masters.view', 'masters.manage', 'companies.manage',
             'departments.manage', 'branches.manage', 'designations.manage',
+            'employees.view', 'employees.manage',
 
             // Assets
             'assets.view', 'assets.create', 'assets.edit', 'assets.delete',
@@ -103,6 +104,7 @@ class RolePermissionSeeder extends Seeder
             'imports.manage',
             'masters.view', 'masters.manage', 'companies.manage',
             'departments.manage', 'branches.manage', 'designations.manage',
+            'employees.view', 'employees.manage',
         ]);
 
         // Department User

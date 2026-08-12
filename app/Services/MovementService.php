@@ -152,7 +152,7 @@ class MovementService
             $movement->update(['status' => 'completed']);
         });
 
-        $this->notifyCustodian($movement->fresh(['toCustodian', 'asset', 'movementType']));
+        $this->notifyCustodian($movement->fresh(['toCustodian.user', 'asset', 'movementType']));
     }
 
     /**
@@ -174,7 +174,7 @@ class MovementService
         });
 
         foreach ($batch->movements as $movement) {
-            $this->notifyCustodian($movement->fresh(['toCustodian', 'asset', 'movementType']));
+            $this->notifyCustodian($movement->fresh(['toCustodian.user', 'asset', 'movementType']));
         }
     }
 
@@ -282,8 +282,12 @@ class MovementService
 
     private function notifyCustodian(AssetMovement $movement): void
     {
-        if ($movement->toCustodian) {
-            $this->notifications->send($movement->toCustodian, 'movement.completed', [
+        // The custodian is an Employee that may have no login account — only notify when
+        // the employee is linked to a user (NotificationService targets a User).
+        $user = $movement->toCustodian?->user;
+
+        if ($user) {
+            $this->notifications->send($user, 'movement.completed', [
                 'asset'         => $movement->asset?->name,
                 'movement_type' => $movement->movementType?->name,
                 'url'           => route('assets.show', $movement->asset_id),

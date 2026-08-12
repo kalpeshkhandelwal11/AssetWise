@@ -7,6 +7,8 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Activitylog\LogOptions;
@@ -75,9 +77,20 @@ class User extends Authenticatable
         return $this->belongsTo(Designation::class);
     }
 
-    public function custodiedAssets(): HasMany
+    /** The employee record for this user, when they are also a person who can hold assets. */
+    public function employee(): HasOne
     {
-        return $this->hasMany(Asset::class, 'custodian_id');
+        return $this->hasOne(Employee::class);
+    }
+
+    /**
+     * Assets this user holds *as an employee* — custodianship now lives on the linked
+     * employee (users -> employees.user_id -> assets.custodian_id). Empty when the user
+     * has no employee record.
+     */
+    public function custodiedAssets(): HasManyThrough
+    {
+        return $this->hasManyThrough(Asset::class, Employee::class, 'user_id', 'custodian_id', 'id', 'id');
     }
 
     public function createdAssets(): HasMany

@@ -10,6 +10,7 @@ use App\Models\AssetMovement;
 use App\Models\AssetStatus;
 use App\Models\Company;
 use App\Models\DepreciationMethod;
+use App\Models\Employee;
 use App\Models\KitAssignment;
 use App\Models\MovementType;
 use App\Models\Setting;
@@ -59,7 +60,7 @@ class KitAssignmentTest extends TestCase
         $this->kitWorkflow();
         $manager = $this->createUserWithRole('Asset Manager');
         $approver = $this->createUserWithRole('Approver');
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $a1 = Asset::factory()->create();
         $a2 = Asset::factory()->create();
 
@@ -86,7 +87,7 @@ class KitAssignmentTest extends TestCase
         $this->kitWorkflow();
         $manager = $this->createUserWithRole('Asset Manager');
         $approver = $this->createUserWithRole('Approver');
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $asset = Asset::factory()->create();
 
         $this->actingAs($manager)->post(route('kit-assignments.store'), [
@@ -119,7 +120,7 @@ class KitAssignmentTest extends TestCase
         Setting::set('kit_assignment_approval_mode', 'per_asset');
 
         $manager = $this->createUserWithRole('Asset Manager');
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $a1 = Asset::factory()->create();
         $a2 = Asset::factory()->create();
 
@@ -143,7 +144,7 @@ class KitAssignmentTest extends TestCase
         $this->kitWorkflow();
         $manager = $this->createUserWithRole('Asset Manager');
         $approver = $this->createUserWithRole('Approver');
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $asset = Asset::factory()->create();
 
         $this->actingAs($manager)->post(route('kit-assignments.store'), [
@@ -209,7 +210,7 @@ class KitAssignmentTest extends TestCase
     {
         $this->seedRolesAndPermissions(); // no kit_assignment workflow
         $manager = $this->createUserWithRole('Asset Manager');
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $asset = Asset::factory()->create();
 
         $this->actingAs($manager)->post(route('kit-assignments.store'), [
@@ -226,7 +227,7 @@ class KitAssignmentTest extends TestCase
         $this->kitWorkflow();
         $disposed = AssetStatus::firstOrCreate(['code' => 'DISPOSED'], ['name' => 'Disposed', 'color' => '#ef4444', 'is_system' => true, 'is_active' => true]);
         $manager = $this->createUserWithRole('Asset Manager');
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $asset = Asset::factory()->create(['status_id' => $disposed->id]);
 
         $this->actingAs($manager)->post(route('kit-assignments.store'), [

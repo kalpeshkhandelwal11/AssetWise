@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CategoryFieldController;
 use App\Http\Controllers\Admin\CategoryDepreciationController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\DepreciationMethodController;
+use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\FieldOverrideController;
 use App\Http\Controllers\Admin\KitSettingController;
 use App\Http\Controllers\Admin\LocationController;
@@ -267,6 +268,10 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         // Companies
         Route::resource('companies', CompanyController::class)->except(['show']);
         Route::patch('companies/{company}/toggle', [CompanyController::class, 'toggleActive'])->name('companies.toggle');
+
+        // Employees — the canonical custodian/assignee master (people who need not be users)
+        Route::resource('employees', EmployeeController::class)->except(['show']);
+        Route::patch('employees/{employee}/toggle', [EmployeeController::class, 'toggleActive'])->name('employees.toggle');
 
         // Generic shared masters (statuses, asset-types, priorities, movement-types, etc.)
         Route::get('masters', [MasterController::class, 'landing'])->name('masters.landing');

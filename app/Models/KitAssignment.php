@@ -37,7 +37,7 @@ class KitAssignment extends Model
 
     public function toCustodian(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'to_custodian_id');
+        return $this->belongsTo(Employee::class, 'to_custodian_id');
     }
 
     public function toLocation(): BelongsTo

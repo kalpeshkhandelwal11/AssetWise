@@ -4,6 +4,7 @@ namespace Tests\Feature\Movement;
 
 use App\Models\Asset;
 use App\Models\AssetMovementBatch;
+use App\Models\Employee;
 use App\Models\MovementType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -61,11 +62,12 @@ class MovementViewRegressionTest extends TestCase
     {
         $type = MovementType::firstOrCreate(['code' => 'ASSIGNMENT'], ['name' => 'Assignment', 'is_active' => true]);
         $user = $this->createUserWithRole('Asset Manager');
+        $custodian = Employee::factory()->create();
         $assets = Asset::factory()->count(2)->create();
 
         $batch = AssetMovementBatch::create([
             'movement_type_id' => $type->id,
-            'to_custodian_id'  => $user->id,
+            'to_custodian_id'  => $custodian->id,
             'status'           => 'pending_approval',
             'requested_by'     => $user->id,
         ]);
@@ -75,7 +77,7 @@ class MovementViewRegressionTest extends TestCase
                 'asset_id'         => $asset->id,
                 'movement_type_id' => $type->id,
                 'batch_id'         => $batch->id,
-                'to_custodian_id'  => $user->id,
+                'to_custodian_id'  => $custodian->id,
                 'status'           => 'pending_approval',
                 'requested_by'     => $user->id,
             ]);
@@ -98,7 +100,7 @@ class MovementViewRegressionTest extends TestCase
     {
         $type = MovementType::firstOrCreate(['code' => 'ASSIGNMENT'], ['name' => 'Assignment', 'is_active' => true]);
         $asset = Asset::factory()->create();
-        $custodian = User::factory()->create();
+        $custodian = Employee::factory()->create();
         $user = $this->createUserWithRole('Asset Manager');
 
         // No transfer workflow seeded in this test, so submit() throws under 'workflow'.

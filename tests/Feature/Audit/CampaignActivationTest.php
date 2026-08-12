@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\AssetStatus;
 use App\Models\AuditCampaign;
 use App\Models\AuditItem;
+use App\Models\Employee;
 use App\Models\Location;
 use App\Models\User;
 use App\Notifications\GenericNotification;
@@ -67,7 +68,7 @@ class CampaignActivationTest extends TestCase
         Notification::fake();
         $manager = $this->createUserWithRole('Asset Manager');
         $auditor = $this->createUserWithRole('Auditor');
-        $custodian = User::factory()->create();
+        $custodian = Employee::factory()->create();
         $location = Location::create(['name' => 'Branch', 'code' => 'BR', 'is_active' => true]);
         $asset = Asset::factory()->create(['location_id' => $location->id, 'custodian_id' => $custodian->id]);
 

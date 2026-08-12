@@ -183,6 +183,14 @@ Categories form a tree (`parent_id` on `asset_categories`). Fields defined on an
 
 Each asset has a required `company_id` FK to the `companies` master. This is **not multi-tenancy** — all data lives in one schema. `company_id` reflects the current owning company and is updated atomically when an inter-company transfer approval completes. The `asset_movements` table stores `from_company_id` / `to_company_id` for inter-company transfer rows. Reports and dashboard filters accept a company scope.
 
+### Custodian = Employee (not User)
+
+A **custodian is a person, not a login account.** The `employees` table (`Admin\EmployeeController`, `employees.manage`/`employees.view`) is the canonical custodian/assignee entity; an employee optionally links to a login via nullable-unique `employees.user_id`. Every custodian FK references `employees.id` — `assets.custodian_id`, `asset_movements.from/to_custodian_id`, `asset_movement_batches.to_custodian_id`, `kit_assignments.to_custodian_id`, and `audit_items.expected_custodian_id` (repointed from `users` in `2026_08_18_100003`). **`NotificationService` targets a `User`, so any code notifying a custodian must resolve `$employee->user` and skip cleanly when it's null** (a login-less employee) — see `MovementService::notifyCustodian()` and `ExpiryAlertService::recipientsFor()`. `User::custodiedAssets()` is now a `hasManyThrough` via the linked employee. Custodian pickers (movement/kit/asset forms) populate `$custodians` from `Employee::where('is_active', true)` and validate `exists:employees,id`.
+
+### Company Info
+
+The `companies` master (M02) carries corporate/legal info beyond name/code/contact: self-referencing `parent_company_id` (hierarchy), `is_head_office`, `legal_name`, `gstin`/`pan`/`cin`, and a separate registered address. `CompanyController` guards against a company being its own parent.
+
 ### Category Lock
 
 Once `asset_field_values` rows exist for an asset, `category_id` is **immutable** for standard users. Only users with `assets.override_category` can force a change; doing so does NOT migrate existing field values and logs a before/after activity entry.

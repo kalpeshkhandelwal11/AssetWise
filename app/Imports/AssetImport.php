@@ -116,7 +116,7 @@ class AssetImport implements OnEachRow, WithHeadingRow
             'asset_type_id'   => 'required|exists:asset_types,id',
             'status_id'       => 'required|exists:asset_statuses,id',
             'location_id'     => 'nullable|exists:locations,id',
-            'custodian_id'    => 'nullable|exists:users,id',
+            'custodian_id'    => 'nullable|exists:employees,id',
             'department_id'   => 'nullable|exists:departments,id',
             'branch_id'       => 'nullable|exists:branches,id',
             'purchase_date'   => 'nullable|date',

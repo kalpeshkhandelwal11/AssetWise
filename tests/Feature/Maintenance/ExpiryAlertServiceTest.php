@@ -3,6 +3,7 @@
 namespace Tests\Feature\Maintenance;
 
 use App\Models\Asset;
+use App\Models\Employee;
 use App\Models\User;
 use App\Notifications\GenericNotification;
 use App\Services\ExpiryAlertService;
@@ -51,22 +52,25 @@ class ExpiryAlertServiceTest extends TestCase
     {
         Notification::fake();
         $manager = $this->createUserWithRole('Asset Manager');
-        $custodian = User::factory()->create();
+        // Custodian is an employee linked to a login account — alerts reach the linked user.
+        $custodianUser = User::factory()->create();
+        $custodian = Employee::factory()->create(['user_id' => $custodianUser->id]);
 
         $asset = Asset::factory()->create(['amc_expiry' => now()->addDays(7), 'custodian_id' => $custodian->id]);
 
         app(ExpiryAlertService::class)->run();
 
         Notification::assertSentTo($manager, GenericNotification::class, fn ($n) => $n->payload['asset_id'] === $asset->id);
-        Notification::assertSentTo($custodian, GenericNotification::class, fn ($n) => $n->payload['asset_id'] === $asset->id);
+        Notification::assertSentTo($custodianUser, GenericNotification::class, fn ($n) => $n->payload['asset_id'] === $asset->id);
     }
 
     public function test_does_not_double_notify_when_custodian_already_holds_maintenance_manage(): void
     {
         Notification::fake();
         $manager = $this->createUserWithRole('Asset Manager');
+        $employee = Employee::factory()->create(['user_id' => $manager->id]);
 
-        $asset = Asset::factory()->create(['amc_expiry' => now()->addDays(7), 'custodian_id' => $manager->id]);
+        $asset = Asset::factory()->create(['amc_expiry' => now()->addDays(7), 'custodian_id' => $employee->id]);
 
         app(ExpiryAlertService::class)->run();
 

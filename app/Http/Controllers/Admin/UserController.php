@@ -253,7 +253,7 @@ class UserController extends Controller
 
     private function activeCustodyCount(User $user): int
     {
-        return $user->custodiedAssets()->where('is_active', true)->count();
+        return $user->custodiedAssets()->where('assets.is_active', true)->count();
     }
 
     private function isNamedApprover(User $user): bool

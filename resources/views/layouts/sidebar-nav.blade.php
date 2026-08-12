@@ -262,7 +262,7 @@
 <div class="my-2 border-t border-gray-200 dark:border-gray-700/40"></div>
 
 {{-- ADMINISTRATION --}}
-@canany(['users.view', 'roles.manage', 'masters.manage', 'masters.view', 'companies.manage', 'workflow.manage', 'login_history.view', 'activity_log.view'])
+@canany(['users.view', 'roles.manage', 'masters.manage', 'masters.view', 'companies.manage', 'employees.manage', 'workflow.manage', 'login_history.view', 'activity_log.view'])
 <div x-data="{ open: {{ $navGroupActive(['admin.', 'users.', 'roles.', 'masters.']) ? 'true' : 'false' }} }">
     <button @click="open = !open"
             class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
@@ -307,6 +307,12 @@
         <a href="{{ route('admin.companies.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.companies') }} hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
             <span x-show="!sidebarCollapsed">Companies</span>
+        </a>
+        @endcan
+        @can('employees.manage')
+        <a href="{{ route('admin.employees.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.employees') }} hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
+            <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
+            <span x-show="!sidebarCollapsed">Employees</span>
         </a>
         @endcan
         @can('workflow.manage')

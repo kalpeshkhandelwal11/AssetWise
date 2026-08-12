@@ -65,12 +65,12 @@ class AssetMovement extends Model
 
     public function fromCustodian(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'from_custodian_id');
+        return $this->belongsTo(Employee::class, 'from_custodian_id');
     }
 
     public function toCustodian(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'to_custodian_id');
+        return $this->belongsTo(Employee::class, 'to_custodian_id');
     }
 
     public function fromDepartment(): BelongsTo

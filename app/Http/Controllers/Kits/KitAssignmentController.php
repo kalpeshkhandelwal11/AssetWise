@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Company;
 use App\Models\Department;
+use App\Models\Employee;
 use App\Models\Kit;
 use App\Models\KitAssignment;
 use App\Models\Location;
@@ -57,7 +58,7 @@ class KitAssignmentController extends Controller
             'asset_ids.*'      => 'exists:assets,id',
             'movement_type_id' => 'required|exists:movement_types,id',
             'to_company_id'    => 'nullable|exists:companies,id',
-            'to_custodian_id'  => 'nullable|exists:users,id',
+            'to_custodian_id'  => 'nullable|exists:employees,id',
             'to_location_id'   => 'nullable|exists:locations,id',
             'to_department_id' => 'nullable|exists:departments,id',
         ]);
@@ -121,7 +122,7 @@ class KitAssignmentController extends Controller
             'companies'     => Company::where('is_active', true)->orderBy('name')->get(),
             'locations'     => Location::where('is_active', true)->orderBy('name')->get(),
             'departments'   => Department::where('is_active', true)->orderBy('name')->get(),
-            'custodians'    => User::where('is_active', true)->orderBy('name')->get(),
+            'custodians'    => Employee::where('is_active', true)->orderBy('name')->get(),
         ];
     }
 }

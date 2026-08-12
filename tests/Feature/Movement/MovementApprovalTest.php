@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\AssetStatus;
 use App\Models\Company;
 use App\Models\Department;
+use App\Models\Employee;
 use App\Models\Location;
 use App\Models\MovementType;
 use App\Services\MovementService;
@@ -39,7 +40,7 @@ class MovementApprovalTest extends TestCase
     {
         $this->withWorkflow();
         $asset = Asset::factory()->create();
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $user = $this->createUserWithRole('Viewer'); // no movement.* permission
 
         $this->actingAs($user)->post(route('movements.store'), [
@@ -54,7 +55,7 @@ class MovementApprovalTest extends TestCase
         $this->withWorkflow();
         $disposed = AssetStatus::create(['name' => 'Disposed', 'code' => 'DISPOSED', 'color' => '#ef4444', 'is_system' => true, 'is_active' => true]);
         $asset = Asset::factory()->create(['status_id' => $disposed->id]);
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $requester = $this->createUserWithRole('Asset Manager');
 
         $this->actingAs($requester)->post(route('movements.store'), [
@@ -70,8 +71,8 @@ class MovementApprovalTest extends TestCase
     {
         $this->withWorkflow();
         $asset = Asset::factory()->create();
-        $custodianA = $this->createUserWithRole('Viewer');
-        $custodianB = $this->createUserWithRole('Viewer');
+        $custodianA = Employee::factory()->create();
+        $custodianB = Employee::factory()->create();
         $requester = $this->createUserWithRole('Asset Manager');
 
         $this->actingAs($requester)->post(route('movements.store'), [
@@ -95,7 +96,9 @@ class MovementApprovalTest extends TestCase
         $requester = $this->createUserWithRole('Asset Manager');
         $levelOneApprover = $this->createUserWithRole('Approver');
         $levelTwoApprover = $this->createUserWithRole('Asset Manager');
-        $custodian = $this->createUserWithRole('Viewer');
+        // Custodian linked to a login account so the movement.completed notification lands.
+        $custodianUser = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create(['user_id' => $custodianUser->id]);
 
         $asset = Asset::factory()->create();
 
@@ -127,10 +130,35 @@ class MovementApprovalTest extends TestCase
         $this->assertSame('completed', $movement->fresh()->status);
 
         $this->assertDatabaseHas('notifications', [
-            'notifiable_id'   => $custodian->id,
+            'notifiable_id'   => $custodianUser->id,
             'notifiable_type' => \App\Models\User::class,
             'type'            => 'movement.completed',
         ]);
+    }
+
+    public function test_assigning_to_a_login_less_employee_completes_without_a_notification(): void
+    {
+        $this->withWorkflow();
+        $requester = $this->createUserWithRole('Asset Manager');
+        $levelOneApprover = $this->createUserWithRole('Approver');
+        $levelTwoApprover = $this->createUserWithRole('Asset Manager');
+        // No linked user — the custodian cannot be notified, but the movement must still apply.
+        $custodian = Employee::factory()->create(['user_id' => null]);
+        $asset = Asset::factory()->create();
+
+        $this->actingAs($requester)->post(route('movements.store'), [
+            'asset_id'         => $asset->id,
+            'movement_type_id' => $this->movementType('ASSIGNMENT', 'Assignment')->id,
+            'to_custodian_id'  => $custodian->id,
+        ])->assertRedirect(route('assets.show', $asset));
+
+        $movement = \App\Models\AssetMovement::where('asset_id', $asset->id)->firstOrFail();
+        $this->actingAs($levelOneApprover)->post(route('approvals.approve', $movement->approval_request_id));
+        $this->actingAs($levelTwoApprover)->post(route('approvals.approve', $movement->approval_request_id));
+
+        $this->assertSame($custodian->id, $asset->fresh()->custodian_id);
+        $this->assertSame('completed', $movement->fresh()->status);
+        $this->assertDatabaseMissing('notifications', ['type' => 'movement.completed']);
     }
 
     public function test_rejection_leaves_the_asset_untouched_and_unblocks_resubmission(): void
@@ -138,7 +166,7 @@ class MovementApprovalTest extends TestCase
         $this->withWorkflow();
         $requester = $this->createUserWithRole('Asset Manager');
         $levelOneApprover = $this->createUserWithRole('Approver');
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $asset = Asset::factory()->create();
 
         $this->actingAs($requester)->post(route('movements.store'), [
@@ -213,7 +241,7 @@ class MovementApprovalTest extends TestCase
         $requester = $this->createUserWithRole('Asset Manager');
         $levelOneApprover = $this->createUserWithRole('Approver');
         $levelTwoApprover = $this->createUserWithRole('Asset Manager');
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $asset = Asset::factory()->create(['custodian_id' => $custodian->id]);
 
         $this->actingAs($requester)->post(route('movements.store'), [
@@ -265,7 +293,7 @@ class MovementApprovalTest extends TestCase
         $this->withWorkflow();
         $requester = $this->createUserWithRole('Asset Manager');
         $verifier = $this->createUserWithRole('Approver'); // has movement.verify
-        $custodian = $this->createUserWithRole('Viewer');
+        $custodian = Employee::factory()->create();
         $asset = Asset::factory()->create();
 
         $this->actingAs($requester)->post(route('movements.store'), [

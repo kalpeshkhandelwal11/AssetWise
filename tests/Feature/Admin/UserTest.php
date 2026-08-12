@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Asset;
+use App\Models\Employee;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -101,7 +102,8 @@ class UserTest extends TestCase
     {
         $admin = $this->admin();
         $custodian = $this->createUserWithRole('Department User');
-        Asset::factory()->create(['custodian_id' => $custodian->id, 'is_active' => true]);
+        $employee = Employee::factory()->create(['user_id' => $custodian->id]);
+        Asset::factory()->create(['custodian_id' => $employee->id, 'is_active' => true]);
 
         $this->actingAs($admin)
              ->patch(route('admin.users.toggle', $custodian))
@@ -115,7 +117,8 @@ class UserTest extends TestCase
     {
         $admin = $this->admin();
         $custodian = $this->createUserWithRole('Department User');
-        $asset = Asset::factory()->create(['custodian_id' => $custodian->id, 'is_active' => true]);
+        $employee = Employee::factory()->create(['user_id' => $custodian->id]);
+        $asset = Asset::factory()->create(['custodian_id' => $employee->id, 'is_active' => true]);
 
         $asset->update(['custodian_id' => null]);
 

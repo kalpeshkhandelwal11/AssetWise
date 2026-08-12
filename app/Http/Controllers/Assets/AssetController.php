@@ -10,6 +10,7 @@ use App\Models\AssetType;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Department;
+use App\Models\Employee;
 use App\Models\Location;
 use App\Models\Tag;
 use App\Models\User;
@@ -242,7 +243,7 @@ class AssetController extends Controller
             'building_id'      => 'nullable|exists:buildings,id',
             'floor_id'         => 'nullable|exists:floors,id',
             'room_id'          => 'nullable|exists:rooms,id',
-            'custodian_id'     => 'nullable|exists:users,id',
+            'custodian_id'     => 'nullable|exists:employees,id',
             'department_id'    => 'nullable|exists:departments,id',
             'branch_id'        => 'nullable|exists:branches,id',
             'purchase_date'    => 'nullable|date',
@@ -266,7 +267,7 @@ class AssetController extends Controller
             'locations'   => Location::where('is_active', true)->orderBy('name')->get(),
             'departments' => Department::where('is_active', true)->orderBy('name')->get(),
             'branches'    => Branch::where('is_active', true)->orderBy('name')->get(),
-            'custodians'  => User::where('is_active', true)->orderBy('name')->get(),
+            'custodians'  => Employee::where('is_active', true)->orderBy('name')->get(),
         ];
     }
 }

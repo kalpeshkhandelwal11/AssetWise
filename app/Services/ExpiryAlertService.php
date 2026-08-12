@@ -31,7 +31,7 @@ class ExpiryAlertService
                 $targetDate = now()->addDays($days)->toDateString();
 
                 Asset::whereDate($column, $targetDate)
-                    ->with('custodian')
+                    ->with('custodian.user')
                     ->each(function (Asset $asset) use (&$sent, $type, $column, $days) {
                         foreach ($this->recipientsFor($asset) as $user) {
                             $this->notifications->send($user, 'expiry_alert', [
@@ -62,8 +62,10 @@ class ExpiryAlertService
             ->with('notificationPreferences')
             ->get();
 
-        if ($asset->custodian && $asset->custodian->is_active) {
-            $recipients->push($asset->custodian->loadMissing('notificationPreferences'));
+        // The custodian is an Employee; alerts go to its linked login account, if any and active.
+        $custodianUser = $asset->custodian?->user;
+        if ($custodianUser && $custodianUser->is_active) {
+            $recipients->push($custodianUser->loadMissing('notificationPreferences'));
         }
 
         return $recipients->unique('id');
