@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CategoryFieldController;
 use App\Http\Controllers\Admin\CategoryDepreciationController;
+use App\Http\Controllers\Admin\AssetNamingSettingController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\DepreciationMethodController;
 use App\Http\Controllers\Admin\EmployeeController;
@@ -264,6 +265,9 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::patch('/settings/tags', [SettingController::class, 'update'])->name('settings.tags.update');
         Route::get('/settings/kits', [KitSettingController::class, 'edit'])->name('settings.kits.edit');
         Route::patch('/settings/kits', [KitSettingController::class, 'update'])->name('settings.kits.update');
+
+        Route::get('/settings/asset-naming', [AssetNamingSettingController::class, 'edit'])->name('settings.asset-naming.edit');
+        Route::patch('/settings/asset-naming', [AssetNamingSettingController::class, 'update'])->name('settings.asset-naming.update');
 
         // Companies
         Route::resource('companies', CompanyController::class)->except(['show']);

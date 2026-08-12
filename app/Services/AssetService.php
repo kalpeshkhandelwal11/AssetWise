@@ -7,9 +7,18 @@ use App\Models\User;
 
 class AssetService
 {
+    public function __construct(private readonly AssetNamingService $naming)
+    {
+    }
+
     public function create(array $data, User $actor): Asset
     {
         $data['created_by'] = $actor->id;
+
+        // Auto-number the asset code from the naming series unless one was supplied.
+        if (empty($data['asset_tag']) && $this->naming->enabled()) {
+            $data['asset_tag'] = $this->naming->next();
+        }
 
         return Asset::create($data);
     }

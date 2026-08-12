@@ -14,6 +14,7 @@ use App\Models\Employee;
 use App\Models\Location;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\AssetNamingService;
 use App\Services\AssetService;
 use App\Services\DynamicFieldService;
 use App\Services\TagService;
@@ -29,6 +30,7 @@ class AssetController extends Controller
         private readonly AssetService $assets,
         private readonly DynamicFieldService $fields,
         private readonly TagService $tags,
+        private readonly AssetNamingService $naming,
     ) {
     }
 
@@ -268,6 +270,7 @@ class AssetController extends Controller
 
         return [
             'name'             => 'required|string|max:255',
+            'asset_tag'        => 'nullable|string|max:255|unique:assets,asset_tag',
             'description'      => 'nullable|string',
             'serial_number'    => 'nullable|string|max:255',
             'model'            => 'nullable|string|max:255',
@@ -308,6 +311,8 @@ class AssetController extends Controller
             'branches'    => Branch::where('is_active', true)->orderBy('name')->get(),
             'custodians'  => Employee::where('is_active', true)->orderBy('name')->get(['id', 'name', 'department_id', 'branch_id']),
             'availableTags' => Tag::where('status', 'available')->orderBy('tag_number')->get(),
+            'assetNamingEnabled' => $this->naming->enabled(),
+            'assetNamingPreview' => $this->naming->enabled() ? $this->naming->preview() : null,
         ];
     }
 }

@@ -22,5 +22,11 @@ class SettingsSeeder extends Seeder
         // M17: kit assignment approval granularity — 'single' (one approval per kit) or
         // 'per_asset' (one approval per asset in the kit).
         Setting::firstOrCreate(['key' => 'kit_assignment_approval_mode'], ['value' => 'single']);
+
+        // Asset naming series — auto-generates assets.asset_tag as PREFIX-000N on create.
+        Setting::firstOrCreate(['key' => 'asset_naming_enabled'], ['value' => '1']);
+        Setting::firstOrCreate(['key' => 'asset_naming_prefix'], ['value' => 'AST']);
+        Setting::firstOrCreate(['key' => 'asset_naming_padding'], ['value' => '4']);
+        Setting::firstOrCreate(['key' => 'asset_naming_next'], ['value' => '1']);
     }
 }

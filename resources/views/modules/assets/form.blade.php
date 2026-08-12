@@ -126,6 +126,20 @@
                 </div>
             </div>
 
+            @if(! $asset->exists)
+                <div class="sm:w-1/2">
+                    <x-input-label for="asset_tag" value="Asset ID" />
+                    @if($assetNamingEnabled)
+                        <input type="text" disabled value="Auto-generated ({{ $assetNamingPreview }})"
+                               class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-400 shadow-sm text-sm font-mono" />
+                        <p class="mt-1 text-xs text-gray-400">Assigned automatically from the naming series on save.</p>
+                    @else
+                        <x-text-input id="asset_tag" name="asset_tag" class="mt-1 block w-full font-mono" :value="old('asset_tag')" placeholder="e.g. AST-0001" />
+                        <x-input-error :messages="$errors->get('asset_tag')" class="mt-1" />
+                    @endif
+                </div>
+            @endif
+
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <x-input-label for="category_id" value="Category *" />
