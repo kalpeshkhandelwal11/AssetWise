@@ -18,6 +18,11 @@
         </include>
     </source>
     <php>
+        <!-- M12: QUEUE_CONNECTION=sync means every test that triggers a notification with a
+             mail channel now also compiles and renders the full markdown mail template
+             inline (MAIL_MAILER=array below only stops delivery, not rendering). Across the
+             full suite that pushes peak memory past PHP's 128M default late in the run. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

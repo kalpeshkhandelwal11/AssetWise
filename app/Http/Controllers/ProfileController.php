@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\NotificationPreference;
+use App\Support\NotificationCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,11 +16,44 @@ class ProfileController extends Controller
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): View
+    public function edit(Request $request, NotificationCatalog $catalog): View
     {
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user'    => $request->user(),
+            'catalog' => $catalog,
+            'preferences' => $request->user()->notificationPreferences()->pluck('email_enabled', 'type'),
         ]);
+    }
+
+    /**
+     * Sparse by design (M12, matches notification_preferences' schema comment): only rows
+     * that DIFFER from the catalog default are stored, so a type added to the catalog later
+     * needs no backfill and shows the catalog default automatically.
+     */
+    public function updateNotifications(Request $request, NotificationCatalog $catalog): RedirectResponse
+    {
+        $user = $request->user();
+        $checked = $request->input('email_enabled', []);
+
+        foreach ($catalog->all() as $type => $entry) {
+            if (! in_array('mail', $entry['channels'] ?? [], true)) {
+                continue;
+            }
+
+            $default = true;
+            $wants = in_array($type, $checked, true);
+
+            if ($wants === $default) {
+                NotificationPreference::where('user_id', $user->id)->where('type', $type)->delete();
+            } else {
+                NotificationPreference::updateOrCreate(
+                    ['user_id' => $user->id, 'type' => $type],
+                    ['email_enabled' => $wants],
+                );
+            }
+        }
+
+        return Redirect::route('profile.edit')->with('status', 'notifications-updated');
     }
 
     /**

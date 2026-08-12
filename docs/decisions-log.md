@@ -235,6 +235,30 @@ navigating authenticated and unauthenticated pages, confirming the no-HTML-cachi
 
 ---
 
+## M12 — Notifications: implementation decisions (2026-08-16)
+
+Full module notes: [`planning/modules/M12-notifications.md`](planning/modules/M12-notifications.md),
+build plan: [`planning/modules/M12-implementation-plan.md`](planning/modules/M12-implementation-plan.md).
+`NotificationService::send($user, $type, $data)` had been a live cross-module contract with
+13 call sites across 8 files (M08, M09, M10, M11, M13, M06's jobs) since M08 shipped its
+Phase 1 stub — these decisions were resolved with the owner before the full build, since the
+contract could not change under any of them.
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| D12.1 — Type → rendering dispatch | A central type catalog, `config/notifications.php` + `App\Support\NotificationCatalog`, maps each type string to label/icon/title/body/link/channels. `GenericNotification`/`GenericMailNotification` stay generic and read the catalog | 11 live types today; per-type `Notification` subclasses would mean 11 files (and a `match()` factory) to express what is currently 11 rows of static metadata, and every future type costs another class instead of another config row |
+| D12.2 — Channel control | Per-user preferences: `notification_preferences` (sparse — a row only when a choice differs from the catalog default) + a Notifications tab on `/profile`. In-app is always on; email is opt-out per type | Approvers are the heaviest recipients of `sendMany()` fan-out and had no way to mute anything. Admin-global-only was rejected for the same reason: one user can't quiet their own inbox |
+| D12.3 — Scope | Wire channels only; no new trigger points added | Maintenance events (M11), a movement-submitted requester ack (M09), and depreciation approval outcomes (M16) all stay the responsibility of their owning modules — M12 is the delivery layer, not the event inventory |
+| D12.4 — Mail delivery | Queued (`GenericMailNotification implements ShouldQueue`) on the existing `database` queue driver; Mailpit documented for local dev; `MAIL_MAILER=log` stays the `.env.example` default | Synchronous mail on `sendMany()` to a whole role's worth of approvers would stall the request on a slow SMTP host |
+| `ShouldQueue` cannot go on the notification class that also writes the database row | Split into two notification classes: `GenericNotification` (database, inline, no `ShouldQueue`) and `GenericMailNotification` (mail, `ShouldQueue`) | `ShouldQueue` on a multi-channel `Notification` queues *every* channel it declares, including `database`. Discovered before it shipped: the naive one-class-`ShouldQueue` version means the bell doesn't update until a worker runs — never, in a dev environment with none running. Recorded in CLAUDE.md as a codebase-wide gotcha |
+| `sendMany()` preloads preferences once per batch | Built a `user_id => preferences` lookup with one query before the loop, rather than `Collection::loadMissing()` | `sendMany()`'s parameter is `iterable<User>`, not always an Eloquent collection (`WorkflowService` passes role query results, but the type-hint allows arrays/plain collections too), and `loadMissing()` only exists on `Illuminate\Database\Eloquent\Collection` |
+| `export_ready` / `import_completed` link via a payload key, not `url` | Catalog's `link` value is `string\|Closure(array): ?string` — most types name `'url'`, these two name `'download_url'` / resolve `batch_id` through a closure | Established by reading the actual producers, not the module doc: those two jobs' payloads never had a `url` key, so a bare `data.url` read (as originally scoped) would silently break the "click through to the record" acceptance criterion for exactly those two types |
+| `import_completed`'s body is a closure, not a placeholder string | `ProcessAssetImport` sends two shapes under one type — success (`success_count`/`error_count`) and unreadable-file (`error` only) | A single `":x succeeded, :y failed.:error"` template would render leading/doubled spaces and no separator before the error text when only `error` is present; empty-placeholder tolerance (the general rule for every other type) isn't enough to make that shape read well |
+| No new RBAC permission for `/notifications` | Routes scoped by `auth()->user()->notifications()` ownership, not a `{module}.{action}` permission check | Every authenticated user has notifications; there is no admin-vs-user split to express, unlike every other module's screens |
+| Full test suite needs `memory_limit=512M`, set in `phpunit.xml` | Added `<ini name="memory_limit" value="512M"/>` | `QUEUE_CONNECTION=sync` in tests means every notification with a mail channel now compiles and renders the full markdown mail template inline (not skipped — `MAIL_MAILER=array` only stops delivery, not rendering). That pushed the full 565-test run past PHP's 128M default late in the run, on a test file (`ReportPermissionTest`) M12 never touches |
+
+---
+
 ## Integration pass — decisions made while fixing browser-only defects (2026-08-13)
 
 Full write-up: [`integration-testing.md`](integration-testing.md). Six defects were found
@@ -264,7 +288,7 @@ These are interfaces between modules. Changing them requires coordinating both s
 | `DynamicFieldService::resolveForCategory($id)` | M04 | M03 forms, M06 import, M14 reports | Must be stable before M06 starts |
 | `Asset::hasCustomFieldData()` | M03 (stub → M04 real) | M04 category lock | M03 returns `false`; M04 replaces with real check |
 | `WorkflowService::submit/approve/reject` | M08 | M09, M05 replacement, M17 kits | M08 must ship before M09 can go live |
-| `NotificationService::send($user, $type, $data)` | M12 | M08, M09, M10, M11, M13 | Stub in M07; full implementation in M12 |
+| `NotificationService::send($user, $type, $data)` | M12 ✅ | M08, M09, M10, M11, M13 | Signature unchanged since the M07 stub — full build (catalog, mail, preferences) landed entirely behind it |
 | `TagService` + `/scan/{tag_number}` route | M05 | M08 tag replacement, M10 audit scan | Scan URL format is a contract — never change `tag_number` slug |
 | `MovementService::applyBulk()` | M09 | M17 kit assignment | Must accept `Collection $assets` + `KitAssignment` |
 | `company_id` on `assets` | M03 | M09 inter-company transfer, M06 import, M14 reports | Updated atomically on inter-company transfer approval; never directly writeable after create |

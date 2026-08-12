@@ -6,12 +6,13 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
 /**
- * Minimal database-channel notification backing NotificationService::send().
+ * The in-app half of every notification (M12). Deliberately NOT ShouldQueue: if it were,
+ * database writes would go through the queue worker too, and the bell would not update
+ * until a worker picked the job up (never, in a dev environment with none running). Mail
+ * is the half that queues — see GenericMailNotification.
  *
- * M12 will replace/extend this with per-type notification classes and channel
- * preferences; until then a single generic class keeps the `notifications` table
- * (already migrated, already read by the sidebar bell) fed with a stable shape:
- * the `type` column holds the app-level type string, not this PHP class name.
+ * The `type` column holds the app-level type string (looked up in
+ * config/notifications.php via NotificationCatalog), not this PHP class name.
  */
 class GenericNotification extends Notification
 {

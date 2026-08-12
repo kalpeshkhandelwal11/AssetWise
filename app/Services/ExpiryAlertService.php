@@ -53,10 +53,16 @@ class ExpiryAlertService
     /** @return Collection<int, User> */
     private function recipientsFor(Asset $asset): Collection
     {
-        $recipients = User::permission('maintenance.manage')->where('is_active', true)->get();
+        // Eager-loaded (M12): run() calls send() per recipient rather than sendMany(), so
+        // without this each user's wantsEmailFor() would re-query notification_preferences —
+        // and this whole method already runs once per matching asset per threshold.
+        $recipients = User::permission('maintenance.manage')
+            ->where('is_active', true)
+            ->with('notificationPreferences')
+            ->get();
 
         if ($asset->custodian && $asset->custodian->is_active) {
-            $recipients->push($asset->custodian);
+            $recipients->push($asset->custodian->loadMissing('notificationPreferences'));
         }
 
         return $recipients->unique('id');

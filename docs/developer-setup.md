@@ -316,7 +316,7 @@ php artisan test tests/Feature/Auth/
 php artisan test --coverage
 ```
 
-Expected output: **273 tests, 0 failures**.
+Expected output: **565 tests, 0 failures**.
 
 ### Test conventions
 
@@ -334,13 +334,40 @@ Expected output: **273 tests, 0 failures**.
 
 ## 16. Queue worker
 
-Heavy operations (bulk exports, PDF generation) run as queued jobs. Start the worker with:
+Heavy operations (bulk exports, PDF generation, and — since M12 — notification emails) run as
+queued jobs. Start the worker with:
 
 ```powershell
 php artisan queue:work --stop-when-empty
 ```
 
 For development convenience, set `QUEUE_CONNECTION=sync` in `.env` to run jobs inline without a worker.
+
+### Notification email failure mode (M12) — read this before it confuses you
+
+In-app (bell/dropdown) notifications write inline and always appear immediately, worker or
+not. **Email does not.** `NotificationService::send()` dispatches a *separate*,
+`ShouldQueue` notification (`App\Notifications\GenericMailNotification`) for the mail
+channel — with `QUEUE_CONNECTION=database` and no `queue:work` running, that job sits in the
+`jobs` table forever and **no error appears anywhere**. If "the bell updated but no email
+arrived," check `queue:work` is running before anything else.
+
+### Mailpit (local email testing)
+
+Laragon Full ships Mailpit. Point mail at it in `.env`:
+
+```ini
+MAIL_MAILER=smtp
+MAIL_HOST=127.0.0.1
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_ENCRYPTION=null
+```
+
+Sent mail (including M12's `GenericMailNotification`) appears at `http://localhost:8025` —
+nothing leaves your machine. If Mailpit isn't running, Laragon's tray icon has a start
+toggle for it alongside MySQL/Nginx.
 
 ---
 
@@ -352,7 +379,7 @@ Scheduled work is registered in `bootstrap/app.php` under `->withSchedule()`. Cu
 |---------|-----------|---------|
 | `approvals:escalate` | daily | Escalates pending approval steps past their `escalation_hours` (M08). Idempotent — re-running never double-escalates |
 
-Depreciation posting (M16) and notification digests (M12) will be added to the same block.
+Depreciation posting (`depreciation:post-monthly`, M16) and expiry alerts (`alerts:expiry`, M11) also run daily from this block. M12 shipped without a digest job — see its decisions-log entry (D12.3, "wire channels only").
 
 **Local development** — run manually:
 

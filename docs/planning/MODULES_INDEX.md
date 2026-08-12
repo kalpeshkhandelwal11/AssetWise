@@ -99,7 +99,7 @@ mysql --version
 | [M09](modules/M09-asset-movement.md) | Asset Movement | ✅ done | Dev 2 | 2 | M03 ✅, M08 ✅ | M10, M11 |
 | [M10](modules/M10-audit.md) | Audit & Verification | ✅ done | Dev 2 | 2 | M03 ✅, M05 ✅ | M09, M11 |
 | [M11](modules/M11-maintenance.md) | Maintenance | ✅ done | Dev 2 | 2 | M03 ✅ | M08, M09, M10 |
-| [M12](modules/M12-notifications.md) | Notifications | 🟡 stub built | Both | 1–3 | M00 | Any (stub early) |
+| [M12](modules/M12-notifications.md) | Notifications | ✅ done | Both | 1–3 | M00 | Any (stub early) |
 | [M13](modules/M13-disposal.md) | Disposal & Scrap | ✅ done | Dev 2 | 3 | M03 ✅, M08 ✅ | M14 |
 | [M14](modules/M14-reports-dashboard.md) | Reports & Dashboard | ✅ done | Dev 2 | 3 | M03+ | M13, M15 |
 | [M15](modules/M15-pwa.md) | PWA (Full Site) | ✅ done | Dev 2 | 3 | M00 UI ✅ | M14 |
@@ -155,7 +155,7 @@ gantt
 | `Asset::hasCustomFieldData()` | M03 | M04 category lock |
 | `WorkflowService::submit/approve/reject` | M08 | M09, M13 |
 | `ApprovalRequestApproved` event (terminal step only) | M08 | M05, M09, M13, M17 — M08 never calls domain services directly; consumers listen and switch on `$event->request->workflow->module` |
-| `NotificationService::send($user, $type, $data)` | M12 (stub shipped in M08) | M08, M09, M10 ✅, M11 ✅, M13, M14 ✅ |
+| `NotificationService::send($user, $type, $data)` | M12 ✅ (stub shipped in M08, full build in M12) | M08, M09, M10 ✅, M11 ✅, M13, M14 ✅ |
 | Blade components (`x-data-table`, `x-dynamic-fields`) | M07 | All UI modules |
 | `tags` pool + `/scan/{tag_number}` + `TagService` | M05 | M08 replacement, M10 ✅ audit scan (`ScanController::resolve` routes an `audit.verify` holder with a pending item into `audits.verify`) |
 | `tag_replacement` workflow module | M08 | M05 replacement apply |
@@ -177,9 +177,8 @@ gantt
 ### Where to start today
 
 - **Dev 1** → M00–M07 are all done.
-- **Dev 2** → M08, M09, M10, M11, M13, M14, M15 and M16 are all done. Remaining modules are all unblocked (no dependency is still outstanding):
+- **Dev 2** → M08, M09, M10, M11, M12, M13, M14, M15 and M16 are all done. Remaining module is unblocked (no dependency outstanding):
   - **M17** (Asset Kits) — M03, M08 and M09 have all shipped; build kit assignments on M09's `AssetMovementBatch` model rather than a new grouping table (see M09's decisions-log entry).
-  - **M12** (Notifications) — still just the Phase 1 stub (`NotificationService` + `GenericNotification`, database channel only); a full build (mail channel, per-type classes, preferences) has no blocking dependency either.
 - M10 shipped with its own `audit_campaign` entry in `ReportRegistry` (cross-campaign verification findings, distinct from the M09-backed Audit/Compliance report), and M16 shipped with a `depreciation_schedule` entry — both promoted from "coming soon" to enabled. The Maintenance Report entry can be promoted too now that M11 has shipped.
 - Before planning any module, read its spec in `modules/`, then the matching "Pending Decisions" block in [`../decisions-log.md`](../decisions-log.md) — resolve open `P#.#` items with the product owner *before* writing code.
 

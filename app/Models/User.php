@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\NotificationCatalog;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -82,6 +83,31 @@ class User extends Authenticatable
     public function createdAssets(): HasMany
     {
         return $this->hasMany(Asset::class, 'created_by');
+    }
+
+    public function notificationPreferences(): HasMany
+    {
+        return $this->hasMany(NotificationPreference::class);
+    }
+
+    /**
+     * Reads the LOADED relation when present (NotificationService::sendMany() eager-loads
+     * it once per batch to avoid a query per recipient) and falls back to a fresh query
+     * only when called standalone. Missing row = inherits the catalog default.
+     */
+    public function wantsEmailFor(string $type): bool
+    {
+        $preferences = $this->relationLoaded('notificationPreferences')
+            ? $this->notificationPreferences
+            : $this->notificationPreferences()->where('type', $type)->get();
+
+        $preference = $preferences->firstWhere('type', $type);
+
+        if ($preference) {
+            return $preference->email_enabled;
+        }
+
+        return in_array('mail', app(NotificationCatalog::class)->channels($type), true);
     }
 
     // Convenience: highest session_lifetime_minutes across all roles (null = global default)

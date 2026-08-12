@@ -38,6 +38,7 @@ use App\Http\Controllers\Movement\MovementBatchController;
 use App\Http\Controllers\Movement\MovementController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PwaController;
 use Illuminate\Support\Facades\Route;
@@ -67,6 +68,12 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::patch('/profile/notifications', [ProfileController::class, 'updateNotifications'])->name('profile.notifications.update');
+
+    // Notifications (M12) — per-user resource, scoped by ownership not RBAC permission.
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
 
     // Assets — bulk import/export (M06) register before the resource route so
     // "assets/import" and "assets/export" aren't swallowed by the "assets/{asset}" show route.

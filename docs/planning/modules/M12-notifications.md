@@ -1,5 +1,8 @@
 # M12 — Notifications
 
+**Status: ✅ done.** See [`M12-implementation-plan.md`](M12-implementation-plan.md) for the
+build plan and the four pre-implementation decisions (D12.1–D12.4) resolved with the owner.
+
 | | |
 |--|--|
 | **Developer** | Both (stub Dev 1, complete Dev 2) |
@@ -28,10 +31,10 @@ In-app alerts + email for lifecycle events.
 ## Tasks
 
 - [x] **Phase 1 stub:** `NotificationService` + `notifications` table + bell icon — **shipped in M08**
-- [x] Notification bell in layout with unread count — `layouts/app.blade.php` reads `auth()->user()->unreadNotifications`
-- [ ] Mark as read; deep links to records — the bell dropdown still renders a hard-coded "No new notifications" and both its links are `#`
-- [ ] Mailable classes per event type
-- [ ] Queue mail on database driver
+- [x] Notification bell in layout with unread count — `layouts/app.blade.php` reads `auth()->user()->unreadNotifications()->count()` (fixed from hydrating the full collection, see implementation plan step 8)
+- [x] Mark as read; deep links to records — `NotificationController@read` marks read then redirects to the type's resolved `link`; `/notifications` is the "view all" index
+- [x] Mailable classes per event type — superseded by D12.1: one catalog-driven `GenericMailNotification::toMail()` rather than 11 per-type classes
+- [x] Queue mail on database driver — `GenericMailNotification implements ShouldQueue`; `GenericNotification` (database channel) deliberately does not, see the implementation plan's step 4 and the CLAUDE.md gotcha
 
 ## What M08 already built (Phase 1 stub — extend, don't replace)
 
