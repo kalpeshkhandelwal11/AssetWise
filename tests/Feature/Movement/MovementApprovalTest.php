@@ -288,6 +288,37 @@ class MovementApprovalTest extends TestCase
         $this->assertSame(3, \App\Models\AssetMovement::where('status', 'completed')->count());
     }
 
+    public function test_bulk_assignment_assigns_the_employee_custodian_to_every_asset(): void
+    {
+        $this->withWorkflow();
+        $requester = $this->createUserWithRole('Asset Manager');
+        $levelOneApprover = $this->createUserWithRole('Approver');
+        $levelTwoApprover = $this->createUserWithRole('Asset Manager');
+        $custodian = Employee::factory()->create();
+        $assets = Asset::factory()->count(2)->create();
+
+        // A non-employee id must be rejected — the bulk custodian validates against employees.
+        $this->actingAs($requester)->post(route('movements.bulk.store'), [
+            'asset_ids'        => $assets->pluck('id')->all(),
+            'movement_type_id' => $this->movementType('ASSIGNMENT', 'Assignment')->id,
+            'to_custodian_id'  => 999999,
+        ])->assertSessionHasErrors('to_custodian_id');
+
+        $this->actingAs($requester)->post(route('movements.bulk.store'), [
+            'asset_ids'        => $assets->pluck('id')->all(),
+            'movement_type_id' => $this->movementType('ASSIGNMENT', 'Assignment')->id,
+            'to_custodian_id'  => $custodian->id,
+        ])->assertRedirect(route('movements.index'));
+
+        $batch = \App\Models\AssetMovementBatch::firstOrFail();
+        $this->actingAs($levelOneApprover)->post(route('approvals.approve', $batch->approval_request_id));
+        $this->actingAs($levelTwoApprover)->post(route('approvals.approve', $batch->approval_request_id));
+
+        foreach ($assets as $asset) {
+            $this->assertSame($custodian->id, $asset->fresh()->custodian_id);
+        }
+    }
+
     public function test_verify_requires_completed_status_and_permission(): void
     {
         $this->withWorkflow();

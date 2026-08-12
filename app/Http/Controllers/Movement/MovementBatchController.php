@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Company;
 use App\Models\Department;
+use App\Models\Employee;
 use App\Models\Location;
 use App\Models\MovementType;
 use App\Models\User;
@@ -61,7 +62,7 @@ class MovementBatchController extends Controller
             'movement_type_id' => 'required|exists:movement_types,id',
             'to_company_id'    => 'nullable|exists:companies,id',
             'to_location_id'   => 'nullable|exists:locations,id',
-            'to_custodian_id'  => 'nullable|exists:users,id',
+            'to_custodian_id'  => 'nullable|exists:employees,id',
             'to_department_id' => 'nullable|exists:departments,id',
             'to_status_id'     => 'nullable|exists:asset_statuses,id',
             'notes'            => 'nullable|string|max:1000',
@@ -75,7 +76,7 @@ class MovementBatchController extends Controller
             'companies'     => Company::where('is_active', true)->orderBy('name')->get(),
             'locations'     => Location::where('is_active', true)->orderBy('name')->get(),
             'departments'   => Department::where('is_active', true)->orderBy('name')->get(),
-            'custodians'    => User::where('is_active', true)->orderBy('name')->get(),
+            'custodians'    => Employee::where('is_active', true)->orderBy('name')->get(),
         ];
     }
 }
