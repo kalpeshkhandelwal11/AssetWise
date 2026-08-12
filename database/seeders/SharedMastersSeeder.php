@@ -50,14 +50,19 @@ class SharedMastersSeeder extends Seeder
             ['name' => 'Available',       'code' => 'AVAILABLE',      'color' => '#22c55e', 'is_system' => true],
             ['name' => 'Assigned',        'code' => 'ASSIGNED',       'color' => '#3b82f6', 'is_system' => true],
             ['name' => 'In Maintenance',  'code' => 'MAINTENANCE',    'color' => '#f59e0b', 'is_system' => true],
-            ['name' => 'Disposed',        'code' => 'DISPOSED',       'color' => '#ef4444', 'is_system' => true],
+            ['name' => 'Scrapped',        'code' => 'DISPOSED',       'color' => '#ef4444', 'is_system' => true],
             ['name' => 'Under Audit',     'code' => 'AUDIT',          'color' => '#8b5cf6', 'is_system' => false],
             ['name' => 'Lost',            'code' => 'LOST',           'color' => '#6b7280', 'is_system' => false],
-            ['name' => 'Inter-Company Transfer', 'code' => 'ICT',     'color' => '#06b6d4', 'is_system' => false],
+            ['name' => 'Sold',            'code' => 'ICT',            'color' => '#06b6d4', 'is_system' => false],
         ];
 
         foreach ($statuses as $status) {
-            AssetStatus::firstOrCreate(['code' => $status['code']], $status);
+            // Update name/color too so renames (Disposed->Scrapped, ICT->Sold) apply on re-seed;
+            // the code is the stable key that M09/M13 logic keys off, so it never changes.
+            AssetStatus::updateOrCreate(
+                ['code' => $status['code']],
+                ['name' => $status['name'], 'color' => $status['color'], 'is_system' => $status['is_system']],
+            );
         }
 
         // Asset types

@@ -16,7 +16,7 @@ class AttachmentController extends Controller
         $this->authorize('update', $asset);
 
         $data = $request->validate([
-            'type' => 'required|in:invoice,warranty_card,manual,agreement',
+            'type' => 'required|in:invoice,warranty_card,manual,agreement,photo',
             'file' => 'required|file|max:20480', // 20 MB
         ]);
 

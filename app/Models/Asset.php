@@ -19,8 +19,8 @@ class Asset extends Model
         'company_id', 'category_id', 'asset_type_id', 'status_id',
         'location_id', 'building_id', 'floor_id', 'room_id',
         'custodian_id', 'department_id', 'branch_id',
-        'purchase_date', 'purchase_cost', 'vendor', 'warranty_expiry', 'amc_expiry',
-        'is_eol', 'eol_projected_date',
+        'purchase_date', 'purchase_cost', 'vendor', 'vendor_invoice_no', 'warranty_expiry', 'amc_expiry',
+        'is_eol', 'eol_projected_date', 'useful_life_years',
         'notes', 'is_active', 'created_by', 'updated_by',
     ];
 

@@ -11,7 +11,8 @@ return new class extends Migration
         Schema::create('asset_attachments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('asset_id')->constrained()->cascadeOnDelete();
-            $table->enum('type', ['invoice', 'warranty_card', 'manual', 'agreement']);
+            // 'photo' added for the create-form media section (asset images captured at creation).
+            $table->enum('type', ['invoice', 'warranty_card', 'manual', 'agreement', 'photo']);
             $table->string('path');
             $table->string('original_name');
             $table->string('mime', 100);

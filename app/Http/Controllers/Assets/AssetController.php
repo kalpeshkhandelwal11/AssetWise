@@ -16,6 +16,7 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Services\AssetService;
 use App\Services\DynamicFieldService;
+use App\Services\TagService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -27,6 +28,7 @@ class AssetController extends Controller
     public function __construct(
         private readonly AssetService $assets,
         private readonly DynamicFieldService $fields,
+        private readonly TagService $tags,
     ) {
     }
 
@@ -96,10 +98,45 @@ class AssetController extends Controller
         $fieldInput = $data['fields'];
         unset($data['fields'], $data['_resolved_fields']);
 
+        // Media (labelled attachments) + optional barcode tag are validated separately so they
+        // never leak into the asset column payload passed to AssetService::create().
+        $extras = $request->validate([
+            'media'          => 'nullable|array',
+            'media.*'        => 'file|max:20480', // 20 MB, mirrors AttachmentController
+            'media_labels'   => 'nullable|array',
+            'media_labels.*' => 'in:invoice,warranty_card,manual,agreement,photo',
+            'tag_id'         => 'nullable|exists:tags,id',
+        ]);
+
         $asset = $this->assets->create($data, $request->user());
         $this->fields->saveValues($asset, $fieldInput, $resolved);
+        $this->storeMedia($asset, $request);
+
+        if (! empty($extras['tag_id']) && $request->user()->can('tags.assign')) {
+            $this->tags->assignToAsset(Tag::findOrFail($extras['tag_id']), $asset, $request->user());
+        }
 
         return redirect()->route('assets.show', $asset)->with('success', 'Asset created.');
+    }
+
+    /** Save each uploaded create-form media file as a labelled AssetAttachment (reuses AttachmentController's storage layout). */
+    private function storeMedia(Asset $asset, Request $request): void
+    {
+        $labels = $request->input('media_labels', []);
+
+        foreach ($request->file('media', []) as $i => $file) {
+            if (! $file) {
+                continue;
+            }
+            $path = $file->store("assets/{$asset->id}/attachments", 'public');
+            $asset->attachments()->create([
+                'type'          => $labels[$i] ?? 'photo',
+                'path'          => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime'          => $file->getClientMimeType(),
+                'size'          => $file->getSize(),
+            ]);
+        }
     }
 
     public function show(Asset $asset): View
@@ -249,10 +286,12 @@ class AssetController extends Controller
             'purchase_date'    => 'nullable|date',
             'purchase_cost'    => 'nullable|numeric|min:0',
             'vendor'           => 'nullable|string|max:255',
+            'vendor_invoice_no' => 'nullable|string|max:255',
             'warranty_expiry'  => 'nullable|date',
             'amc_expiry'       => 'nullable|date',
             'is_eol'           => 'sometimes|boolean',
             'eol_projected_date' => 'nullable|date',
+            'useful_life_years' => 'nullable|integer|min:1|max:100',
             'notes'            => 'nullable|string',
         ];
     }
@@ -267,7 +306,8 @@ class AssetController extends Controller
             'locations'   => Location::where('is_active', true)->orderBy('name')->get(),
             'departments' => Department::where('is_active', true)->orderBy('name')->get(),
             'branches'    => Branch::where('is_active', true)->orderBy('name')->get(),
-            'custodians'  => Employee::where('is_active', true)->orderBy('name')->get(),
+            'custodians'  => Employee::where('is_active', true)->orderBy('name')->get(['id', 'name', 'department_id', 'branch_id']),
+            'availableTags' => Tag::where('status', 'available')->orderBy('tag_number')->get(),
         ];
     }
 }
