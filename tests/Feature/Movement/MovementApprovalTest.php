@@ -136,6 +136,56 @@ class MovementApprovalTest extends TestCase
         ]);
     }
 
+    public function test_assignment_approval_flips_status_to_assigned(): void
+    {
+        $this->withWorkflow();
+        $requester = $this->createUserWithRole('Asset Manager');
+        $levelOneApprover = $this->createUserWithRole('Approver');
+        $levelTwoApprover = $this->createUserWithRole('Asset Manager');
+        $custodian = Employee::factory()->create();
+        $assigned = AssetStatus::firstOrCreate(['code' => 'ASSIGNED'], ['name' => 'Assigned', 'color' => '#3b82f6', 'is_system' => true, 'is_active' => true]);
+        $asset = Asset::factory()->create(); // factory gives some non-ASSIGNED status
+
+        $this->actingAs($requester)->post(route('movements.store'), [
+            'asset_id'         => $asset->id,
+            'movement_type_id' => $this->movementType('ASSIGNMENT', 'Assignment')->id,
+            'to_custodian_id'  => $custodian->id,
+        ]);
+
+        $movement = \App\Models\AssetMovement::where('asset_id', $asset->id)->firstOrFail();
+        $this->actingAs($levelOneApprover)->post(route('approvals.approve', $movement->approval_request_id));
+        $this->actingAs($levelTwoApprover)->post(route('approvals.approve', $movement->approval_request_id));
+
+        $this->assertSame('ASSIGNED', $asset->fresh()->status->code);
+        $this->assertDatabaseHas('asset_status_histories', [
+            'asset_id'     => $asset->id,
+            'to_status_id' => $assigned->id,
+        ]);
+    }
+
+    public function test_return_approval_flips_status_to_available(): void
+    {
+        $this->withWorkflow();
+        $requester = $this->createUserWithRole('Asset Manager');
+        $levelOneApprover = $this->createUserWithRole('Approver');
+        $levelTwoApprover = $this->createUserWithRole('Asset Manager');
+        AssetStatus::firstOrCreate(['code' => 'AVAILABLE'], ['name' => 'Available', 'color' => '#22c55e', 'is_system' => true, 'is_active' => true]);
+        $custodian = Employee::factory()->create();
+        $asset = Asset::factory()->create(['custodian_id' => $custodian->id]);
+
+        $this->actingAs($requester)->post(route('movements.store'), [
+            'asset_id'         => $asset->id,
+            'movement_type_id' => $this->movementType('RETURN', 'Return')->id,
+        ]);
+
+        $movement = \App\Models\AssetMovement::where('asset_id', $asset->id)->firstOrFail();
+        $this->actingAs($levelOneApprover)->post(route('approvals.approve', $movement->approval_request_id));
+        $this->actingAs($levelTwoApprover)->post(route('approvals.approve', $movement->approval_request_id));
+
+        $this->assertNull($asset->fresh()->custodian_id);
+        $this->assertSame('AVAILABLE', $asset->fresh()->status->code);
+    }
+
     public function test_assigning_to_a_login_less_employee_completes_without_a_notification(): void
     {
         $this->withWorkflow();

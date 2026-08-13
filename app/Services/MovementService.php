@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Asset;
 use App\Models\AssetMovement;
 use App\Models\AssetMovementBatch;
+use App\Models\AssetStatus;
 use App\Models\AssetStatusHistory;
 use App\Models\MovementType;
 use App\Models\User;
@@ -21,6 +22,9 @@ class MovementService
 {
     /** Movement type codes gated by movement.transfer; everything else needs only movement.assign. */
     private const TRANSFER_TYPE_CODES = ['TRANSFER', 'INTER_COMPANY_TRANSFER'];
+
+    /** Memoised status-code -> id lookups for defaultStatusIdForType() across a bulk apply. */
+    private array $statusIdByCode = [];
 
     public function __construct(
         private WorkflowService $workflows,
@@ -199,7 +203,9 @@ class MovementService
      */
     private function applyToAsset(Asset $asset, AssetMovement $movement): void
     {
-        $updates = match ($movement->movementType->code) {
+        $code = $movement->movementType->code;
+
+        $updates = match ($code) {
             'ASSIGNMENT', 'CUSTODIAN_CHANGE' => ['custodian_id' => $movement->to_custodian_id],
             'RETURN' => ['custodian_id' => null],
             'TRANSFER' => array_filter([
@@ -216,22 +222,44 @@ class MovementService
 
         // M16: an inter-company transfer is a disposal-for-seller / acquisition-for-buyer, so
         // the old schedule stops and a fresh one starts for the receiver at net book value.
-        if ($movement->movementType->code === 'INTER_COMPANY_TRANSFER') {
+        if ($code === 'INTER_COMPANY_TRANSFER') {
             $this->depreciation->resetForTransfer($asset, now());
         }
 
-        if ($movement->to_status_id && $movement->to_status_id !== $asset->status_id) {
+        // The movement's explicit to_status_id wins; otherwise assignment/return imply a status
+        // (ASSIGNMENT/CUSTODIAN_CHANGE -> ASSIGNED, RETURN -> AVAILABLE) so an approved assignment
+        // no longer leaves the asset showing "Available".
+        $targetStatusId = $movement->to_status_id ?? $this->defaultStatusIdForType($code);
+
+        if ($targetStatusId && $targetStatusId !== $asset->status_id) {
             AssetStatusHistory::create([
                 'asset_id'       => $asset->id,
                 'from_status_id' => $asset->status_id,
-                'to_status_id'   => $movement->to_status_id,
+                'to_status_id'   => $targetStatusId,
                 'changed_by'     => $movement->requested_by,
                 'reason'         => ($movement->movementType->name ?? 'Movement') . ' movement',
                 'created_at'     => now(),
             ]);
 
-            $asset->update(['status_id' => $movement->to_status_id]);
+            $asset->update(['status_id' => $targetStatusId]);
         }
+    }
+
+    /** Status a movement type moves the asset into by default (null = leave status untouched). */
+    private function defaultStatusIdForType(string $code): ?int
+    {
+        $statusCode = match ($code) {
+            'ASSIGNMENT', 'CUSTODIAN_CHANGE' => 'ASSIGNED',
+            'RETURN' => 'AVAILABLE',
+            default => null,
+        };
+
+        if (! $statusCode) {
+            return null;
+        }
+
+        return $this->statusIdByCode[$statusCode]
+            ??= AssetStatus::where('code', $statusCode)->value('id');
     }
 
     private function assertMovable(Asset $asset, MovementType $movementType, array $data): void
