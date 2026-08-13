@@ -32,7 +32,7 @@
         @endcan
     </div>
 
-    <x-filter-bar :clear="route('reports.show', $type)">
+    <x-filter-bar :clear="route('reports.show', $type)" :auto="false">
         @switch($type)
             @case('asset_register')
                 <select name="company_id" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">

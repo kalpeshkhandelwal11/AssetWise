@@ -4,6 +4,7 @@ import 'tom-select/dist/css/tom-select.css';
 import qrScanner from './qr-scanner';
 import tagScanner from './tag-scanner';
 import registerSearchableSelect from './searchable-select';
+import filterBar from './filter-bar';
 
 // Apply dark mode before first paint to avoid flash
 (function () {
@@ -29,6 +30,9 @@ Alpine.data('tagScanner', tagScanner);
 // `x-searchable` — Tom Select behind <x-searchable-select>. Registered before start() so the
 // directive is known when the first tree is walked.
 registerSearchableSelect(Alpine);
+
+// Auto-applying filters behind <x-filter-bar> — apply on change / debounced typing, no button.
+Alpine.data('filterBar', filterBar);
 
 window.Alpine = Alpine;
 

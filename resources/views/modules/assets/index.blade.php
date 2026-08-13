@@ -93,14 +93,14 @@
             @endforeach
         </select>
 
-        <select name="sort" onchange="this.form.submit()" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+        <select name="sort" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
             <option value="updated"  @selected($sort === 'updated')>Last updated</option>
             <option value="name"     @selected($sort === 'name')>Name (A–Z)</option>
             <option value="asset_id" @selected($sort === 'asset_id')>Asset ID</option>
             <option value="created"  @selected($sort === 'created')>Recently added</option>
         </select>
 
-        <select name="per_page" onchange="this.form.submit()" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+        <select name="per_page" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
             @foreach([20, 50, 100] as $n)
                 <option value="{{ $n }}" @selected($perPage === $n)>{{ $n }} / page</option>
             @endforeach
