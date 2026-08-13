@@ -10,7 +10,7 @@
 <x-app-layout>
     @section('page-title', $asset->name)
 
-    <div x-data="{ tab: 'summary' }">
+    <div x-data="{ tab: 'summary', lightbox: null }">
         @if($asset->isDraft())
             <div class="mb-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex items-center justify-between gap-3">
                 <p class="text-sm text-amber-800 dark:text-amber-300">
@@ -164,28 +164,34 @@
             <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
                 @forelse($asset->photos as $photo)
                     <div class="relative group">
-                        <img src="{{ Storage::url($photo->path) }}" alt="Asset photo" class="w-full aspect-square object-cover rounded-lg border border-gray-200 dark:border-gray-700">
+                        <img src="{{ Storage::url($photo->path) }}" alt="Asset photo"
+                             @click="lightbox = '{{ Storage::url($photo->path) }}'"
+                             class="w-full aspect-square object-cover rounded-lg border border-gray-200 dark:border-gray-700 cursor-zoom-in">
                         @if($photo->is_primary)
-                            <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-600 text-white">Primary</span>
+                            <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-600 text-white pointer-events-none">Primary</span>
                         @endif
-                        @can('assets.edit')
-                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
+                        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1 pointer-events-none">
+                            <button type="button" @click="lightbox = '{{ Storage::url($photo->path) }}'"
+                                    class="pointer-events-auto p-1.5 bg-white/90 rounded-md text-gray-700 hover:text-indigo-600" title="View">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </button>
+                            @can('assets.edit')
                             @if(! $photo->is_primary)
-                                <form method="POST" action="{{ route('assets.photos.primary', [$asset, $photo]) }}">
+                                <form method="POST" action="{{ route('assets.photos.primary', [$asset, $photo]) }}" class="pointer-events-auto">
                                     @csrf @method('PATCH')
                                     <button type="submit" class="p-1.5 bg-white/90 rounded-md text-gray-700 hover:text-indigo-600" title="Set primary">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
                                     </button>
                                 </form>
                             @endif
-                            <form method="POST" action="{{ route('assets.photos.destroy', [$asset, $photo]) }}" onsubmit="return confirm('Remove this photo?')">
+                            <form method="POST" action="{{ route('assets.photos.destroy', [$asset, $photo]) }}" onsubmit="return confirm('Remove this photo?')" class="pointer-events-auto">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="p-1.5 bg-white/90 rounded-md text-gray-700 hover:text-red-600" title="Remove">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
                             </form>
+                            @endcan
                         </div>
-                        @endcan
                     </div>
                 @empty
                     <p class="col-span-full text-sm text-gray-400 py-8 text-center">No photos uploaded.</p>
@@ -558,6 +564,17 @@
                     <p class="text-sm text-gray-400 py-8 text-center">No activity recorded yet.</p>
                 @endforelse
             </ul>
+        </div>
+
+        {{-- Photo lightbox --}}
+        <div x-show="lightbox" x-cloak x-transition.opacity
+             @click="lightbox = null" @keydown.escape.window="lightbox = null"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 cursor-zoom-out">
+            <img :src="lightbox" alt="Asset photo" class="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl object-contain">
+            <button type="button" @click.stop="lightbox = null"
+                    class="absolute top-4 right-4 p-2 text-white/80 hover:text-white" title="Close">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
         </div>
     </div>
 </x-app-layout>

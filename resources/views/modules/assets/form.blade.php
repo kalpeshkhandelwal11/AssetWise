@@ -44,8 +44,11 @@
                 this.dynamicFields = await res.json();
                 this.fieldValues = {};
             },
-            // Re-fetch the category's fields WITHOUT clearing entered values — used by the
-            // "Refresh" affordance after a field is added via the builder in another tab.
+            {{-- refreshFields: re-fetch the category fields WITHOUT clearing entered values,
+                 used by the Refresh affordance after a field is added in the builder tab.
+                 NOTE: keep comments as Blade comments, never JS // comments with double
+                 quotes here — a literal " inside this x-data attribute truncates it and
+                 kills the whole Alpine component. --}}
             async refreshFields() {
                 if (! this.categoryId) return;
                 const res = await fetch(`{{ url('/api/categories') }}/${this.categoryId}/fields`);
@@ -203,7 +206,7 @@
                     <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Asset Attribute</p>
                     @can('category_fields.manage')
                         <div class="flex items-center gap-2">
-                            <a :href="categoryId ? '{{ url('admin/categories') }}/' + categoryId + '/fields' : '#'"
+                            <a :href="categoryId ? '{{ url('admin/categories') }}/' + categoryId + '/fields/create' : '#'"
                                target="_blank" rel="noopener"
                                :class="!categoryId && 'opacity-40 pointer-events-none'"
                                class="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">
