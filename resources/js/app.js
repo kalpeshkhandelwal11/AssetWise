@@ -1,6 +1,7 @@
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import qrScanner from './qr-scanner';
+import tagScanner from './tag-scanner';
 
 // Apply dark mode before first paint to avoid flash
 (function () {
@@ -18,6 +19,10 @@ Alpine.plugin(collapse);
 // M15 camera scanner, shared by /scan and the audit verify worklist. Must be registered
 // before start(); html5-qrcode itself is lazy-imported inside, not bundled here.
 Alpine.data('qrScanner', qrScanner);
+
+// Asset-create Barcode/Tag section: decode a printed tag with the phone camera and drop the
+// number into the tag input (hardware scanners type into that input directly, no JS needed).
+Alpine.data('tagScanner', tagScanner);
 
 window.Alpine = Alpine;
 

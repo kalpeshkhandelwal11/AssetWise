@@ -429,21 +429,55 @@
                 </div>
 
                 @can('tags.assign')
+                    @php $tagViewerId = 'tag-viewer-'.\Illuminate\Support\Str::random(8); @endphp
                     {{-- Barcode / Tag (assign an available pool tag at creation) --}}
-                    <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <div class="pt-2 border-t border-gray-100 dark:border-gray-700"
+                         x-data="tagScanner(@js(['viewerId' => $tagViewerId, 'inputId' => 'tag_number']))">
                         <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Barcode / Tag</p>
-                        <div class="sm:w-1/3">
-                            <x-input-label for="tag_id" value="Assign Tag" />
-                            <select id="tag_id" name="tag_id"
-                                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
-                                <option value="">— None —</option>
-                                @foreach($availableTags as $tag)
-                                    <option value="{{ $tag->id }}" @selected(old('tag_id') == $tag->id)>{{ $tag->tag_number }}</option>
-                                @endforeach
-                            </select>
-                            <p class="mt-1 text-xs text-gray-400">Optional — assign a printed tag from the available pool.</p>
-                            <x-input-error :messages="$errors->get('tag_id')" class="mt-1" />
+                        <p class="text-xs text-gray-400 mb-3 -mt-1">Optional — assign a printed tag from the pool. Pick one, or scan/type its number (a hardware barcode scanner types straight into the field).</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <x-input-label for="tag_id" value="Pick from pool" />
+                                <select id="tag_id" name="tag_id"
+                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                                    <option value="">— None —</option>
+                                    @foreach($availableTags as $tag)
+                                        <option value="{{ $tag->id }}" @selected(old('tag_id') == $tag->id)>{{ $tag->tag_number }}</option>
+                                    @endforeach
+                                </select>
+                                <x-input-error :messages="$errors->get('tag_id')" class="mt-1" />
+                            </div>
+                            <div>
+                                <x-input-label for="tag_number" value="Scan or enter tag number" />
+                                <div class="mt-1 flex gap-2">
+                                    {{-- Hardware scanners emit the number + Enter; prevent that Enter from
+                                         submitting the half-filled create form. --}}
+                                    <input id="tag_number" name="tag_number" type="text" autocomplete="off"
+                                           @keydown.enter.prevent
+                                           value="{{ old('tag_number') }}" placeholder="e.g. AW-000123"
+                                           class="flex-1 min-w-0 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono" />
+                                    <button type="button" @click="toggle()" :disabled="starting"
+                                            class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                        <span x-text="active ? 'Stop' : (starting ? 'Starting…' : 'Scan')"></span>
+                                    </button>
+                                </div>
+                                <p x-show="captured" x-cloak class="mt-1 text-xs text-green-600 dark:text-green-400">
+                                    Captured tag <span class="font-mono" x-text="captured"></span>.
+                                </p>
+                                <x-input-error :messages="$errors->get('tag_number')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('tag')" class="mt-1" />
+                            </div>
                         </div>
+                        {{-- Camera viewfinder — html5-qrcode injects the <video> here once started. --}}
+                        <div x-show="active" x-cloak class="mt-3">
+                            <div id="{{ $tagViewerId }}" class="w-full max-w-sm overflow-hidden rounded-lg bg-black"></div>
+                        </div>
+                        <p x-show="error" x-cloak x-text="error"
+                           class="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2"></p>
                     </div>
                 @endcan
             @endif

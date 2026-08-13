@@ -130,6 +130,7 @@ class AssetController extends Controller
             'media_labels'   => 'nullable|array',
             'media_labels.*' => 'in:invoice,warranty_card,manual,agreement,photo',
             'tag_id'         => 'nullable|exists:tags,id',
+            'tag_number'     => 'nullable|string', // scan-to-assign (camera or hardware scanner)
         ]);
 
         // Create + (optionally) submit for creation approval atomically, so a WorkflowService
@@ -150,8 +151,18 @@ class AssetController extends Controller
 
         $this->storeMedia($asset, $request);
 
-        if (! empty($extras['tag_id']) && $request->user()->can('tags.assign')) {
-            $this->tags->assignToAsset(Tag::findOrFail($extras['tag_id']), $asset, $request->user());
+        // Assign a pool tag if one was picked (tag_id) or scanned/typed (tag_number). Mirrors
+        // TagController::store — tag_id wins if both are somehow present.
+        if ($request->user()->can('tags.assign') && (! empty($extras['tag_id']) || ! empty($extras['tag_number']))) {
+            $tag = ! empty($extras['tag_id'])
+                ? Tag::find($extras['tag_id'])
+                : Tag::where('tag_number', $extras['tag_number'])->first();
+
+            if (! $tag) {
+                throw ValidationException::withMessages(['tag_number' => 'No tag found with that number.']);
+            }
+
+            $this->tags->assignToAsset($tag, $asset, $request->user());
         }
 
         $message = $asset->fresh()->isDraft()
