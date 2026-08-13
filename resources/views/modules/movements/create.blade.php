@@ -42,12 +42,12 @@
 
             <div>
                 <x-input-label for="asset_id" value="Asset *" />
-                <select id="asset_id" name="asset_id" required class="mt-1 block w-full text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500">
+                <x-searchable-select id="asset_id" name="asset_id" required>
                     <option value="">Select asset…</option>
                     @foreach($assets as $a)
                         <option value="{{ $a->id }}" @selected(old('asset_id', $asset?->id) == $a->id)>{{ $a->name }} @if($a->asset_tag)({{ $a->asset_tag }})@endif</option>
                     @endforeach
-                </select>
+                </x-searchable-select>
                 <x-input-error :messages="$errors->get('asset_id')" class="mt-1" />
             </div>
 
@@ -64,12 +64,12 @@
 
             <div x-show="needsCustodian" x-cloak>
                 <x-input-label for="to_custodian_id" value="New Custodian *" />
-                <select id="to_custodian_id" name="to_custodian_id" class="mt-1 block w-full text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500">
+                <x-searchable-select id="to_custodian_id" name="to_custodian_id">
                     <option value="">Select custodian…</option>
                     @foreach($custodians as $custodian)
                         <option value="{{ $custodian->id }}" @selected(old('to_custodian_id') == $custodian->id)>{{ $custodian->name }}</option>
                     @endforeach
-                </select>
+                </x-searchable-select>
                 <x-input-error :messages="$errors->get('to_custodian_id')" class="mt-1" />
             </div>
 
@@ -82,21 +82,21 @@
             <div x-show="needsLocation" x-cloak class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <x-input-label for="to_location_id" value="New Location" />
-                    <select id="to_location_id" name="to_location_id" class="mt-1 block w-full text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500">
+                    <x-searchable-select id="to_location_id" name="to_location_id">
                         <option value="">— No change —</option>
                         @foreach($locations as $location)
                             <option value="{{ $location->id }}" @selected(old('to_location_id') == $location->id)>{{ $location->name }}</option>
                         @endforeach
-                    </select>
+                    </x-searchable-select>
                 </div>
                 <div>
                     <x-input-label for="to_department_id" value="New Department" />
-                    <select id="to_department_id" name="to_department_id" class="mt-1 block w-full text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500">
+                    <x-searchable-select id="to_department_id" name="to_department_id">
                         <option value="">— No change —</option>
                         @foreach($departments as $department)
                             <option value="{{ $department->id }}" @selected(old('to_department_id') == $department->id)>{{ $department->name }}</option>
                         @endforeach
-                    </select>
+                    </x-searchable-select>
                 </div>
                 {{-- col-span-full, not col-span-2: in the single-column mobile grid a
                      2-track span would create an implicit second column. --}}
@@ -105,12 +105,12 @@
 
             <div x-show="needsCompany" x-cloak>
                 <x-input-label for="to_company_id" value="Destination Company *" />
-                <select id="to_company_id" name="to_company_id" class="mt-1 block w-full text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500">
+                <x-searchable-select id="to_company_id" name="to_company_id">
                     <option value="">Select company…</option>
                     @foreach($companies as $company)
                         <option value="{{ $company->id }}" @selected(old('to_company_id') == $company->id)>{{ $company->name }}</option>
                     @endforeach
-                </select>
+                </x-searchable-select>
                 <p class="mt-1 text-xs text-gray-400">The asset's current company is excluded automatically on submit.</p>
                 <x-input-error :messages="$errors->get('to_company_id')" class="mt-1" />
             </div>

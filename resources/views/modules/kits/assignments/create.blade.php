@@ -37,25 +37,23 @@
 
                 <div x-show="source === 'kit'">
                     <x-input-label for="kit_id" value="Kit" />
-                    <select id="kit_id" name="kit_id" x-bind:disabled="source !== 'kit'"
-                            class="mt-1 block w-full text-sm rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                    <x-searchable-select id="kit_id" name="kit_id" x-bind:disabled="source !== 'kit'">
                         <option value="">— Select a kit —</option>
                         @foreach($kits as $kit)
                             <option value="{{ $kit->id }}" @selected(old('kit_id', $preselectedKit?->id) == $kit->id)>{{ $kit->name }} ({{ $kit->items->flatMap->kitAssets->count() }} assets)</option>
                         @endforeach
-                    </select>
+                    </x-searchable-select>
                     <p class="text-xs text-gray-400 mt-1">The kit's linked slot assets are assigned together.</p>
                 </div>
 
                 <div x-show="source === 'adhoc'">
                     <x-input-label for="asset_ids" value="Assets" />
-                    <select id="asset_ids" name="asset_ids[]" multiple size="8" x-bind:disabled="source !== 'adhoc'"
-                            class="mt-1 block w-full text-sm rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                    <x-searchable-select id="asset_ids" name="asset_ids[]" multiple x-bind:disabled="source !== 'adhoc'">
                         @foreach($assets as $asset)
                             <option value="{{ $asset->id }}">{{ $asset->name }} ({{ $asset->asset_tag }})</option>
                         @endforeach
-                    </select>
-                    <p class="text-xs text-gray-400 mt-1">Ctrl/Cmd-click to select multiple.</p>
+                    </x-searchable-select>
+                    <p class="text-xs text-gray-400 mt-1">Type to search; click to add multiple.</p>
                 </div>
 
                 <div>
@@ -73,45 +71,45 @@
                 {{-- Destination fields shown per movement-type code (mirrors M09's assertMovable rules). --}}
                 <div x-show="['ASSIGNMENT', 'CUSTODIAN_CHANGE'].includes(code)">
                     <x-input-label for="to_custodian_id" value="Custodian" />
-                    <select id="to_custodian_id" name="to_custodian_id" class="mt-1 block w-full text-sm rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                    <x-searchable-select id="to_custodian_id" name="to_custodian_id">
                         <option value="">— Select —</option>
                         @foreach($custodians as $u)
                             <option value="{{ $u->id }}" @selected(old('to_custodian_id') == $u->id)>{{ $u->name }}</option>
                         @endforeach
-                    </select>
+                    </x-searchable-select>
                     <x-input-error :messages="$errors->get('to_custodian_id')" class="mt-1" />
                 </div>
 
                 <div x-show="code === 'TRANSFER'" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <x-input-label for="to_location_id" value="Location" />
-                        <select id="to_location_id" name="to_location_id" class="mt-1 block w-full text-sm rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                        <x-searchable-select id="to_location_id" name="to_location_id">
                             <option value="">— Select —</option>
                             @foreach($locations as $l)
                                 <option value="{{ $l->id }}" @selected(old('to_location_id') == $l->id)>{{ $l->name }}</option>
                             @endforeach
-                        </select>
+                        </x-searchable-select>
                     </div>
                     <div>
                         <x-input-label for="to_department_id" value="Department" />
-                        <select id="to_department_id" name="to_department_id" class="mt-1 block w-full text-sm rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                        <x-searchable-select id="to_department_id" name="to_department_id">
                             <option value="">— Select —</option>
                             @foreach($departments as $d)
                                 <option value="{{ $d->id }}" @selected(old('to_department_id') == $d->id)>{{ $d->name }}</option>
                             @endforeach
-                        </select>
+                        </x-searchable-select>
                     </div>
                     <x-input-error :messages="$errors->get('to_location_id')" class="mt-1 sm:col-span-2" />
                 </div>
 
                 <div x-show="code === 'INTER_COMPANY_TRANSFER'">
                     <x-input-label for="to_company_id" value="Destination Company" />
-                    <select id="to_company_id" name="to_company_id" class="mt-1 block w-full text-sm rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                    <x-searchable-select id="to_company_id" name="to_company_id">
                         <option value="">— Select —</option>
                         @foreach($companies as $c)
                             <option value="{{ $c->id }}" @selected(old('to_company_id') == $c->id)>{{ $c->name }}</option>
                         @endforeach
-                    </select>
+                    </x-searchable-select>
                     <x-input-error :messages="$errors->get('to_company_id')" class="mt-1" />
                 </div>
 

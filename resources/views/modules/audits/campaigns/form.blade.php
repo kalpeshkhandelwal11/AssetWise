@@ -59,23 +59,21 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <x-input-label for="scope_company_id" value="Company" />
-                            <select id="scope_company_id" name="scope[company_id]"
-                                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                            <x-searchable-select id="scope_company_id" name="scope[company_id]" data-placeholder="Any">
                                 <option value="">Any</option>
                                 @foreach($companies as $company)
                                     <option value="{{ $company->id }}" @selected(($scope['company_id'] ?? null) == $company->id)>{{ $company->name }}</option>
                                 @endforeach
-                            </select>
+                            </x-searchable-select>
                         </div>
                         <div>
                             <x-input-label for="scope_category_id" value="Category" />
-                            <select id="scope_category_id" name="scope[category_id]"
-                                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                            <x-searchable-select id="scope_category_id" name="scope[category_id]" data-placeholder="Any">
                                 <option value="">Any</option>
                                 @foreach($categories as $category)
                                     <option value="{{ $category->id }}" @selected(($scope['category_id'] ?? null) == $category->id)>{{ $category->name }}</option>
                                 @endforeach
-                            </select>
+                            </x-searchable-select>
                         </div>
                         <div>
                             <x-input-label for="scope_asset_type_id" value="Asset Type" />
@@ -99,33 +97,30 @@
                         </div>
                         <div>
                             <x-input-label for="scope_location_id" value="Location" />
-                            <select id="scope_location_id" name="scope[location_id]"
-                                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                            <x-searchable-select id="scope_location_id" name="scope[location_id]" data-placeholder="Any">
                                 <option value="">Any</option>
                                 @foreach($locations as $location)
                                     <option value="{{ $location->id }}" @selected(($scope['location_id'] ?? null) == $location->id)>{{ $location->name }}</option>
                                 @endforeach
-                            </select>
+                            </x-searchable-select>
                         </div>
                         <div>
                             <x-input-label for="scope_department_id" value="Department" />
-                            <select id="scope_department_id" name="scope[department_id]"
-                                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                            <x-searchable-select id="scope_department_id" name="scope[department_id]" data-placeholder="Any">
                                 <option value="">Any</option>
                                 @foreach($departments as $department)
                                     <option value="{{ $department->id }}" @selected(($scope['department_id'] ?? null) == $department->id)>{{ $department->name }}</option>
                                 @endforeach
-                            </select>
+                            </x-searchable-select>
                         </div>
                         <div>
                             <x-input-label for="scope_branch_id" value="Branch" />
-                            <select id="scope_branch_id" name="scope[branch_id]"
-                                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                            <x-searchable-select id="scope_branch_id" name="scope[branch_id]" data-placeholder="Any">
                                 <option value="">Any</option>
                                 @foreach($branches as $branch)
                                     <option value="{{ $branch->id }}" @selected(($scope['branch_id'] ?? null) == $branch->id)>{{ $branch->name }}</option>
                                 @endforeach
-                            </select>
+                            </x-searchable-select>
                         </div>
                     </div>
                     <x-input-error :messages="$errors->get('scope')" class="mt-2" />
@@ -133,13 +128,12 @@
 
                 <div class="border-t border-gray-100 dark:border-gray-700 pt-5">
                     <x-input-label for="auditor_ids" value="Assigned Auditors" />
-                    <p class="text-xs text-gray-400 mb-1">Only these users will see this campaign on the verify worklist. Ctrl/Cmd-click to select multiple.</p>
-                    <select id="auditor_ids" name="auditor_ids[]" multiple size="6"
-                            class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <p class="text-xs text-gray-400 mb-1">Only these users will see this campaign on the verify worklist. Type to search; click to add multiple.</p>
+                    <x-searchable-select id="auditor_ids" name="auditor_ids[]" multiple data-placeholder="Select auditors…">
                         @foreach($auditors as $auditor)
                             <option value="{{ $auditor->id }}" @selected(in_array($auditor->id, $selectedAuditors))>{{ $auditor->name }}</option>
                         @endforeach
-                    </select>
+                    </x-searchable-select>
                     <x-input-error :messages="$errors->get('auditor_ids')" class="mt-1" />
                 </div>
 

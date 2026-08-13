@@ -50,35 +50,32 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <x-input-label for="department_id" value="Department" />
-                    <select id="department_id" name="department_id"
-                            class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <x-searchable-select id="department_id" name="department_id">
                         <option value="">— None —</option>
                         @foreach($departments as $department)
                             <option value="{{ $department->id }}" @selected(old('department_id', $user->department_id) == $department->id)>{{ $department->name }}</option>
                         @endforeach
-                    </select>
+                    </x-searchable-select>
                     <x-input-error :messages="$errors->get('department_id')" class="mt-1" />
                 </div>
                 <div>
                     <x-input-label for="branch_id" value="Branch" />
-                    <select id="branch_id" name="branch_id"
-                            class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <x-searchable-select id="branch_id" name="branch_id">
                         <option value="">— None —</option>
                         @foreach($branches as $branch)
                             <option value="{{ $branch->id }}" @selected(old('branch_id', $user->branch_id) == $branch->id)>{{ $branch->name }}</option>
                         @endforeach
-                    </select>
+                    </x-searchable-select>
                     <x-input-error :messages="$errors->get('branch_id')" class="mt-1" />
                 </div>
                 <div>
                     <x-input-label for="designation_id" value="Designation" />
-                    <select id="designation_id" name="designation_id"
-                            class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <x-searchable-select id="designation_id" name="designation_id">
                         <option value="">— None —</option>
                         @foreach($designations as $designation)
                             <option value="{{ $designation->id }}" @selected(old('designation_id', $user->designation_id) == $designation->id)>{{ $designation->name }}</option>
                         @endforeach
-                    </select>
+                    </x-searchable-select>
                     <x-input-error :messages="$errors->get('designation_id')" class="mt-1" />
                 </div>
             </div>

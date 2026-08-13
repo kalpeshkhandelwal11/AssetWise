@@ -1,7 +1,9 @@
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
+import 'tom-select/dist/css/tom-select.css';
 import qrScanner from './qr-scanner';
 import tagScanner from './tag-scanner';
+import registerSearchableSelect from './searchable-select';
 
 // Apply dark mode before first paint to avoid flash
 (function () {
@@ -23,6 +25,10 @@ Alpine.data('qrScanner', qrScanner);
 // Asset-create Barcode/Tag section: decode a printed tag with the phone camera and drop the
 // number into the tag input (hardware scanners type into that input directly, no JS needed).
 Alpine.data('tagScanner', tagScanner);
+
+// `x-searchable` — Tom Select behind <x-searchable-select>. Registered before start() so the
+// directive is known when the first tree is walked.
+registerSearchableSelect(Alpine);
 
 window.Alpine = Alpine;
 

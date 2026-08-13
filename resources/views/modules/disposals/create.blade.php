@@ -30,12 +30,12 @@
 
             <div>
                 <x-input-label for="asset_id" value="Asset *" />
-                <select id="asset_id" name="asset_id" required class="mt-1 block w-full text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500">
+                <x-searchable-select id="asset_id" name="asset_id" required>
                     <option value="">Select asset…</option>
                     @foreach($assets as $a)
                         <option value="{{ $a->id }}" @selected(old('asset_id', $asset?->id) == $a->id)>{{ $a->name }} @if($a->asset_tag)({{ $a->asset_tag }})@endif</option>
                     @endforeach
-                </select>
+                </x-searchable-select>
                 <x-input-error :messages="$errors->get('asset_id')" class="mt-1" />
             </div>
 

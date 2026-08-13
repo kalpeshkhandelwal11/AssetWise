@@ -63,13 +63,12 @@
                     @foreach($selects as $field => [$label, $options])
                         <div>
                             <x-input-label :for="$field" :value="$label" />
-                            <select id="{{ $field }}" name="{{ $field }}"
-                                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                            <x-searchable-select id="{{ $field }}" name="{{ $field }}">
                                 <option value="">— None —</option>
                                 @foreach($options as $option)
                                     <option value="{{ $option->id }}" @selected((int) old($field, $employee->$field) === $option->id)>{{ $option->name }}</option>
                                 @endforeach
-                            </select>
+                            </x-searchable-select>
                             <x-input-error :messages="$errors->get($field)" class="mt-1" />
                         </div>
                     @endforeach
@@ -85,13 +84,12 @@
             {{-- Login link --}}
             <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
                 <x-input-label for="user_id" value="Linked User Account" />
-                <select id="user_id" name="user_id"
-                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                <x-searchable-select id="user_id" name="user_id">
                     <option value="">— Not a system user —</option>
                     @foreach($users as $user)
                         <option value="{{ $user->id }}" @selected((int) old('user_id', $employee->user_id) === $user->id)>{{ $user->name }} ({{ $user->email }})</option>
                     @endforeach
-                </select>
+                </x-searchable-select>
                 <p class="mt-1 text-xs text-gray-400">Link this employee to a login account so they receive movement &amp; expiry notifications. Leave blank for people who don't log in.</p>
                 <x-input-error :messages="$errors->get('user_id')" class="mt-1" />
             </div>

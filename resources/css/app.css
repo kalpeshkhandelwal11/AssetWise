@@ -10,6 +10,43 @@
     [x-cloak] { display: none !important; }
 }
 
+/* Tom Select (searchable dropdowns) — align the control with the app's native inputs and add
+   the dark-mode palette the shipped theme doesn't cover. */
+.ts-wrapper { margin-top: 0.25rem; }
+.ts-control {
+    border-color: #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    min-height: 38px;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.ts-control:focus-within {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 1px #6366f1;
+}
+.ts-wrapper.single .ts-control { padding: 0.375rem 0.75rem; }
+.dark .ts-control {
+    background-color: #111827;
+    border-color: #374151;
+    color: #d1d5db;
+}
+.dark .ts-control input,
+.dark .ts-control .item { color: #d1d5db; }
+.dark .ts-control input::placeholder { color: #6b7280; }
+.ts-dropdown {
+    font-size: 0.875rem;
+    border-radius: 0.375rem;
+}
+.dark .ts-dropdown {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: #d1d5db;
+}
+.ts-dropdown .active { background-color: #eef2ff; color: #1e1b4b; }
+.dark .ts-dropdown .active { background-color: #374151; color: #f3f4f6; }
+.dark .ts-dropdown .optgroup-header { background-color: #1f2937; color: #9ca3af; }
+.ts-wrapper.disabled { opacity: 0.5; }
+
 @layer utilities {
     .scrollbar-thin::-webkit-scrollbar { width: 4px; }
     .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }

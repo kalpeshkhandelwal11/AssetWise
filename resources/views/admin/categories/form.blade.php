@@ -35,13 +35,12 @@
 
             <div>
                 <x-input-label for="parent_id" value="Parent Category" />
-                <select id="parent_id" name="parent_id"
-                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                <x-searchable-select id="parent_id" name="parent_id">
                     <option value="">— None (top-level) —</option>
                     @foreach($parents as $parent)
                         <option value="{{ $parent->id }}" @selected(old('parent_id', $category->parent_id) == $parent->id)>{{ $parent->name }}</option>
                     @endforeach
-                </select>
+                </x-searchable-select>
                 <x-input-error :messages="$errors->get('parent_id')" class="mt-1" />
             </div>
 

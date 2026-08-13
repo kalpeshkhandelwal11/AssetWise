@@ -113,13 +113,12 @@
                 <div>
                     <x-input-label for="company_id" value="Company *" />
                     @if($canChangeCompany)
-                        <select id="company_id" name="company_id" required
-                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                        <x-searchable-select id="company_id" name="company_id" required>
                             <option value="">— Select —</option>
                             @foreach($companies as $company)
                                 <option value="{{ $company->id }}" @selected(old('company_id', $asset->company_id) == $company->id)>{{ $company->name }}</option>
                             @endforeach
-                        </select>
+                        </x-searchable-select>
                     @else
                         <input type="text" disabled value="{{ $asset->company?->name }}"
                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-400 shadow-sm text-sm" />
@@ -147,13 +146,12 @@
                 <div>
                     <x-input-label for="category_id" value="Category *" />
                     @if($canChangeCategory)
-                        <select id="category_id" name="category_id" x-model="categoryId" @change="loadDynamicFields()" required
-                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                        <x-searchable-select id="category_id" name="category_id" x-model="categoryId" @change="loadDynamicFields()" required>
                             <option value="">— Select —</option>
                             @foreach($categories as $category)
-                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                <option value="{{ $category->id }}" @selected(old('category_id', $asset->category_id) == $category->id)>{{ $category->name }}</option>
                             @endforeach
-                        </select>
+                        </x-searchable-select>
                     @else
                         <input type="text" disabled value="{{ $asset->category?->name }}"
                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-400 shadow-sm text-sm" />
@@ -163,19 +161,17 @@
                 </div>
                 <div>
                     <x-input-label for="asset_type_id" value="Type *" />
-                    <select id="asset_type_id" name="asset_type_id" required
-                            class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <x-searchable-select id="asset_type_id" name="asset_type_id" required>
                         <option value="">— Select —</option>
                         @foreach($types as $type)
                             <option value="{{ $type->id }}" @selected(old('asset_type_id', $asset->asset_type_id) == $type->id)>{{ $type->name }}</option>
                         @endforeach
-                    </select>
+                    </x-searchable-select>
                     <x-input-error :messages="$errors->get('asset_type_id')" class="mt-1" />
                 </div>
                 <div>
                     <x-input-label for="status_id" value="Status *" />
-                    <select id="status_id" name="status_id" required
-                            class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <x-searchable-select id="status_id" name="status_id" required>
                         <option value="">— Select —</option>
                         @foreach($statuses as $status)
                             {{-- DRAFT is system-managed by the creation-approval flow, not chosen manually. --}}
@@ -183,7 +179,7 @@
                                 <option value="{{ $status->id }}" @selected(old('status_id', $asset->status_id) == $status->id)>{{ $status->name }}</option>
                             @endif
                         @endforeach
-                    </select>
+                    </x-searchable-select>
                     <x-input-error :messages="$errors->get('status_id')" class="mt-1" />
                 </div>
             </div>
@@ -253,36 +249,33 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                         <x-input-label for="custodian_id" value="Custodian" />
-                        <select id="custodian_id" name="custodian_id" x-model="custodianId" @change="applyCustodian()"
-                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                        <x-searchable-select id="custodian_id" name="custodian_id" x-model="custodianId" @change="applyCustodian()">
                             <option value="">— None —</option>
                             @foreach($custodians as $user)
                                 <option value="{{ $user->id }}">{{ $user->name }}</option>
                             @endforeach
-                        </select>
+                        </x-searchable-select>
                         <p class="mt-1 text-xs text-gray-400">Department &amp; branch auto-fill from the selected employee.</p>
                         <x-input-error :messages="$errors->get('custodian_id')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="department_id" value="Department" />
-                        <select id="department_id" name="department_id" x-model="departmentId"
-                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                        <x-searchable-select id="department_id" name="department_id" x-model="departmentId">
                             <option value="">— None —</option>
                             @foreach($departments as $department)
                                 <option value="{{ $department->id }}">{{ $department->name }}</option>
                             @endforeach
-                        </select>
+                        </x-searchable-select>
                         <x-input-error :messages="$errors->get('department_id')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="branch_id" value="Branch (Site)" />
-                        <select id="branch_id" name="branch_id" x-model="branchId"
-                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                        <x-searchable-select id="branch_id" name="branch_id" x-model="branchId">
                             <option value="">— None —</option>
                             @foreach($branches as $branch)
                                 <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                             @endforeach
-                        </select>
+                        </x-searchable-select>
                         <x-input-error :messages="$errors->get('branch_id')" class="mt-1" />
                     </div>
                 </div>
@@ -294,46 +287,42 @@
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
                     <div>
                         <x-input-label for="location_id" value="Location" />
-                        <select id="location_id" name="location_id" x-model="locationId" @change="loadBuildings()"
-                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                        <x-searchable-select id="location_id" name="location_id" x-model="locationId" @change="loadBuildings()">
                             <option value="">— None —</option>
                             @foreach($locations as $location)
                                 <option value="{{ $location->id }}">{{ $location->name }}</option>
                             @endforeach
-                        </select>
+                        </x-searchable-select>
                         <x-input-error :messages="$errors->get('location_id')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="building_id" value="Building" />
-                        <select id="building_id" name="building_id" x-model="buildingId" @change="loadFloors()" :disabled="buildings.length === 0"
-                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm disabled:opacity-50">
+                        <x-searchable-select id="building_id" name="building_id" x-model="buildingId" @change="loadFloors()" ::disabled="buildings.length === 0">
                             <option value="">— None —</option>
                             <template x-for="building in buildings" :key="building.id">
                                 <option :value="building.id" x-text="building.name"></option>
                             </template>
-                        </select>
+                        </x-searchable-select>
                         <x-input-error :messages="$errors->get('building_id')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="floor_id" value="Floor" />
-                        <select id="floor_id" name="floor_id" x-model="floorId" @change="loadRooms()" :disabled="floors.length === 0"
-                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm disabled:opacity-50">
+                        <x-searchable-select id="floor_id" name="floor_id" x-model="floorId" @change="loadRooms()" ::disabled="floors.length === 0">
                             <option value="">— None —</option>
                             <template x-for="floor in floors" :key="floor.id">
                                 <option :value="floor.id" x-text="floor.name"></option>
                             </template>
-                        </select>
+                        </x-searchable-select>
                         <x-input-error :messages="$errors->get('floor_id')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="room_id" value="Room" />
-                        <select id="room_id" name="room_id" x-model="roomId" :disabled="rooms.length === 0"
-                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm disabled:opacity-50">
+                        <x-searchable-select id="room_id" name="room_id" x-model="roomId" ::disabled="rooms.length === 0">
                             <option value="">— None —</option>
                             <template x-for="room in rooms" :key="room.id">
                                 <option :value="room.id" x-text="room.name"></option>
                             </template>
-                        </select>
+                        </x-searchable-select>
                         <x-input-error :messages="$errors->get('room_id')" class="mt-1" />
                     </div>
                 </div>
@@ -438,13 +427,12 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <x-input-label for="tag_id" value="Pick from pool" />
-                                <select id="tag_id" name="tag_id"
-                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                                <x-searchable-select id="tag_id" name="tag_id">
                                     <option value="">— None —</option>
                                     @foreach($availableTags as $tag)
                                         <option value="{{ $tag->id }}" @selected(old('tag_id') == $tag->id)>{{ $tag->tag_number }}</option>
                                     @endforeach
-                                </select>
+                                </x-searchable-select>
                                 <x-input-error :messages="$errors->get('tag_id')" class="mt-1" />
                             </div>
                             <div>
