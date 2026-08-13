@@ -42,6 +42,30 @@ class AssetTest extends TestCase
              ->assertSee('Dell Laptop');
     }
 
+    public function test_index_per_page_option(): void
+    {
+        Asset::factory()->count(3)->create();
+
+        $this->actingAs($this->admin())
+             ->get(route('assets.index', ['per_page' => 50]))
+             ->assertViewHas('assets', fn ($p) => $p->perPage() === 50);
+
+        // An out-of-whitelist value falls back to the 20 default.
+        $this->actingAs($this->admin())
+             ->get(route('assets.index', ['per_page' => 999]))
+             ->assertViewHas('assets', fn ($p) => $p->perPage() === 20);
+    }
+
+    public function test_index_sort_by_name(): void
+    {
+        Asset::factory()->create(['name' => 'Zeta Rig']);
+        Asset::factory()->create(['name' => 'Alpha Rig']);
+
+        $this->actingAs($this->admin())
+             ->get(route('assets.index', ['sort' => 'name']))
+             ->assertViewHas('assets', fn ($p) => $p->first()->name === 'Alpha Rig');
+    }
+
     public function test_index_filters_by_search(): void
     {
         Asset::factory()->create(['name' => 'Dell Laptop']);

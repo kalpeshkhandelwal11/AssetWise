@@ -42,7 +42,7 @@ class AssetController extends Controller
     {
         $this->authorize('viewAny', Asset::class);
 
-        $query = Asset::query()->with(['company', 'category', 'assetType', 'status', 'location', 'custodian']);
+        $query = Asset::query()->with(['company', 'category', 'assetType', 'status', 'location', 'building', 'room', 'custodian']);
 
         if ($request->boolean('show_deleted') && $request->user()->can('assets.delete')) {
             $query->onlyTrashed();
@@ -70,7 +70,22 @@ class AssetController extends Controller
             $query->whereDate('purchase_date', '<=', $request->date_to);
         }
 
-        $assets = $query->orderBy('name')->paginate(20)->withQueryString();
+        // Sort: whitelist -> [column, direction]. Default "Last updated".
+        $sortMap = [
+            'updated'  => ['updated_at', 'desc'],
+            'name'     => ['name', 'asc'],
+            'asset_id' => ['asset_tag', 'asc'],
+            'created'  => ['created_at', 'desc'],
+        ];
+        $sort = $request->input('sort', 'updated');
+        [$sortColumn, $sortDirection] = $sortMap[$sort] ?? $sortMap['updated'];
+
+        $perPage = (int) $request->input('per_page', 20);
+        if (! in_array($perPage, [20, 50, 100], true)) {
+            $perPage = 20;
+        }
+
+        $assets = $query->orderBy($sortColumn, $sortDirection)->paginate($perPage)->withQueryString();
 
         return view('modules.assets.index', [
             'assets'     => $assets,
@@ -78,6 +93,8 @@ class AssetController extends Controller
             'statuses'   => AssetStatus::orderBy('name')->get(),
             'types'      => AssetType::orderBy('name')->get(),
             'categories' => AssetCategory::orderBy('name')->get(),
+            'sort'       => array_key_exists($sort, $sortMap) ? $sort : 'updated',
+            'perPage'    => $perPage,
         ]);
     }
 

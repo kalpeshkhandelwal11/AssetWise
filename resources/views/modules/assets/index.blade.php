@@ -53,6 +53,19 @@
             @endforeach
         </select>
 
+        <select name="sort" onchange="this.form.submit()" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+            <option value="updated"  @selected($sort === 'updated')>Last updated</option>
+            <option value="name"     @selected($sort === 'name')>Name (A–Z)</option>
+            <option value="asset_id" @selected($sort === 'asset_id')>Asset ID</option>
+            <option value="created"  @selected($sort === 'created')>Recently added</option>
+        </select>
+
+        <select name="per_page" onchange="this.form.submit()" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+            @foreach([20, 50, 100] as $n)
+                <option value="{{ $n }}" @selected($perPage === $n)>{{ $n }} / page</option>
+            @endforeach
+        </select>
+
         @can('assets.delete')
         <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 px-2">
             <input type="checkbox" name="show_deleted" value="1" @checked(request('show_deleted')) class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
@@ -72,25 +85,30 @@
                         </th>
                         @endif
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asset</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asset ID</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Company</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Custodian</th>
-                        <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     @forelse($assets as $asset)
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {{ $asset->trashed() ? 'opacity-60' : '' }}">
+                        <tr @click="window.location='{{ route('assets.show', $asset) }}'"
+                            class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {{ $asset->trashed() ? 'opacity-60' : '' }}">
                             @if($canBulkMove)
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3" @click.stop>
                                 <input type="checkbox" value="{{ $asset->id }}" x-model.number="selected" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                             </td>
                             @endif
                             <td class="px-4 py-3">
                                 <p class="font-medium text-gray-900 dark:text-gray-100">{{ $asset->name }}</p>
-                                <p class="text-xs text-gray-400 font-mono">{{ $asset->asset_tag ?? $asset->serial_number ?? '—' }}</p>
+                                @if($asset->serial_number)
+                                    <p class="text-xs text-gray-400">SN: {{ $asset->serial_number }}</p>
+                                @endif
                             </td>
+                            <td class="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">{{ $asset->asset_tag ?? '—' }}</td>
                             <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $asset->company?->name ?? '—' }}</td>
                             <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $asset->category?->name ?? '—' }}</td>
                             <td class="px-4 py-3">
@@ -103,23 +121,15 @@
                                     <span class="text-gray-400">—</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $asset->custodian?->name ?? '—' }}</td>
-                            <td class="px-4 py-3 text-right">
-                                <div class="flex items-center justify-end gap-2">
-                                    <a href="{{ route('assets.show', $asset) }}"
-                                       class="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                       title="View">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                        </svg>
-                                    </a>
-                                </div>
+                            <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+                                @php $loc = collect([$asset->location?->name, $asset->building?->name, $asset->room?->name])->filter(); @endphp
+                                {{ $loc->isNotEmpty() ? $loc->join(' · ') : '—' }}
                             </td>
+                            <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $asset->custodian?->name ?? '—' }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $canBulkMove ? 7 : 6 }}" class="px-4 py-12 text-center text-sm text-gray-400">No assets found.</td>
+                            <td colspan="{{ $canBulkMove ? 8 : 7 }}" class="px-4 py-12 text-center text-sm text-gray-400">No assets found.</td>
                         </tr>
                     @endforelse
                 </tbody>
