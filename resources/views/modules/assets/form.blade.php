@@ -12,6 +12,10 @@
             roomId: '{{ old('room_id', $asset->room_id) }}',
             buildings: [], floors: [], rooms: [],
             categoryId: '{{ old('category_id', $asset->category_id) }}',
+            {{-- Category-wise asset-ID preview: map of category id -> next code, default series otherwise. --}}
+            namingPreviews: {{ Illuminate\Support\Js::from($assetNamingPreviews ?? []) }},
+            namingDefault: {{ Illuminate\Support\Js::from($assetNamingPreview ?? '') }},
+            get namingPreview() { return this.namingPreviews[this.categoryId] || this.namingDefault; },
             dynamicFields: {{ Illuminate\Support\Js::from($resolvedFields) }},
             fieldValues: {{ Illuminate\Support\Js::from(old('fields', $fieldValues)) }},
             // Assignment auto-fill: custodian (employee) -> department + branch.
@@ -132,9 +136,9 @@
                 <div class="sm:w-1/2">
                     <x-input-label for="asset_tag" value="Asset ID" />
                     @if($assetNamingEnabled)
-                        <input type="text" disabled value="Auto-generated ({{ $assetNamingPreview }})"
+                        <input type="text" disabled x-bind:value="'Auto-generated (' + namingPreview + ')'"
                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-400 shadow-sm text-sm font-mono" />
-                        <p class="mt-1 text-xs text-gray-400">Assigned automatically from the naming series on save.</p>
+                        <p class="mt-1 text-xs text-gray-400">Assigned automatically from this category's naming series on save.</p>
                     @else
                         <x-text-input id="asset_tag" name="asset_tag" class="mt-1 block w-full font-mono" :value="old('asset_tag')" placeholder="e.g. AST-0001" />
                         <x-input-error :messages="$errors->get('asset_tag')" class="mt-1" />
@@ -297,32 +301,38 @@
                     </div>
                     <div>
                         <x-input-label for="building_id" value="Building" />
-                        <x-searchable-select id="building_id" name="building_id" x-model="buildingId" @change="loadFloors()" ::disabled="buildings.length === 0">
+                        {{-- Native (not searchable): x-for-populated options + Tom Select's option-sync
+                             MutationObserver form a feedback loop that crashes the tab. These cascade
+                             lists are short anyway. --}}
+                        <select id="building_id" name="building_id" x-model="buildingId" @change="loadFloors()" :disabled="buildings.length === 0"
+                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm disabled:opacity-50">
                             <option value="">— None —</option>
                             <template x-for="building in buildings" :key="building.id">
                                 <option :value="building.id" x-text="building.name"></option>
                             </template>
-                        </x-searchable-select>
+                        </select>
                         <x-input-error :messages="$errors->get('building_id')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="floor_id" value="Floor" />
-                        <x-searchable-select id="floor_id" name="floor_id" x-model="floorId" @change="loadRooms()" ::disabled="floors.length === 0">
+                        <select id="floor_id" name="floor_id" x-model="floorId" @change="loadRooms()" :disabled="floors.length === 0"
+                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm disabled:opacity-50">
                             <option value="">— None —</option>
                             <template x-for="floor in floors" :key="floor.id">
                                 <option :value="floor.id" x-text="floor.name"></option>
                             </template>
-                        </x-searchable-select>
+                        </select>
                         <x-input-error :messages="$errors->get('floor_id')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="room_id" value="Room" />
-                        <x-searchable-select id="room_id" name="room_id" x-model="roomId" ::disabled="rooms.length === 0">
+                        <select id="room_id" name="room_id" x-model="roomId" :disabled="rooms.length === 0"
+                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm disabled:opacity-50">
                             <option value="">— None —</option>
                             <template x-for="room in rooms" :key="room.id">
                                 <option :value="room.id" x-text="room.name"></option>
                             </template>
-                        </x-searchable-select>
+                        </select>
                         <x-input-error :messages="$errors->get('room_id')" class="mt-1" />
                     </div>
                 </div>

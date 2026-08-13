@@ -430,6 +430,11 @@ class AssetController extends Controller
             'availableTags' => Tag::where('status', 'available')->orderBy('tag_number')->get(),
             'assetNamingEnabled' => $this->naming->enabled(),
             'assetNamingPreview' => $this->naming->enabled() ? $this->naming->preview() : null,
+            // Per-category next-code previews so the form hint updates as the category changes.
+            'assetNamingPreviews' => $this->naming->enabled()
+                ? AssetCategory::where('is_active', true)->whereNotNull('asset_prefix')->where('asset_prefix', '!=', '')
+                    ->get()->mapWithKeys(fn ($c) => [$c->id => $this->naming->preview($c)])
+                : collect(),
         ];
     }
 }

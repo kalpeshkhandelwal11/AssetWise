@@ -33,6 +33,14 @@
                 </div>
             </div>
 
+            <div class="sm:w-1/2">
+                <x-input-label for="asset_prefix" value="Asset ID Prefix" />
+                <x-text-input id="asset_prefix" name="asset_prefix" class="mt-1 block w-full font-mono uppercase"
+                              :value="old('asset_prefix', $category->asset_prefix)" placeholder="e.g. LAP" />
+                <p class="mt-1 text-xs text-gray-400">Auto-generated asset IDs for this category use this prefix with its own counter (e.g. <span class="font-mono">LAP-0001</span>). Leave blank to use the global default series.</p>
+                <x-input-error :messages="$errors->get('asset_prefix')" class="mt-1" />
+            </div>
+
             <div>
                 <x-input-label for="parent_id" value="Parent Category" />
                 <x-searchable-select id="parent_id" name="parent_id">

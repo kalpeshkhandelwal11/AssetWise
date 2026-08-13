@@ -39,12 +39,14 @@ class CategoryController extends Controller
         $data = $request->validate([
             'parent_id'   => 'nullable|exists:asset_categories,id',
             'name'        => 'required|string|max:255',
-            'code'        => 'required|string|max:50|alpha_dash|unique:asset_categories,code',
-            'description' => 'nullable|string',
-            'sort_order'  => 'nullable|integer|min:0',
+            'code'         => 'required|string|max:50|alpha_dash|unique:asset_categories,code',
+            'asset_prefix' => 'nullable|string|max:20|alpha_dash',
+            'description'  => 'nullable|string',
+            'sort_order'   => 'nullable|integer|min:0',
         ]);
 
         $data['code'] = strtoupper($data['code']);
+        $data['asset_prefix'] = filled($data['asset_prefix'] ?? null) ? strtoupper($data['asset_prefix']) : null;
         $data['sort_order'] = $data['sort_order'] ?? 0;
         AssetCategory::create($data);
 
@@ -67,12 +69,14 @@ class CategoryController extends Controller
         $data = $request->validate([
             'parent_id'   => 'nullable|exists:asset_categories,id|different:id',
             'name'        => 'required|string|max:255',
-            'code'        => 'required|string|max:50|alpha_dash|unique:asset_categories,code,' . $category->id,
-            'description' => 'nullable|string',
-            'sort_order'  => 'nullable|integer|min:0',
+            'code'         => 'required|string|max:50|alpha_dash|unique:asset_categories,code,' . $category->id,
+            'asset_prefix' => 'nullable|string|max:20|alpha_dash',
+            'description'  => 'nullable|string',
+            'sort_order'   => 'nullable|integer|min:0',
         ]);
 
         $data['code'] = strtoupper($data['code']);
+        $data['asset_prefix'] = filled($data['asset_prefix'] ?? null) ? strtoupper($data['asset_prefix']) : null;
         $data['sort_order'] = $data['sort_order'] ?? 0;
         $category->update($data);
 

@@ -14,7 +14,7 @@ class AssetCategory extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'parent_id', 'name', 'code', 'description', 'is_active', 'sort_order',
+        'parent_id', 'name', 'code', 'asset_prefix', 'description', 'is_active', 'sort_order',
     ];
 
     protected function casts(): array
