@@ -52,6 +52,11 @@ class ExportController extends Controller
         $filters = $request->only(self::FILTER_KEYS);
         $filters = array_filter($filters, fn ($v) => $v !== null && $v !== '');
 
+        // Bulk "Export selected" posts asset_ids[]; feed them through as the ids filter.
+        if ($request->filled('asset_ids')) {
+            $filters['ids'] = array_map('intval', (array) $request->input('asset_ids'));
+        }
+
         $count = (new AssetExport($filters, $this->fields))->buildQuery()->count();
 
         if ($count <= self::INLINE_ROW_THRESHOLD) {

@@ -52,6 +52,11 @@ class AssetExport implements FromCollection, WithHeadings, WithMapping
             $query->onlyTrashed();
         }
 
+        // "Export selected" — restrict to a specific set of asset ids.
+        if (! empty($this->filters['ids'])) {
+            $query->whereIn('id', (array) $this->filters['ids']);
+        }
+
         if (! empty($this->filters['search'])) {
             $s = $this->filters['search'];
             $query->where(fn ($q) => $q

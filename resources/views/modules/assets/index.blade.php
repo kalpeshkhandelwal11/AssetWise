@@ -1,24 +1,64 @@
 <x-app-layout>
     @section('page-title', 'Assets')
 
+    @php
+        $canBulkMove = auth()->user()->can('assets.bulk') && auth()->user()->canAny(['movement.assign', 'movement.transfer']);
+        // Any viewer can select rows (Print/Export list); individual actions are gated below.
+        $canBulkActions = $canBulkMove || auth()->user()->canAny(['assets.export', 'assets.edit', 'assets.view']);
+    @endphp
+    <div x-data="{ selected: [], bulkAction: '', menuOpen: false }">
+
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Assets</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">All assets across companies</p>
         </div>
-        @can('assets.create')
-        <a href="{{ route('assets.create') }}"
-           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Add Asset
-        </a>
-        @endcan
+        <div class="flex items-center gap-2">
+            @if($canBulkActions)
+            <div x-show="selected.length > 0" x-cloak class="relative">
+                <button type="button" @click="menuOpen = !menuOpen"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-900 transition-colors">
+                    Actions (<span x-text="selected.length"></span>)
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div x-show="menuOpen" @click.outside="menuOpen = false" x-cloak
+                     class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50 py-1">
+                    @can('assets.export')
+                    <button type="button" @click="bulkAction='{{ route('assets.export.store') }}'; $refs.bulkForm.submit()"
+                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Export selected</button>
+                    @endcan
+                    @if($canBulkMove)
+                    <a :href="'{{ route('movements.bulk.create') }}?' + selected.map(id => 'asset_ids[]=' + id).join('&')"
+                       class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Assignment</a>
+                    @endif
+                    @can('assets.edit')
+                    <button type="button" @click="bulkAction='{{ route('assets.bulk-submit-approval') }}'; $refs.bulkForm.submit()"
+                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Submit from Draft</button>
+                    @endcan
+                    <button type="button" @click="bulkAction='{{ route('assets.print-list') }}'; $refs.bulkForm.submit()"
+                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Print</button>
+                    <button type="button" @click="selected = []; menuOpen = false"
+                            class="block w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 border-t border-gray-100 dark:border-gray-700">Cancel</button>
+                </div>
+            </div>
+            @endif
+            @can('assets.create')
+            <a href="{{ route('assets.create') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Asset
+            </a>
+            @endcan
+        </div>
     </div>
 
-    @php $canBulkMove = auth()->user()->can('assets.bulk') && auth()->user()->canAny(['movement.assign', 'movement.transfer']); @endphp
-    <div x-data="{ selected: [] }">
+    {{-- Hidden form carrying the checked ids to whichever bulk POST action was chosen. --}}
+    <form method="POST" x-ref="bulkForm" :action="bulkAction" class="hidden">
+        @csrf
+        <template x-for="id in selected" :key="id"><input type="hidden" name="asset_ids[]" :value="id"></template>
+    </form>
 
     {{-- Filters --}}
     <x-filter-bar :clear="route('assets.index')">
@@ -78,8 +118,8 @@
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
-                        @if($canBulkMove)
-                        <th class="px-4 py-3 w-8">
+                        @if($canBulkActions)
+                        <th class="px-4 py-3 w-8" @click.stop>
                             <input type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                    @change="selected = $event.target.checked ? @js($assets->pluck('id')) : []">
                         </th>
@@ -97,7 +137,7 @@
                     @forelse($assets as $asset)
                         <tr @click="window.location='{{ route('assets.show', $asset) }}'"
                             class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {{ $asset->trashed() ? 'opacity-60' : '' }}">
-                            @if($canBulkMove)
+                            @if($canBulkActions)
                             <td class="px-4 py-3" @click.stop>
                                 <input type="checkbox" value="{{ $asset->id }}" x-model.number="selected" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                             </td>
@@ -129,27 +169,11 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $canBulkMove ? 8 : 7 }}" class="px-4 py-12 text-center text-sm text-gray-400">No assets found.</td>
+                            <td colspan="{{ $canBulkActions ? 8 : 7 }}" class="px-4 py-12 text-center text-sm text-gray-400">No assets found.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
     </x-data-table>
-
-    @if($canBulkMove)
-        {{-- No x-transition here on purpose: Alpine's JS transition engine applies a stale
-             state to this fixed-position element (verified in-browser — the bar showed the
-             previous value of selected.length, so it stayed hidden when assets were picked).
-             Plain x-show toggles reliably; the bar is a utility affordance, not an animation. --}}
-        <div x-show="selected.length > 0" x-cloak
-             class="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 px-5 py-3 rounded-xl bg-gray-900 dark:bg-gray-800 text-white shadow-2xl border border-gray-700 z-40">
-            <span class="text-sm"><span x-text="selected.length"></span> selected</span>
-            <a :href="'{{ route('movements.bulk.create') }}?' + selected.map(id => 'asset_ids[]=' + id).join('&')"
-               class="px-3 py-1.5 text-sm font-medium bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">
-                Move Selected
-            </a>
-            <button type="button" @click="selected = []" class="text-gray-400 hover:text-white text-sm">Clear</button>
-        </div>
-    @endif
     </div>
 </x-app-layout>

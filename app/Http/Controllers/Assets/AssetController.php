@@ -20,6 +20,7 @@ use App\Services\AssetService;
 use App\Services\DynamicFieldService;
 use App\Services\TagService;
 use App\Services\WorkflowService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -177,6 +178,53 @@ class AssetController extends Controller
     private function hasActiveCreationWorkflow(): bool
     {
         return ApprovalWorkflow::where('module', 'asset_creation')->where('is_active', true)->exists();
+    }
+
+    /** Bulk: submit every selected DRAFT asset (with no pending request) for creation approval. */
+    public function bulkSubmitForApproval(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->can('assets.edit'), 403);
+
+        $data = $request->validate([
+            'asset_ids'   => 'required|array|min:1',
+            'asset_ids.*' => 'exists:assets,id',
+        ]);
+
+        if (! $this->hasActiveCreationWorkflow()) {
+            return back()->with('error', 'No active asset-creation workflow is configured.');
+        }
+
+        $submitted = 0;
+        foreach (Asset::whereIn('id', $data['asset_ids'])->get() as $asset) {
+            if ($asset->isDraft() && ! $asset->hasPendingCreationApproval()) {
+                $this->workflows->submit($asset, 'asset_creation', $request->user());
+                $submitted++;
+            }
+        }
+
+        return back()->with(
+            $submitted > 0 ? 'success' : 'error',
+            $submitted > 0 ? "{$submitted} draft asset(s) submitted for approval." : 'No eligible draft assets in the selection.',
+        );
+    }
+
+    /** Bulk: a print-friendly PDF summary of the selected assets. */
+    public function printList(Request $request)
+    {
+        $this->authorize('viewAny', Asset::class);
+
+        $data = $request->validate([
+            'asset_ids'   => 'required|array|min:1',
+            'asset_ids.*' => 'exists:assets,id',
+        ]);
+
+        $assets = Asset::with(['company', 'status', 'location', 'building', 'room', 'custodian'])
+            ->whereIn('id', $data['asset_ids'])
+            ->orderBy('name')
+            ->get();
+
+        return Pdf::loadView('modules.assets.print-list', ['assets' => $assets])
+            ->download('assets-' . now()->format('Ymd-His') . '.pdf');
     }
 
     /** Save each uploaded create-form media file as a labelled AssetAttachment (reuses AttachmentController's storage layout). */
