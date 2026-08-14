@@ -54,6 +54,13 @@
                         </a>
                     @endunless
                 @endcan
+                @canany(['depreciation.manage', 'depreciation.view'])
+                    {{-- Manage -> config/override form (pre-fills from category default); view-only -> schedule. --}}
+                    <a href="{{ auth()->user()->can('depreciation.manage') ? route('assets.depreciation.edit', $asset) : route('assets.depreciation.schedule', $asset) }}"
+                       class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">
+                        Depreciation
+                    </a>
+                @endcanany
                 @can('assets.edit')
                     <a href="{{ route('assets.edit', $asset) }}"
                        class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">

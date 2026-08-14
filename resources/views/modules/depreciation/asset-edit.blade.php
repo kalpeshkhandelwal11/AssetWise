@@ -62,6 +62,9 @@
             @if(! $methods->count())
                 <p class="text-sm text-gray-500 dark:text-gray-400">No active depreciation methods are configured. An administrator must activate one first.</p>
             @else
+                <div class="mb-4 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 text-xs">
+                    These values are pre-filled from the <span class="font-medium">category's default</span>. Anything you set here <span class="font-medium">overrides the category for this asset only</span> (per-asset settings take precedence). Changes go through depreciation approval before taking effect.
+                </div>
                 <form method="POST" action="{{ route('assets.depreciation.update', $asset) }}" class="space-y-5">
                     @csrf
                     @method('PUT')
