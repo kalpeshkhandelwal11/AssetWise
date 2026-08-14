@@ -321,6 +321,12 @@
             <span x-show="!sidebarCollapsed">Asset Naming</span>
         </a>
         @endcan
+        @can('depreciation.manage')
+        <a href="{{ route('admin.depreciation-methods.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.depreciation-methods') }} hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
+            <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
+            <span x-show="!sidebarCollapsed">Depreciation Methods</span>
+        </a>
+        @endcan
         @can('workflow.manage')
         <a href="{{ route('admin.workflows.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.workflows') }} hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
