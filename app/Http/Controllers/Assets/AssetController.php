@@ -338,6 +338,25 @@ class AssetController extends Controller
         return redirect()->route('assets.index')->with('success', 'Asset deleted.');
     }
 
+    /** Bulk: soft-delete every selected asset (restorable from the deleted view). */
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->can('assets.delete'), 403);
+
+        $data = $request->validate([
+            'asset_ids'   => 'required|array|min:1',
+            'asset_ids.*' => 'exists:assets,id',
+        ]);
+
+        $count = 0;
+        foreach (Asset::whereIn('id', $data['asset_ids'])->get() as $asset) {
+            $this->assets->delete($asset);
+            $count++;
+        }
+
+        return redirect()->route('assets.index')->with('success', "{$count} asset(s) deleted.");
+    }
+
     /**
      * Runs the core-field validator and the dynamic-field validator together and merges
      * their error bags into a single ValidationException, so a user sees both a core-field

@@ -93,6 +93,7 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     // Literal bulk/* routes must precede the {asset} route so "bulk" isn't captured as an asset id.
     Route::post('assets/bulk/submit-approval', [AssetController::class, 'bulkSubmitForApproval'])->name('assets.bulk-submit-approval');
     Route::post('assets/bulk/print-list', [AssetController::class, 'printList'])->name('assets.print-list');
+    Route::post('assets/bulk/delete', [AssetController::class, 'bulkDestroy'])->name('assets.bulk-delete');
     Route::post('assets/{asset}/submit-approval', [AssetController::class, 'submitForApproval'])->name('assets.submit-approval');
     Route::post('assets/{asset}/photos', [PhotoController::class, 'store'])->name('assets.photos.store');
     Route::delete('assets/{asset}/photos/{photo}', [PhotoController::class, 'destroy'])->name('assets.photos.destroy');

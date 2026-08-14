@@ -37,6 +37,14 @@
                     @endcan
                     <button type="button" @click="bulkAction='{{ route('assets.print-list') }}'; $refs.bulkForm.submit()"
                             class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Print</button>
+                    @can('assets.delete')
+                    {{-- Set the form action directly (not via the reactive :action) — the confirm()
+                         blocks before Alpine flushes the :action binding, which would otherwise
+                         post to an empty action. --}}
+                    <button type="button"
+                            @click="if (confirm('Delete ' + selected.length + ' selected asset(s)? They can be restored from the deleted view.')) { $refs.bulkForm.action='{{ route('assets.bulk-delete') }}'; $refs.bulkForm.submit() }"
+                            class="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border-t border-gray-100 dark:border-gray-700">Delete selected</button>
+                    @endcan
                     <button type="button" @click="selected = []; menuOpen = false"
                             class="block w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 border-t border-gray-100 dark:border-gray-700">Cancel</button>
                 </div>
