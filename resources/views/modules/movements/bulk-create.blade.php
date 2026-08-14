@@ -60,8 +60,12 @@
                 <x-input-error :messages="$errors->get('movement_type_id')" class="mt-1" />
             </div>
 
-            <div x-show="needsCustodian" x-cloak>
-                <x-input-label for="to_custodian_id" value="New Custodian *" />
+            {{-- Custodian: required for Assignment/Custodian Change; optional on a Transfer
+                 (blank keeps each asset's current holder). --}}
+            <div x-show="needsCustodian || needsLocation" x-cloak>
+                <x-input-label for="to_custodian_id">
+                    <span x-text="needsCustodian ? 'New Custodian *' : 'New Custodian (optional — blank keeps current)'"></span>
+                </x-input-label>
                 <x-searchable-select id="to_custodian_id" name="to_custodian_id">
                     <option value="">Select custodian…</option>
                     @foreach($custodians as $custodian)

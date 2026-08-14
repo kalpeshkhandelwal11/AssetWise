@@ -208,9 +208,12 @@ class MovementService
         $updates = match ($code) {
             'ASSIGNMENT', 'CUSTODIAN_CHANGE' => ['custodian_id' => $movement->to_custodian_id],
             'RETURN' => ['custodian_id' => null],
+            // A relocation may also hand the asset to a new custodian; each destination is
+            // optional (null = leave that attribute unchanged), so only set what was provided.
             'TRANSFER' => array_filter([
                 'location_id'   => $movement->to_location_id,
                 'department_id' => $movement->to_department_id,
+                'custodian_id'  => $movement->to_custodian_id,
             ], fn ($value) => $value !== null),
             'INTER_COMPANY_TRANSFER' => ['company_id' => $movement->to_company_id],
             default => [],
