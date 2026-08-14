@@ -46,7 +46,7 @@ class TagLabelWordExport
                     // QR labels render as SVG (see TagLabelRenderer) and PhpWord's Word
                     // writer has no SVG-to-raster path without imagick, so the .docx sheet
                     // falls back to the scan URL as text for QR-type tags.
-                    $cell->addText($entry['tag']->qr_payload, ['size' => 8, 'italic' => true], ['alignment' => 'center']);
+                    $cell->addText($entry['tag']->qr_payload ?: url("/scan/{$entry['tag']->tag_number}"), ['size' => 8, 'italic' => true], ['alignment' => 'center']);
                 }
 
                 $cell->addText($entry['tag']->tag_number, ['size' => 10, 'bold' => true], ['alignment' => 'center']);

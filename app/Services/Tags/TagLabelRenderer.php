@@ -29,16 +29,21 @@ class TagLabelRenderer
 
         return $tags->map(function (Tag $tag) use ($barcodeGenerator) {
             if ($tag->code_type === 'qr') {
+                // Fall back to the scan URL derived from tag_number when qr_payload is missing
+                // (mirrors TagService generation) so a tag created outside the batch generator
+                // — e.g. a hand-seeded one — can't crash the whole label sheet.
+                $payload = $tag->qr_payload ?: url("/scan/{$tag->tag_number}");
+
                 return [
                     'tag'   => $tag,
-                    'image' => base64_encode(QrCode::size(150)->generate($tag->qr_payload)),
+                    'image' => base64_encode(QrCode::size(150)->generate($payload)),
                     'mime'  => 'image/svg+xml',
                 ];
             }
 
             return [
                 'tag'   => $tag,
-                'image' => base64_encode($barcodeGenerator->getBarcode($tag->barcode_value, $barcodeGenerator::TYPE_CODE_128)),
+                'image' => base64_encode($barcodeGenerator->getBarcode($tag->barcode_value ?: $tag->tag_number, $barcodeGenerator::TYPE_CODE_128)),
                 'mime'  => 'image/png',
             ];
         });
