@@ -156,6 +156,52 @@ class DepreciationService
         });
     }
 
+    /**
+     * Auto-create an asset's depreciation from its category default — no approval, because it
+     * applies already-approved category policy (approval is only for per-asset overrides).
+     * Idempotent and defensive: returns null (does nothing) when the asset already has an
+     * active setting, the category has no default, or there's no cost to depreciate. Called on
+     * asset creation and DRAFT->AVAILABLE promotion, and by the backfill command.
+     */
+    public function applyCategoryDefault(Asset $asset): ?AssetDepreciationSetting
+    {
+        if ($asset->activeDepreciationSetting()) {
+            return null;
+        }
+
+        $defaults = $this->resolveDefaults($asset);
+        if (! $defaults || (float) $defaults['cost_basis'] <= 0) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($asset, $defaults) {
+            $costBasis = (float) $defaults['cost_basis'];
+            $salvage = $this->computeSalvage(
+                $costBasis,
+                $defaults['salvage_value'],
+                $defaults['salvage_percent'],
+            );
+
+            $setting = AssetDepreciationSetting::create([
+                'asset_id'                 => $asset->id,
+                'depreciation_method_id'   => $defaults['depreciation_method_id'],
+                'useful_life_months'       => $defaults['useful_life_months'],
+                'salvage_value'            => $salvage,
+                'salvage_percent'          => $defaults['salvage_percent'],
+                'start_date'               => $defaults['start_date'],
+                'cost_basis'               => $costBasis,
+                'accumulated_depreciation' => 0,
+                'current_book_value'       => $costBasis,
+                'is_active'                => true,
+            ]);
+
+            $this->generateSchedule($setting);
+            $this->postSetting($setting, now());
+
+            return $setting->refresh();
+        });
+    }
+
     private function supersedePrevious(int $assetId, AssetDepreciationSetting $new): void
     {
         AssetDepreciationSetting::where('asset_id', $assetId)

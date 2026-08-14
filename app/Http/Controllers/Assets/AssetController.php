@@ -37,6 +37,7 @@ class AssetController extends Controller
         private readonly TagService $tags,
         private readonly AssetNamingService $naming,
         private readonly WorkflowService $workflows,
+        private readonly \App\Services\DepreciationService $depreciation,
     ) {
     }
 
@@ -165,6 +166,13 @@ class AssetController extends Controller
             }
 
             $this->tags->assignToAsset($tag, $asset, $request->user());
+        }
+
+        // Auto-create depreciation from the category default for live (non-draft) assets — no
+        // approval, since it applies already-approved category policy. Drafts get theirs on
+        // promotion (ApplyAssetCreation). No-op when there's no category default or no cost.
+        if (! $asset->fresh()->isDraft()) {
+            $this->depreciation->applyCategoryDefault($asset->fresh());
         }
 
         $message = $asset->fresh()->isDraft()
