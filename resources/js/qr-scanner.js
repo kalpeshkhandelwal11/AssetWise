@@ -19,6 +19,21 @@ export default function qrScanner({ viewerId, resolveUrl, tagPlaceholder }) {
         },
 
         /**
+         * Scan region sized from the live viewfinder rather than a fixed 240px square: fill
+         * most of the frame so a code doesn't have to be lined up in a tiny box, and make it
+         * landscape so wide 1D barcodes fit (QR still fits within the shorter height).
+         */
+        scanBox(viewfinderWidth, viewfinderHeight) {
+            // Guard tiny/zero viewfinder dimensions and clamp to html5-qrcode's 50px minimum —
+            // returning anything smaller makes start() throw and scanning never begins.
+            const vw = viewfinderWidth || 300;
+            const vh = viewfinderHeight || 300;
+            const width = Math.max(50, Math.floor(vw * 0.85));
+            const height = Math.max(50, Math.floor(Math.min(vh * 0.7, width)));
+            return { width, height };
+        },
+
+        /**
          * A QR tag's payload is a full url("/scan/{tag}") (TagService::generateBatch), but a
          * barcode carries the bare tag number and a hand-typed entry could be either. Accept
          * all three and reduce to the tag number.
@@ -44,13 +59,24 @@ export default function qrScanner({ viewerId, resolveUrl, tagPlaceholder }) {
             this.error = '';
 
             try {
-                const { Html5Qrcode } = await import('html5-qrcode');
+                const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
 
-                this.scanner = new Html5Qrcode(viewerId, { verbose: false });
+                this.scanner = new Html5Qrcode(viewerId, {
+                    verbose: false,
+                    // Prefer the browser's native BarcodeDetector where available — far more
+                    // reliable for 1D barcodes (Code 128) than the JS/ZXing fallback.
+                    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+                    formatsToSupport: [
+                        Html5QrcodeSupportedFormats.QR_CODE,
+                        Html5QrcodeSupportedFormats.CODE_128,
+                        Html5QrcodeSupportedFormats.CODE_39,
+                        Html5QrcodeSupportedFormats.EAN_13,
+                    ],
+                });
 
                 await this.scanner.start(
                     { facingMode: 'environment' },
-                    { fps: 10, qrbox: { width: 240, height: 240 } },
+                    { fps: 10, qrbox: this.scanBox },
                     (decoded) => this.onDecode(decoded),
                     // Per-frame decode misses fire constantly and are not errors worth showing.
                     () => {}

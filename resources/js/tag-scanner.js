@@ -31,6 +31,15 @@ export default function tagScanner({ viewerId, inputId }) {
             return match ? decodeURIComponent(match[1]) : raw;
         },
 
+        /** Frame-filling, landscape scan region (mirrors qr-scanner.js#scanBox). */
+        scanBox(viewfinderWidth, viewfinderHeight) {
+            const vw = viewfinderWidth || 300;
+            const vh = viewfinderHeight || 300;
+            const width = Math.max(50, Math.floor(vw * 0.85));
+            const height = Math.max(50, Math.floor(Math.min(vh * 0.7, width)));
+            return { width, height };
+        },
+
         async toggle() {
             return this.active ? this.stop() : this.start();
         },
@@ -44,13 +53,24 @@ export default function tagScanner({ viewerId, inputId }) {
             this.error = '';
 
             try {
-                const { Html5Qrcode } = await import('html5-qrcode');
+                const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
 
-                this.scanner = new Html5Qrcode(viewerId, { verbose: false });
+                this.scanner = new Html5Qrcode(viewerId, {
+                    verbose: false,
+                    // Prefer the native BarcodeDetector where available — far more reliable for
+                    // 1D barcodes (Code 128) than the JS/ZXing fallback.
+                    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+                    formatsToSupport: [
+                        Html5QrcodeSupportedFormats.QR_CODE,
+                        Html5QrcodeSupportedFormats.CODE_128,
+                        Html5QrcodeSupportedFormats.CODE_39,
+                        Html5QrcodeSupportedFormats.EAN_13,
+                    ],
+                });
 
                 await this.scanner.start(
                     { facingMode: 'environment' },
-                    { fps: 10, qrbox: { width: 240, height: 240 } },
+                    { fps: 10, qrbox: this.scanBox },
                     (decoded) => this.onDecode(decoded),
                     () => {}
                 );
