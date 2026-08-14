@@ -21,7 +21,7 @@
         {{-- Step 1: download template --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
             <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">1. Download a template</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">The template's columns match the chosen category's custom fields exactly, including inherited ones.</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">The template's columns match the chosen category's custom fields exactly, including inherited ones. It includes one <span class="font-medium">sample row from an existing asset</span> as a reference — <span class="font-medium">delete that row before uploading</span>.</p>
             <form method="GET" id="template-form" class="flex gap-2">
                 <select name="category_id_select" id="template-category" required
                         class="flex-1 text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
