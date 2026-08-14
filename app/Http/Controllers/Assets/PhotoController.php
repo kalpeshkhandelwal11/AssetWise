@@ -17,7 +17,7 @@ class PhotoController extends Controller
 
         $request->validate([
             'photos'   => 'required|array',
-            'photos.*' => 'image|max:10240', // 10 MB
+            'photos.*' => 'image|max:2048', // 2 MB (compressed client-side first)
         ]);
 
         $hasPrimary = $asset->photos()->where('is_primary', true)->exists();

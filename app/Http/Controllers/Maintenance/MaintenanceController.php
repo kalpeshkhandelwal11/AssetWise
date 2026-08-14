@@ -104,7 +104,8 @@ class MaintenanceController extends Controller
             'maintenance_type_id' => 'required|exists:maintenance_types,id',
             'status'              => 'required|in:scheduled,in_progress,completed,cancelled',
             'scheduled_date'      => 'nullable|date',
-            'performed_date'      => 'nullable|date',
+            // Work can be scheduled for the future, but it can't have been performed in the future.
+            'performed_date'      => 'nullable|date|before_or_equal:today',
             'vendor'              => 'nullable|string|max:255',
             'cost'                => 'nullable|numeric|min:0',
             'description'         => 'nullable|string',

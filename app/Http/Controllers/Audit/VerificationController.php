@@ -67,7 +67,7 @@ class VerificationController extends Controller
         $data = $request->validate([
             'status' => 'required|in:verified,missing,damaged',
             'notes'  => 'nullable|string|max:2000',
-            'photo'  => 'nullable|image|max:10240',
+            'photo'  => 'nullable|image|max:2048', // 2 MB (compressed client-side first)
         ]);
 
         if ($request->hasFile('photo')) {

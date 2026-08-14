@@ -405,7 +405,7 @@
                     <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Media</p>
                     <template x-for="(row, i) in mediaRows" :key="i">
                         <div class="flex items-center gap-2 mb-2">
-                            <input type="file" name="media[]" accept="image/*,application/pdf" capture="environment"
+                            <input type="file" name="media[]" accept="image/*,application/pdf" capture="environment" data-compress
                                    class="block w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
                             <select name="media_labels[]"
                                     class="w-48 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">

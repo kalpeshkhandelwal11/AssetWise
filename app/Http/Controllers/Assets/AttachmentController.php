@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Assets;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\AssetAttachment;
+use App\Rules\ImageUnderSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -17,7 +18,8 @@ class AttachmentController extends Controller
 
         $data = $request->validate([
             'type' => 'required|in:invoice,warranty_card,manual,agreement,photo',
-            'file' => 'required|file|max:20480', // 20 MB
+            // Images capped at 2 MB (compressed client-side first); other files (PDFs) up to 20 MB.
+            'file' => ['required', 'file', 'max:20480', new ImageUnderSize(2048)],
         ]);
 
         $file = $request->file('file');

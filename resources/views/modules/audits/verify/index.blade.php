@@ -79,7 +79,7 @@
                                               class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"></textarea>
                                 </div>
                                 <div>
-                                    <input type="file" name="photo" accept="image/*" class="text-sm text-gray-600 dark:text-gray-400">
+                                    <input type="file" name="photo" accept="image/*" data-compress class="text-sm text-gray-600 dark:text-gray-400">
                                 </div>
                                 <x-primary-button type="submit">Submit Verification</x-primary-button>
                             </form>

@@ -85,7 +85,8 @@ class WarrantyController extends Controller
         return [
             'provider'   => 'required|string|max:255',
             'start_date' => 'nullable|date',
-            'end_date'   => 'required|date',
+            // A warranty can't end before it starts (only enforced when a start date is given).
+            'end_date'   => 'required|date|after_or_equal:start_date',
             'terms'      => 'nullable|string',
         ];
     }

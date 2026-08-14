@@ -5,6 +5,7 @@ import qrScanner from './qr-scanner';
 import tagScanner from './tag-scanner';
 import registerSearchableSelect from './searchable-select';
 import tagReplace from './tag-replace';
+import registerImageCompress from './image-compress';
 import filterBar from './filter-bar';
 
 // Apply dark mode before first paint to avoid flash
@@ -35,6 +36,9 @@ Alpine.data('tagReplace', tagReplace);
 // `x-searchable` — Tom Select behind <x-searchable-select>. Registered before start() so the
 // directive is known when the first tree is walked.
 registerSearchableSelect(Alpine);
+
+// Shrink selected images to <= 2 MB before upload, on any <input type=file data-compress>.
+registerImageCompress();
 
 // Auto-applying filters behind <x-filter-bar> — apply on change / debounced typing, no button.
 Alpine.data('filterBar', filterBar);

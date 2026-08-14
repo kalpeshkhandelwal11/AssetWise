@@ -16,6 +16,7 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Models\ApprovalWorkflow;
 use App\Services\AssetNamingService;
+use App\Rules\ImageUnderSize;
 use App\Services\AssetService;
 use App\Services\DynamicFieldService;
 use App\Services\TagService;
@@ -126,7 +127,8 @@ class AssetController extends Controller
         // never leak into the asset column payload passed to AssetService::create().
         $extras = $request->validate([
             'media'          => 'nullable|array',
-            'media.*'        => 'file|max:20480', // 20 MB, mirrors AttachmentController
+            // Images capped at 2 MB (the client compresses them first); PDFs may be larger.
+            'media.*'        => ['file', 'max:20480', new ImageUnderSize(2048)],
             'media_labels'   => 'nullable|array',
             'media_labels.*' => 'in:invoice,warranty_card,manual,agreement,photo',
             'tag_id'         => 'nullable|exists:tags,id',
@@ -353,7 +355,7 @@ class AssetController extends Controller
         $dynamic = [];
 
         try {
-            $core = validator($request->all(), $this->rules($companyRequired, $companyEditable, categoryLocked: $locked))->validate();
+            $core = validator($request->all(), $this->rules($companyRequired, $companyEditable, categoryLocked: $locked, hasPurchaseDate: $request->filled('purchase_date')))->validate();
         } catch (ValidationException $e) {
             $errors = $e->errors();
         }
@@ -377,13 +379,15 @@ class AssetController extends Controller
         return $core + ['fields' => $dynamic, '_resolved_fields' => $resolved];
     }
 
-    private function rules(bool $companyRequired, bool $companyEditable = true, bool $categoryLocked = false): array
+    private function rules(bool $companyRequired, bool $companyEditable = true, bool $categoryLocked = false, bool $hasPurchaseDate = false): array
     {
         $companyRule = match (true) {
             $companyRequired => 'required|exists:companies,id',
             $companyEditable => 'sometimes|exists:companies,id',
             default           => 'prohibited',
         };
+
+        $afterPurchase = $hasPurchaseDate ? '|after_or_equal:purchase_date' : '';
 
         return [
             'name'             => 'required|string|max:255',
@@ -403,14 +407,16 @@ class AssetController extends Controller
             'custodian_id'     => 'nullable|exists:employees,id',
             'department_id'    => 'nullable|exists:departments,id',
             'branch_id'        => 'nullable|exists:branches,id',
-            'purchase_date'    => 'nullable|date',
+            'purchase_date'    => 'nullable|date|before_or_equal:today',
             'purchase_cost'    => 'nullable|numeric|min:0',
             'vendor'           => 'nullable|string|max:255',
             'vendor_invoice_no' => 'nullable|string|max:255',
-            'warranty_expiry'  => 'nullable|date',
-            'amc_expiry'       => 'nullable|date',
+            // Coverage/EOL dates can't predate the purchase (only enforced when a purchase date
+            // is given — the comparison field must exist for after_or_equal to be meaningful).
+            'warranty_expiry'  => 'nullable|date' . $afterPurchase,
+            'amc_expiry'       => 'nullable|date' . $afterPurchase,
             'is_eol'           => 'sometimes|boolean',
-            'eol_projected_date' => 'nullable|date',
+            'eol_projected_date' => 'nullable|date' . $afterPurchase,
             'useful_life_years' => 'nullable|integer|min:1|max:100',
             'notes'            => 'nullable|string',
         ];

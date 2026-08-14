@@ -156,7 +156,7 @@
             @can('assets.edit')
             <form method="POST" action="{{ route('assets.photos.store', $asset) }}" enctype="multipart/form-data" class="flex items-center gap-3 mb-5">
                 @csrf
-                <input type="file" name="photos[]" multiple accept="image/*" required class="text-sm text-gray-600 dark:text-gray-400">
+                <input type="file" name="photos[]" multiple accept="image/*" required data-compress class="text-sm text-gray-600 dark:text-gray-400">
                 <x-primary-button type="submit">Upload</x-primary-button>
             </form>
             @endcan
@@ -209,7 +209,7 @@
                         <option value="{{ $value }}">{{ $label }}</option>
                     @endforeach
                 </select>
-                <input type="file" name="file" required class="text-sm text-gray-600 dark:text-gray-400">
+                <input type="file" name="file" required data-compress class="text-sm text-gray-600 dark:text-gray-400">
                 <x-primary-button type="submit">Upload</x-primary-button>
             </form>
             @endcan
