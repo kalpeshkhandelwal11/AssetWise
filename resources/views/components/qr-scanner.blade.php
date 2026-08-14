@@ -44,8 +44,32 @@
         <div id="{{ $viewerId }}" class="w-full max-w-sm mx-auto overflow-hidden rounded-lg bg-black"></div>
     </div>
 
+    {{-- Scan confirmation — frozen frame + decoded tag, confirm before resolving. --}}
+    <div x-show="confirming" x-cloak class="mb-3">
+        <div class="max-w-sm mx-auto">
+            <img x-show="snapshot" :src="snapshot" alt="Scanned frame"
+                 class="w-full rounded-lg border border-gray-200 dark:border-gray-700" />
+            <div class="mt-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <svg class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>Detected tag <span class="font-mono font-semibold" x-text="captured"></span></span>
+            </div>
+            <div class="mt-3 flex gap-2">
+                <button type="button" @click="confirm()"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors">
+                    Open
+                </button>
+                <button type="button" @click="rescan()"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    Scan again
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="flex flex-wrap items-center gap-2">
-        <button type="button" @click="start()" x-show="!active" :disabled="starting"
+        <button type="button" @click="start()" x-show="!active && !confirming" :disabled="starting"
                 class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-medium transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>

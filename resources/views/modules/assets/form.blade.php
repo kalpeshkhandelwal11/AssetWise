@@ -463,9 +463,13 @@
                                         <span x-text="active ? 'Stop' : (starting ? 'Starting…' : 'Scan')"></span>
                                     </button>
                                 </div>
-                                <p x-show="captured" x-cloak class="mt-1 text-xs text-green-600 dark:text-green-400">
-                                    Captured tag <span class="font-mono" x-text="captured"></span>.
-                                </p>
+                                <div x-show="captured" x-cloak class="mt-2">
+                                    <p class="text-xs text-green-600 dark:text-green-400">
+                                        Captured tag <span class="font-mono" x-text="captured"></span>.
+                                    </p>
+                                    <img x-show="snapshot" :src="snapshot" alt="Scanned frame"
+                                         class="mt-1 w-40 rounded-md border border-gray-200 dark:border-gray-700" />
+                                </div>
                                 <x-input-error :messages="$errors->get('tag_number')" class="mt-1" />
                                 <x-input-error :messages="$errors->get('tag')" class="mt-1" />
                             </div>

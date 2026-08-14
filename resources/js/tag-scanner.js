@@ -17,6 +17,7 @@ export default function tagScanner({ viewerId, inputId }) {
         starting: false,
         error: '',
         captured: '',
+        snapshot: '',
 
         /**
          * A QR tag's payload is a full url("/scan/{tag}"); a barcode carries the bare tag
@@ -29,6 +30,23 @@ export default function tagScanner({ viewerId, inputId }) {
             }
             const match = raw.match(/\/scan\/([^/?#]+)/);
             return match ? decodeURIComponent(match[1]) : raw;
+        },
+
+        /** Grab the current camera frame as a JPEG data URL for the confirmation thumbnail. */
+        snapshotFrom() {
+            try {
+                const video = document.getElementById(viewerId)?.querySelector('video');
+                if (! video || ! video.videoWidth) {
+                    return '';
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                return canvas.toDataURL('image/jpeg', 0.7);
+            } catch {
+                return '';
+            }
         },
 
         /** Frame-filling, landscape scan region (mirrors qr-scanner.js#scanBox). */
@@ -107,6 +125,9 @@ export default function tagScanner({ viewerId, inputId }) {
             if (! tag) {
                 return;
             }
+
+            // Freeze the decoded frame for the confirmation thumbnail before releasing the camera.
+            this.snapshot = this.snapshotFrom();
 
             // Release the camera before we do anything else, or on some Android browsers the
             // stream stays held and a second scan fails to acquire it.

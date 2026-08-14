@@ -12,6 +12,11 @@ export default function qrScanner({ viewerId, resolveUrl, tagPlaceholder }) {
         active: false,
         starting: false,
         error: '',
+        // Scan-confirmation: freeze the decoded frame + tag and let the user confirm before
+        // we navigate, so a stray read of an adjacent label doesn't whisk them away.
+        confirming: false,
+        captured: '',
+        snapshot: '',
 
         /** Build /scan/{tag} from the template the Blade component handed us. */
         urlFor(tag) {
@@ -31,6 +36,23 @@ export default function qrScanner({ viewerId, resolveUrl, tagPlaceholder }) {
             const width = Math.max(50, Math.floor(vw * 0.85));
             const height = Math.max(50, Math.floor(Math.min(vh * 0.7, width)));
             return { width, height };
+        },
+
+        /** Grab the current camera frame as a JPEG data URL for the confirmation thumbnail. */
+        snapshotFrom() {
+            try {
+                const video = document.getElementById(viewerId)?.querySelector('video');
+                if (! video || ! video.videoWidth) {
+                    return '';
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                return canvas.toDataURL('image/jpeg', 0.7);
+            } catch {
+                return '';
+            }
         },
 
         /**
@@ -116,11 +138,32 @@ export default function qrScanner({ viewerId, resolveUrl, tagPlaceholder }) {
                 return;
             }
 
-            // Release the camera before navigating, or the stream can stay held on some
-            // Android browsers and the next scan fails to acquire it.
+            // Freeze the frame that decoded (before releasing the camera) and show it for
+            // confirmation rather than navigating straight away.
+            this.snapshot = this.snapshotFrom();
+            this.captured = tag;
+
+            // Release the camera now, or the stream can stay held on some Android browsers
+            // and the next scan fails to acquire it.
             await this.stop();
 
-            window.location.href = this.urlFor(tag) + '?method=camera';
+            this.confirming = true;
+        },
+
+        /** Confirm the frozen scan — proceed to resolve the tag. */
+        confirm() {
+            if (! this.captured) {
+                return;
+            }
+            window.location.href = this.urlFor(this.captured) + '?method=camera';
+        },
+
+        /** Discard the frozen scan and start the camera again. */
+        async rescan() {
+            this.confirming = false;
+            this.captured = '';
+            this.snapshot = '';
+            await this.start();
         },
 
         describe(error) {
