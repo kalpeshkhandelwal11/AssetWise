@@ -4,6 +4,7 @@ import 'tom-select/dist/css/tom-select.css';
 import qrScanner from './qr-scanner';
 import tagScanner from './tag-scanner';
 import registerSearchableSelect from './searchable-select';
+import tagReplace from './tag-replace';
 import filterBar from './filter-bar';
 
 // Apply dark mode before first paint to avoid flash
@@ -26,6 +27,10 @@ Alpine.data('qrScanner', qrScanner);
 // Asset-create Barcode/Tag section: decode a printed tag with the phone camera and drop the
 // number into the tag input (hardware scanners type into that input directly, no JS needed).
 Alpine.data('tagScanner', tagScanner);
+
+// Replace-tag form: scan (camera or hardware reader) or type a pool tag number, resolved to
+// the submitted <select name="new_tag_id">.
+Alpine.data('tagReplace', tagReplace);
 
 // `x-searchable` — Tom Select behind <x-searchable-select>. Registered before start() so the
 // directive is known when the first tree is walked.

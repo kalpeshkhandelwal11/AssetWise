@@ -452,6 +452,7 @@
                                          submitting the half-filled create form. --}}
                                     <input id="tag_number" name="tag_number" type="text" autocomplete="off"
                                            @keydown.enter.prevent
+                                           @change="$el.value = normalise($el.value)"
                                            value="{{ old('tag_number') }}" placeholder="e.g. AW-000123"
                                            class="flex-1 min-w-0 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono" />
                                     <button type="button" @click="toggle()" :disabled="starting"

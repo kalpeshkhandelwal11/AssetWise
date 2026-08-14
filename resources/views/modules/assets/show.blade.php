@@ -264,7 +264,14 @@
 
             @can('tags.assign')
                 @if(! $currentTagAssignment)
-                    <form method="POST" action="{{ route('assets.tags.assign', $asset) }}" class="flex flex-wrap items-end gap-3 mb-6 pb-6 border-b border-gray-100 dark:border-gray-700">
+                    @php $assignViewerId = 'assign-tag-viewer-'.\Illuminate\Support\Str::random(8); @endphp
+                    {{-- Normalise the scanned tag on submit: a hardware reader (or camera) may
+                         deliver a QR's /scan/{n} URL; reduce it to the bare tag number the
+                         controller expects. --}}
+                    <form method="POST" action="{{ route('assets.tags.assign', $asset) }}"
+                          class="flex flex-wrap items-end gap-3 mb-6 pb-6 border-b border-gray-100 dark:border-gray-700"
+                          x-data="tagScanner(@js(['viewerId' => $assignViewerId, 'inputId' => 'tag_number']))"
+                          @submit="$refs.tagNum.value = normalise($refs.tagNum.value)">
                         @csrf
                         <div>
                             <x-input-label for="tag_id" value="Pick from pool" />
@@ -278,11 +285,32 @@
                         <span class="text-xs text-gray-400 pb-2">or</span>
                         <div>
                             <x-input-label for="tag_number" value="Scan-to-assign (tag number)" />
-                            <x-text-input id="tag_number" name="tag_number" class="mt-1 block w-full" />
+                            <div class="mt-1 flex gap-2">
+                                <x-text-input id="tag_number" name="tag_number" x-ref="tagNum" class="block w-full font-mono" placeholder="Scan or type" />
+                                <button type="button" @click="toggle()" :disabled="starting"
+                                        class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    <span x-text="active ? 'Stop' : (starting ? '…' : 'Scan')"></span>
+                                </button>
+                            </div>
                         </div>
                         <x-primary-button type="submit">Assign Tag</x-primary-button>
                         <x-input-error :messages="$errors->get('tag')" class="mt-1 w-full" />
                         <x-input-error :messages="$errors->get('asset')" class="mt-1 w-full" />
+
+                        {{-- Camera viewfinder + freeze-frame confirmation (full-width rows). --}}
+                        <div x-show="active" x-cloak class="w-full">
+                            <div id="{{ $assignViewerId }}" class="w-full max-w-sm overflow-hidden rounded-lg bg-black"></div>
+                        </div>
+                        <div x-show="captured" x-cloak class="w-full">
+                            <p class="text-xs text-green-600 dark:text-green-400">Captured tag <span class="font-mono" x-text="captured"></span>.</p>
+                            <img x-show="snapshot" :src="snapshot" alt="Scanned frame" class="mt-1 w-40 rounded-md border border-gray-200 dark:border-gray-700" />
+                        </div>
+                        <p x-show="error" x-cloak x-text="error"
+                           class="w-full text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2"></p>
                     </form>
                 @endif
             @endcan
