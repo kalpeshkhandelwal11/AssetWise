@@ -86,15 +86,19 @@ export default function tagScanner({ viewerId, inputId }) {
                     ],
                 });
 
+                // Reveal the viewfinder and flush the DOM BEFORE start() — starting into a
+                // display:none (x-show="active") box yields a zero-size, invisible video.
+                this.active = true;
+                await this.$nextTick();
+
                 await this.scanner.start(
                     { facingMode: 'environment' },
                     { fps: 10, qrbox: this.scanBox },
                     (decoded) => this.onDecode(decoded),
                     () => {}
                 );
-
-                this.active = true;
             } catch (error) {
+                this.active = false;
                 this.error = this.describe(error);
                 this.scanner = null;
             } finally {

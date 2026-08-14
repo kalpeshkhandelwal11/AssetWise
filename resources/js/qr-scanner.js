@@ -79,6 +79,9 @@ export default function qrScanner({ viewerId, resolveUrl, tagPlaceholder }) {
 
             this.starting = true;
             this.error = '';
+            this.confirming = false;
+            this.captured = '';
+            this.snapshot = '';
 
             try {
                 const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
@@ -96,6 +99,12 @@ export default function qrScanner({ viewerId, resolveUrl, tagPlaceholder }) {
                     ],
                 });
 
+                // Reveal the viewfinder and let Alpine flush the DOM BEFORE start(): html5-qrcode
+                // measures this container and renders the <video> into it, so starting while it
+                // is still display:none (x-show="active") yields a zero-size, invisible video.
+                this.active = true;
+                await this.$nextTick();
+
                 await this.scanner.start(
                     { facingMode: 'environment' },
                     { fps: 10, qrbox: this.scanBox },
@@ -103,9 +112,8 @@ export default function qrScanner({ viewerId, resolveUrl, tagPlaceholder }) {
                     // Per-frame decode misses fire constantly and are not errors worth showing.
                     () => {}
                 );
-
-                this.active = true;
             } catch (error) {
+                this.active = false;
                 this.error = this.describe(error);
                 this.scanner = null;
             } finally {
