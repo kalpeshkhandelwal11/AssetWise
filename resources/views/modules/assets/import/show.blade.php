@@ -35,8 +35,16 @@
     </div>
 
     @if($batch->status === 'processing')
-        <div class="mb-6 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-sm">
-            Still processing — refresh this page for the latest counts.
+        {{-- Auto-refresh while the queued ProcessAssetImport job runs, so counts update without
+             a manual reload. Requires a queue worker (php artisan queue:work); with no worker the
+             job never runs and the batch stays "processing". --}}
+        <div x-data x-init="setTimeout(() => window.location.reload(), 4000)"
+             class="mb-6 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2">
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"></path>
+            </svg>
+            Still processing — this page refreshes automatically. (Needs a running queue worker.)
         </div>
     @endif
 
