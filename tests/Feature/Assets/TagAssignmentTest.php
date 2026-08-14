@@ -28,13 +28,16 @@ class TagAssignmentTest extends TestCase
     {
         $manager = $this->createUserWithRole('Asset Manager');
         $asset = Asset::factory()->create();
+        $originalAssetId = $asset->asset_tag;
         $tag = Tag::factory()->available()->create();
 
         $this->actingAs($manager)
              ->post(route('assets.tags.assign', $asset), ['tag_id' => $tag->id])
              ->assertRedirect(route('assets.show', $asset));
 
-        $this->assertSame($tag->tag_number, $asset->fresh()->asset_tag);
+        // asset_tag (the generated Asset ID) is preserved; the barcode links via the assignment.
+        $this->assertSame($originalAssetId, $asset->fresh()->asset_tag);
+        $this->assertSame($tag->id, $asset->fresh()->activeTag()->id);
         $this->assertDatabaseHas('asset_tag_assignments', [
             'asset_id' => $asset->id,
             'tag_id'   => $tag->id,

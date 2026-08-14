@@ -97,7 +97,8 @@ class TagReplacementApprovalTest extends TestCase
         $this->assertSame('inactive', $oldTag->fresh()->status);
         $this->assertSame('assigned', $newTag->fresh()->status);
         $this->assertSame('approved', $replacement->fresh()->status);
-        $this->assertSame($newTag->tag_number, $asset->fresh()->asset_tag);
+        // The new barcode becomes the active tag; the Asset ID (asset_tag) is left untouched.
+        $this->assertSame($newTag->id, $asset->fresh()->activeTag()->id);
 
         // Scanning proves the routing outcome, not just the raw column state.
         $oldTagScan = app(TagService::class)->resolveScan($oldTag->fresh()->tag_number);

@@ -88,7 +88,10 @@ class TagService
             ]);
 
             $tag->update(['status' => 'assigned']);
-            $asset->update(['asset_tag' => $tag->tag_number]);
+            // NOTE: do NOT touch $asset->asset_tag here. asset_tag is the auto-generated Asset ID
+            // (AssetNamingService), a separate identifier from the physical pool tag. The tag link
+            // lives in asset_tag_assignments and is read via $asset->activeTag(). Overwriting
+            // asset_tag with the tag number destroyed the generated Asset ID (the "2 entries" bug).
 
             return $assignment;
         });
@@ -152,7 +155,7 @@ class TagService
             ]);
 
             $request->newTag->update(['status' => 'assigned']);
-            $asset->update(['asset_tag' => $request->newTag->tag_number]);
+            // asset_tag (the generated Asset ID) is deliberately left untouched — see assignToAsset.
 
             $request->update(['status' => 'approved']);
         });

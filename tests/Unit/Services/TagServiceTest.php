@@ -107,13 +107,16 @@ class TagServiceTest extends TestCase
     {
         $actor = User::factory()->create();
         $asset = Asset::factory()->create();
+        $originalAssetId = $asset->asset_tag;
         $tag = Tag::factory()->available()->create();
 
         $assignment = $this->service()->assignToAsset($tag, $asset, $actor);
 
         $this->assertSame('active', $assignment->status);
         $this->assertSame('assigned', $tag->fresh()->status);
-        $this->assertSame($tag->tag_number, $asset->fresh()->asset_tag);
+        // asset_tag (Asset ID) is untouched; the barcode link lives on the assignment.
+        $this->assertSame($originalAssetId, $asset->fresh()->asset_tag);
+        $this->assertSame($tag->id, $asset->fresh()->activeTag()->id);
     }
 
     public function test_assign_to_asset_rejects_a_second_active_assignment_on_the_same_asset(): void
@@ -211,7 +214,7 @@ class TagServiceTest extends TestCase
 
         $this->assertSame('inactive', $oldTag->fresh()->status);
         $this->assertSame('assigned', $newTag->fresh()->status);
-        $this->assertSame($newTag->tag_number, $asset->fresh()->asset_tag);
+        // asset_tag (Asset ID) is untouched by replacement; the new barcode is the active tag.
         $this->assertSame('approved', $replacement->fresh()->status);
         $this->assertSame($newTag->id, $asset->fresh()->activeTag()->id);
     }
