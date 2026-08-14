@@ -23,7 +23,7 @@
             @endforeach
         </div>
 
-        <form method="POST" action="{{ route('movements.bulk.store') }}" class="space-y-5"
+        <form method="POST" action="{{ route('movements.bulk.store') }}" enctype="multipart/form-data" class="space-y-5"
               x-data="{
                   movementTypeId: '{{ old('movement_type_id') }}',
                   {{-- @js, not @json — see the note in create.blade.php: @json's comma
@@ -116,6 +116,14 @@
             <div>
                 <x-input-label for="notes" value="Notes" />
                 <textarea id="notes" name="notes" rows="3" class="mt-1 block w-full text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500">{{ old('notes') }}</textarea>
+            </div>
+
+            <div>
+                <x-input-label for="documents" value="Supporting documents (optional)" />
+                <input type="file" name="documents[]" id="documents" multiple accept="image/*,application/pdf" data-compress
+                       class="mt-1 block w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                <p class="mt-1 text-xs text-gray-400">Attach paperwork the approver should see (PDF or image, up to 5 files). Images are compressed automatically.</p>
+                <x-input-error :messages="$errors->get('documents.0')" class="mt-1" />
             </div>
 
             <x-input-error :messages="$errors->get('asset')" class="mt-1" />

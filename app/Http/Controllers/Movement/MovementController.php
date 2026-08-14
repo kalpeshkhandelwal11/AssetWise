@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Movement;
 
+use App\Http\Controllers\Concerns\StoresApprovalAttachments;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\AssetMovement;
@@ -11,13 +12,20 @@ use App\Models\Employee;
 use App\Models\Location;
 use App\Models\MovementType;
 use App\Models\User;
+use App\Rules\ImageUnderSize;
 use App\Services\MovementService;
+use App\Services\ReportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\MovementReportExport;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Illuminate\View\View;
 
 class MovementController extends Controller
 {
+    use StoresApprovalAttachments;
+
     public function __construct(private MovementService $movements)
     {
     }
@@ -39,7 +47,12 @@ class MovementController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->input('status'));
+            // "Cancelled" is status=rejected + cancelled_at set; keep the two distinct in filters.
+            match ($request->input('status')) {
+                'cancelled' => $query->whereNotNull('cancelled_at'),
+                'rejected'  => $query->where('status', 'rejected')->whereNull('cancelled_at'),
+                default     => $query->where('status', $request->input('status')),
+            };
         }
 
         if ($request->filled('search')) {
@@ -78,18 +91,85 @@ class MovementController extends Controller
         $movementType = MovementType::findOrFail($data['movement_type_id']);
         $this->authorize($this->movements->permissionFor($movementType));
 
-        $this->movements->submit($asset, $data, $request->user());
+        $movement = $this->movements->submit($asset, $data, $request->user());
+        $this->storeApprovalAttachments($request, $movement->approval_request_id);
 
         return redirect()->route('assets.show', $asset)->with('success', 'Movement submitted for approval.');
+    }
+
+    /** Confirmation page for verifying a movement — non-admins scan/type the asset's tag here. */
+    public function verifyForm(Request $request, AssetMovement $movement): View
+    {
+        $this->authorize('movement.verify');
+
+        return view('modules.movements.verify', [
+            'movement' => $movement->load(['asset', 'movementType', 'toLocation', 'toCustodian']),
+            'isAdmin'  => $request->user()->hasRole('Super Admin'),
+        ]);
     }
 
     public function verify(Request $request, AssetMovement $movement): RedirectResponse
     {
         $this->authorize('movement.verify');
 
+        // Non-admins must confirm physical possession by scanning/typing a tag that matches the
+        // moved asset (its physical pool tag or its Asset ID). Super Admin bypasses.
+        if (! $request->user()->hasRole('Super Admin')) {
+            $data = $request->validate(['tag_number' => 'required|string']);
+            $scanned = $this->normaliseTag($data['tag_number']);
+            $asset = $movement->asset;
+            $valid = collect([$asset?->activeTag()?->tag_number, $asset?->asset_tag])
+                ->filter()
+                ->contains(fn ($t) => strcasecmp($t, $scanned) === 0);
+
+            if (! $valid) {
+                return back()->withErrors(['tag_number' => 'The scanned tag does not match this asset.']);
+            }
+        }
+
         $this->movements->verify($movement, $request->user());
 
-        return back()->with('success', 'Movement verified.');
+        return redirect()->route('movements.index')->with('success', 'Movement verified.');
+    }
+
+    /** Reduce a scanned QR payload (url("/scan/{n}")) or a bare barcode to the tag number. */
+    private function normaliseTag(string $raw): string
+    {
+        $raw = trim($raw);
+        if (preg_match('~/scan/([^/?\#]+)~', $raw, $m)) {
+            return urldecode($m[1]);
+        }
+        return $raw;
+    }
+
+    /** Cancel (withdraw) a pending movement — requester's own, or any pending for an admin. */
+    public function cancel(Request $request, AssetMovement $movement): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($movement->requested_by === $user->id || $user->hasRole('Super Admin'), 403);
+
+        $this->movements->cancel($movement, $user);
+
+        return back()->with('success', 'Movement cancelled.');
+    }
+
+    /** Download the currently-filtered movement history as Excel (reuses the M14 export). */
+    public function export(Request $request): BinaryFileResponse
+    {
+        $this->authorize('assets.view');
+
+        $filters = array_filter($request->only(['movement_type_id', 'status', 'search']), fn ($v) => $v !== null && $v !== '');
+
+        // The shared ReportService only knows the real status column; a "cancelled" filter maps
+        // to the rejected set (cancelled rows keep status=rejected).
+        if (($filters['status'] ?? null) === 'cancelled') {
+            $filters['status'] = 'rejected';
+        }
+
+        return Excel::download(
+            new MovementReportExport($filters, app(ReportService::class)),
+            'movements-' . now()->format('Ymd-His') . '.xlsx',
+        );
     }
 
     private function rules(): array
@@ -103,6 +183,9 @@ class MovementController extends Controller
             'to_department_id' => 'nullable|exists:departments,id',
             'to_status_id'     => 'nullable|exists:asset_statuses,id',
             'notes'            => 'nullable|string|max:1000',
+            // Optional supporting documents for the approver (images compressed client-side).
+            'documents'        => 'nullable|array|max:5',
+            'documents.*'      => ['file', 'max:20480', new ImageUnderSize(2048)],
         ];
     }
 

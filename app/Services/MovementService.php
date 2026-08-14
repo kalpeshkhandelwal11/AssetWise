@@ -182,6 +182,51 @@ class MovementService
         }
     }
 
+    /**
+     * Withdraw a still-pending movement — the requester (or an admin) cancels before approval.
+     * Distinct from rejection (an approver's decision): marks the approval request withdrawn and
+     * the movement 'cancelled'. For a batch member, the whole batch is cancelled since one
+     * approval covers it. Does NOT fire ApprovalRequestRejected (that would set 'rejected').
+     */
+    public function cancel(AssetMovement $movement, User $actor): void
+    {
+        if ($movement->status !== 'pending_approval') {
+            throw ValidationException::withMessages([
+                'movement' => 'Only a pending movement can be cancelled.',
+            ]);
+        }
+
+        $batch = $movement->batch;
+        $approvalRequestId = $batch?->approval_request_id ?? $movement->approval_request_id;
+
+        DB::transaction(function () use ($movement, $batch, $approvalRequestId, $actor) {
+            if ($approvalRequestId && $request = \App\Models\ApprovalRequest::find($approvalRequestId)) {
+                if ($request->status === 'pending') {
+                    \App\Models\ApprovalAction::create([
+                        'request_id' => $request->id,
+                        'step_level' => $request->current_step,
+                        'user_id'    => $actor->id,
+                        'action'     => 'reject',
+                        'comment'    => 'Cancelled by ' . $actor->name,
+                        'created_at' => now(),
+                    ]);
+                    $request->update(['status' => 'rejected']);
+                }
+            }
+
+            // Keep status='rejected' (the movement didn't apply) but stamp cancelled_at so the UI
+            // shows "Cancelled" and distinguishes a self-withdrawal from an approver rejection.
+            $stamp = ['status' => 'rejected', 'cancelled_at' => now(), 'cancelled_by' => $actor->id];
+
+            if ($batch) {
+                $batch->update($stamp);
+                $batch->movements()->update($stamp);
+            } else {
+                $movement->update($stamp);
+            }
+        });
+    }
+
     /** Post-completion sign-off — distinct from approval, records who confirmed the move actually happened. */
     public function verify(AssetMovement $movement, User $actor): AssetMovement
     {

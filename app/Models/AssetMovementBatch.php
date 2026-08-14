@@ -20,8 +20,14 @@ class AssetMovementBatch extends Model
     protected $fillable = [
         'movement_type_id', 'to_company_id', 'to_location_id', 'to_custodian_id',
         'to_department_id', 'to_status_id', 'kit_assignment_id', 'status', 'notes',
+        'cancelled_at', 'cancelled_by',
         'approval_request_id', 'requested_by',
     ];
+
+    protected function casts(): array
+    {
+        return ['cancelled_at' => 'datetime'];
+    }
 
     public function movementType(): BelongsTo
     {

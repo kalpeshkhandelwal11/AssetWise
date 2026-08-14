@@ -18,13 +18,15 @@ class AssetMovement extends Model
         'from_department_id', 'to_department_id',
         'to_status_id', 'status', 'notes',
         'verified_at', 'verified_by',
+        'cancelled_at', 'cancelled_by',
         'approval_request_id', 'requested_by',
     ];
 
     protected function casts(): array
     {
         return [
-            'verified_at' => 'datetime',
+            'verified_at'  => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 

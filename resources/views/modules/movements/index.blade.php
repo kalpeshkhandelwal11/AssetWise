@@ -6,15 +6,24 @@
             <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Movement History</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Assignment, transfer, return and custodian-change requests across all assets</p>
         </div>
-        @canany(['movement.assign', 'movement.transfer'])
-        <a href="{{ route('movements.create') }}"
-           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            New Movement
-        </a>
-        @endcanany
+        <div class="flex items-center gap-2">
+            <a href="{{ route('movements.export', request()->query()) }}"
+               class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Export
+            </a>
+            @canany(['movement.assign', 'movement.transfer'])
+            <a href="{{ route('movements.create') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                New Movement
+            </a>
+            @endcanany
+        </div>
     </div>
 
     <x-filter-bar :clear="route('movements.index')">
@@ -31,6 +40,7 @@
             <option value="pending_approval" @selected(request('status') === 'pending_approval')>Pending Approval</option>
             <option value="completed" @selected(request('status') === 'completed')>Completed</option>
             <option value="rejected" @selected(request('status') === 'rejected')>Rejected</option>
+            <option value="cancelled" @selected(request('status') === 'cancelled')>Cancelled</option>
         </select>
     </x-filter-bar>
 
@@ -67,27 +77,35 @@
                         </td>
                         <td class="px-4 py-3">
                             @php
-                                $statusColor = match($movement->status) {
+                                $isCancelled = $movement->cancelled_at !== null;
+                                $statusLabel = $isCancelled ? 'Cancelled' : ucwords(str_replace('_', ' ', $movement->status));
+                                $statusColor = $isCancelled ? 'gray' : match($movement->status) {
                                     'completed' => 'green',
                                     'rejected'  => 'red',
                                     default     => 'amber',
                                 };
                             @endphp
-                            <x-status-badge :color="$statusColor" :label="ucwords(str_replace('_', ' ', $movement->status))" />
+                            <x-status-badge :color="$statusColor" :label="$statusLabel" />
                         </td>
                         <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $movement->requestedBy?->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $movement->created_at->format('d M Y') }}</td>
                         <td class="px-4 py-3 text-right">
-                            @can('movement.verify')
-                                @if($movement->status === 'completed' && ! $movement->verified_at)
-                                    <form method="POST" action="{{ route('movements.verify', $movement) }}">
+                            <div class="flex items-center justify-end gap-3">
+                                @can('movement.verify')
+                                    @if($movement->status === 'completed' && ! $movement->verified_at)
+                                        <a href="{{ route('movements.verify.form', $movement) }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Verify</a>
+                                    @elseif($movement->verified_at)
+                                        <span class="text-xs text-gray-400">Verified</span>
+                                    @endif
+                                @endcan
+                                @if($movement->status === 'pending_approval' && ($movement->requested_by === auth()->id() || auth()->user()->hasRole('Super Admin')))
+                                    <form method="POST" action="{{ route('movements.cancel', $movement) }}"
+                                          onsubmit="return confirm('Cancel this pending movement? This withdraws the approval request.')">
                                         @csrf
-                                        <button type="submit" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Verify</button>
+                                        <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline">Cancel</button>
                                     </form>
-                                @elseif($movement->verified_at)
-                                    <span class="text-xs text-gray-400">Verified</span>
                                 @endif
-                            @endcan
+                            </div>
                         </td>
                     </tr>
                 @empty

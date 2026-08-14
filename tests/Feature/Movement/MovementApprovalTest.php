@@ -373,7 +373,7 @@ class MovementApprovalTest extends TestCase
     {
         $this->withWorkflow();
         $requester = $this->createUserWithRole('Asset Manager');
-        $verifier = $this->createUserWithRole('Approver'); // has movement.verify
+        $verifier = $this->createUserWithRole('Super Admin'); // has movement.verify + scan bypass
         $custodian = Employee::factory()->create();
         $asset = Asset::factory()->create();
 
@@ -400,5 +400,79 @@ class MovementApprovalTest extends TestCase
 
         $this->assertNotNull($movement->fresh()->verified_at);
         $this->assertSame($verifier->id, $movement->fresh()->verified_by);
+    }
+
+    private function completedMovementFor(Asset $asset, Employee $custodian): \App\Models\AssetMovement
+    {
+        $requester = $this->createUserWithRole('Asset Manager');
+        $this->actingAs($requester)->post(route('movements.store'), [
+            'asset_id'         => $asset->id,
+            'movement_type_id' => $this->movementType('ASSIGNMENT', 'Assignment')->id,
+            'to_custodian_id'  => $custodian->id,
+        ]);
+        $movement = \App\Models\AssetMovement::where('asset_id', $asset->id)->firstOrFail();
+        $this->actingAs($this->createUserWithRole('Approver'))->post(route('approvals.approve', $movement->approval_request_id));
+        $this->actingAs($this->createUserWithRole('Asset Manager'))->post(route('approvals.approve', $movement->approval_request_id));
+
+        return $movement->fresh();
+    }
+
+    public function test_non_admin_verify_requires_a_tag_matching_the_asset(): void
+    {
+        $this->withWorkflow();
+        $verifier = $this->createUserWithRole('Approver'); // movement.verify, not Super Admin
+        $asset = Asset::factory()->create(['asset_tag' => 'AST-VERIFY-1']);
+        $movement = $this->completedMovementFor($asset, Employee::factory()->create());
+
+        // Wrong tag -> rejected, not verified.
+        $this->actingAs($verifier)
+             ->post(route('movements.verify', $movement), ['tag_number' => 'WRONG-TAG'])
+             ->assertSessionHasErrors('tag_number');
+        $this->assertNull($movement->fresh()->verified_at);
+
+        // The asset's own Asset ID matches -> verified.
+        $this->actingAs($verifier)
+             ->post(route('movements.verify', $movement), ['tag_number' => 'AST-VERIFY-1'])
+             ->assertRedirect(route('movements.index'));
+        $this->assertNotNull($movement->fresh()->verified_at);
+    }
+
+    public function test_requester_can_cancel_a_pending_movement(): void
+    {
+        $this->withWorkflow();
+        $requester = $this->createUserWithRole('Asset Manager');
+        $asset = Asset::factory()->create();
+
+        $this->actingAs($requester)->post(route('movements.store'), [
+            'asset_id'         => $asset->id,
+            'movement_type_id' => $this->movementType('ASSIGNMENT', 'Assignment')->id,
+            'to_custodian_id'  => Employee::factory()->create()->id,
+        ]);
+        $movement = \App\Models\AssetMovement::where('asset_id', $asset->id)->firstOrFail();
+
+        $this->actingAs($requester)->post(route('movements.cancel', $movement))->assertRedirect();
+
+        $movement->refresh();
+        $this->assertNotNull($movement->cancelled_at);
+        $this->assertSame($requester->id, $movement->cancelled_by);
+        $this->assertSame('rejected', $movement->approvalRequest->fresh()->status);
+    }
+
+    public function test_a_stranger_cannot_cancel_another_users_movement(): void
+    {
+        $this->withWorkflow();
+        $requester = $this->createUserWithRole('Asset Manager');
+        $asset = Asset::factory()->create();
+
+        $this->actingAs($requester)->post(route('movements.store'), [
+            'asset_id'         => $asset->id,
+            'movement_type_id' => $this->movementType('ASSIGNMENT', 'Assignment')->id,
+            'to_custodian_id'  => Employee::factory()->create()->id,
+        ]);
+        $movement = \App\Models\AssetMovement::where('asset_id', $asset->id)->firstOrFail();
+
+        $stranger = $this->createUserWithRole('Asset Manager');
+        $this->actingAs($stranger)->post(route('movements.cancel', $movement))->assertForbidden();
+        $this->assertNull($movement->fresh()->cancelled_at);
     }
 }

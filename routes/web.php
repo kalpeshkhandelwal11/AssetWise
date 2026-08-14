@@ -147,11 +147,14 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     // route so "movements/bulk/create" isn't swallowed by anything wildcard-shaped.
     Route::prefix('movements')->name('movements.')->group(function () {
         Route::get('/', [MovementController::class, 'index'])->name('index');
+        Route::get('export', [MovementController::class, 'export'])->name('export');
         Route::get('bulk/create', [MovementBatchController::class, 'create'])->name('bulk.create');
         Route::post('bulk', [MovementBatchController::class, 'store'])->name('bulk.store');
         Route::get('create', [MovementController::class, 'create'])->name('create');
         Route::post('/', [MovementController::class, 'store'])->name('store');
+        Route::get('{movement}/verify', [MovementController::class, 'verifyForm'])->name('verify.form');
         Route::post('{movement}/verify', [MovementController::class, 'verify'])->name('verify');
+        Route::post('{movement}/cancel', [MovementController::class, 'cancel'])->name('cancel');
     });
 
     // Audit & Verification (M10) — "verify" and "items/{item}/verify" register before the

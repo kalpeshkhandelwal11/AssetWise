@@ -39,6 +39,62 @@
             </dl>
         </div>
 
+        {{-- Bulk movement line items (read-only) — one row per asset in the batch. --}}
+        @if($request->approvable instanceof \App\Models\AssetMovementBatch)
+            <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Assets in this request</h2>
+                    <span class="text-xs text-gray-400">{{ $request->approvable->movements->count() }} item(s)</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asset</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tag</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destination</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                            @foreach($request->approvable->movements as $line)
+                                <tr>
+                                    <td class="px-4 py-2 text-gray-900 dark:text-gray-100">
+                                        <a href="{{ route('assets.show', $line->asset_id) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $line->asset?->name ?? 'Asset #'.$line->asset_id }}</a>
+                                    </td>
+                                    <td class="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">{{ $line->asset?->asset_tag ?? '—' }}</td>
+                                    <td class="px-4 py-2 text-gray-600 dark:text-gray-400 text-xs">
+                                        {{ collect([$line->toCompany?->name, $line->toLocation?->name, $line->toDepartment?->name, $line->toCustodian?->name])->filter()->join(' · ') ?: '—' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <p class="px-6 py-3 text-xs text-gray-400 border-t border-gray-100 dark:border-gray-700">Approve or reject applies to the whole batch.</p>
+            </div>
+        @endif
+
+        {{-- Supporting documents attached at submission --}}
+        @if($request->attachments->isNotEmpty())
+            <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Supporting Documents</h2>
+                </div>
+                <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                    @foreach($request->attachments as $doc)
+                        <li class="px-6 py-3 flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                            </svg>
+                            <a href="{{ $doc->url }}" target="_blank" rel="noopener" class="text-indigo-600 dark:text-indigo-400 hover:underline truncate">{{ $doc->original_name }}</a>
+                            <span class="text-xs text-gray-400 whitespace-nowrap">{{ number_format($doc->size / 1024, 0) }} KB</span>
+                            <span class="ml-auto text-xs text-gray-400 whitespace-nowrap">{{ $doc->uploadedBy?->name }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         {{-- Step chain --}}
         <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">

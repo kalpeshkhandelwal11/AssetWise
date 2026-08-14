@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Movement;
 
+use App\Http\Controllers\Concerns\StoresApprovalAttachments;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Company;
@@ -10,6 +11,7 @@ use App\Models\Employee;
 use App\Models\Location;
 use App\Models\MovementType;
 use App\Models\User;
+use App\Rules\ImageUnderSize;
 use App\Services\MovementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +20,8 @@ use Illuminate\View\View;
 /** Bulk multi-select movement (P9.1) — one approval covers every selected asset. */
 class MovementBatchController extends Controller
 {
+    use StoresApprovalAttachments;
+
     public function __construct(private MovementService $movements)
     {
     }
@@ -48,7 +52,8 @@ class MovementBatchController extends Controller
         $movementType = MovementType::findOrFail($data['movement_type_id']);
         $this->authorize($this->movements->permissionFor($movementType));
 
-        $this->movements->submitBatch($assets, $data, $request->user());
+        $batch = $this->movements->submitBatch($assets, $data, $request->user());
+        $this->storeApprovalAttachments($request, $batch->approval_request_id);
 
         return redirect()->route('movements.index')
             ->with('success', 'Bulk movement submitted for approval — ' . $assets->count() . ' asset(s).');
@@ -66,6 +71,9 @@ class MovementBatchController extends Controller
             'to_department_id' => 'nullable|exists:departments,id',
             'to_status_id'     => 'nullable|exists:asset_statuses,id',
             'notes'            => 'nullable|string|max:1000',
+            // Optional supporting documents for the approver (images compressed client-side).
+            'documents'        => 'nullable|array|max:5',
+            'documents.*'      => ['file', 'max:20480', new ImageUnderSize(2048)],
         ];
     }
 

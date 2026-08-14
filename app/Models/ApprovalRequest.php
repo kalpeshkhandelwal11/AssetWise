@@ -40,6 +40,11 @@ class ApprovalRequest extends Model
         return $this->hasMany(ApprovalAction::class, 'request_id')->latest('created_at');
     }
 
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(ApprovalAttachment::class);
+    }
+
     public function submittedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by');

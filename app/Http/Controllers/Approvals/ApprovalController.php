@@ -35,7 +35,16 @@ class ApprovalController extends Controller
     {
         $this->authorize('view', $approval_request);
 
-        $approval_request->load(['workflow.steps.approverUser', 'approvable', 'submittedBy', 'actions.user']);
+        $approval_request->load(['workflow.steps.approverUser', 'approvable', 'submittedBy', 'actions.user', 'attachments.uploadedBy']);
+
+        // Bulk movement batches: eager-load the child line items so the approver can see each
+        // asset in the batch (read-only) without an N+1 per row.
+        if ($approval_request->approvable instanceof \App\Models\AssetMovementBatch) {
+            $approval_request->approvable->load([
+                'movements.asset', 'movements.movementType', 'movements.toLocation',
+                'movements.toCustodian', 'movements.toCompany', 'movements.toDepartment',
+            ]);
+        }
 
         return view('approvals.show', [
             'request'   => $approval_request,
