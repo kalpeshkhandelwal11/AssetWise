@@ -6,7 +6,7 @@
         // Any viewer can select rows (Print/Export list); individual actions are gated below.
         $canBulkActions = $canBulkMove || auth()->user()->canAny(['assets.export', 'assets.edit', 'assets.view']);
     @endphp
-    <div x-data="{ selected: [], bulkAction: '', menuOpen: false }">
+    <div x-data="{ selected: [], menuOpen: false }">
 
     <div class="flex items-center justify-between mb-6">
         <div>
@@ -24,7 +24,7 @@
                 <div x-show="menuOpen" @click.outside="menuOpen = false" x-cloak
                      class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50 py-1">
                     @can('assets.export')
-                    <button type="button" @click="bulkAction='{{ route('assets.export.store') }}'; $refs.bulkForm.submit()"
+                    <button type="button" @click="$refs.bulkForm.action='{{ route('assets.export.store') }}'; $refs.bulkForm.submit()"
                             class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Export selected</button>
                     @endcan
                     @if($canBulkMove)
@@ -32,10 +32,10 @@
                        class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Assignment</a>
                     @endif
                     @can('assets.edit')
-                    <button type="button" @click="bulkAction='{{ route('assets.bulk-submit-approval') }}'; $refs.bulkForm.submit()"
+                    <button type="button" @click="$refs.bulkForm.action='{{ route('assets.bulk-submit-approval') }}'; $refs.bulkForm.submit()"
                             class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Submit from Draft</button>
                     @endcan
-                    <button type="button" @click="bulkAction='{{ route('assets.print-list') }}'; $refs.bulkForm.submit()"
+                    <button type="button" @click="$refs.bulkForm.action='{{ route('assets.print-list') }}'; $refs.bulkForm.submit()"
                             class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Print</button>
                     @can('assets.delete')
                     {{-- Set the form action directly (not via the reactive :action) — the confirm()
@@ -63,7 +63,8 @@
     </div>
 
     {{-- Hidden form carrying the checked ids to whichever bulk POST action was chosen. --}}
-    <form method="POST" x-ref="bulkForm" :action="bulkAction" class="hidden">
+    {{-- action is set per bulk-action click (not via a reactive :action, which is stale at submit time) --}}
+    <form method="POST" x-ref="bulkForm" class="hidden">
         @csrf
         <template x-for="id in selected" :key="id"><input type="hidden" name="asset_ids[]" :value="id"></template>
     </form>
