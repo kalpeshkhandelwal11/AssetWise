@@ -54,18 +54,64 @@ class AssetDepreciationController extends Controller
             ->with('success', 'Depreciation change submitted for approval.');
     }
 
-    public function schedule(Asset $asset): View
+    public function schedule(Request $request, Asset $asset): View
     {
         $this->authorize('depreciation.view');
 
         $setting = $asset->activeDepreciationSetting();
+        $lines = $setting ? $setting->scheduleLines()->orderBy('period_year')->orderBy('period_month')->get() : collect();
+
+        // Calculation stays monthly (daily-prorated); "yearly" is a presentation rollup only.
+        $view = $request->input('view') === 'yearly' ? 'yearly' : 'monthly';
+        $rows = $view === 'yearly' ? $this->rollUpByYear($lines) : $this->monthlyRows($lines);
 
         return view('modules.depreciation.schedule', [
             'asset'   => $asset,
             'setting' => $setting,
-            'lines'   => $setting
-                ? $setting->scheduleLines()->get()
-                : collect(),
+            'rows'    => $rows,
+            'view'    => $view,
         ]);
+    }
+
+    /** @return \Illuminate\Support\Collection<int, array<string, mixed>> */
+    private function monthlyRows($lines): \Illuminate\Support\Collection
+    {
+        return $lines->map(fn ($l) => [
+            'label'        => \Carbon\Carbon::create($l->period_year, $l->period_month, 1)->format('M Y'),
+            'days'         => $l->days_in_period,
+            'depreciation' => $l->depreciation_amount,
+            'accumulated'  => $l->accumulated_depreciation,
+            'book_value'   => $l->closing_book_value,
+            'status'       => $l->status,
+        ])->values();
+    }
+
+    /**
+     * Roll the monthly lines up per calendar year: depreciation summed, year-end accumulated
+     * and book value taken from the last month, status posted/partial/scheduled by how many
+     * of the year's months have posted.
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function rollUpByYear($lines): \Illuminate\Support\Collection
+    {
+        return $lines->groupBy('period_year')->map(function ($yearLines, $year) {
+            $last = $yearLines->sortBy('period_month')->last();
+            $postedCount = $yearLines->where('status', 'posted')->count();
+            $status = match (true) {
+                $postedCount === 0                    => 'scheduled',
+                $postedCount === $yearLines->count()  => 'posted',
+                default                                => 'partial',
+            };
+
+            return [
+                'label'        => (string) $year,
+                'days'         => $yearLines->sum('days_in_period'),
+                'depreciation' => $yearLines->sum('depreciation_amount'),
+                'accumulated'  => $last->accumulated_depreciation,
+                'book_value'   => $last->closing_book_value,
+                'status'       => $status,
+            ];
+        })->values();
     }
 }
