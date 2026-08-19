@@ -116,6 +116,7 @@
 </div>
 @endcanany
 
+@if(false) {{-- PHASE 2/3 nav hidden for phase-1 launch — delete this @if and its matching @endif (before the Divider) to restore --}}
 {{-- APPROVALS --}}
 @can('workflow.approve')
 <a href="{{ route('approvals.index') }}"
@@ -247,6 +248,8 @@
 </div>
 @endcanany
 
+@endif {{-- end PHASE 2/3 nav hidden block --}}
+
 {{-- REPORTS --}}
 @can('reports.view')
 <a href="{{ route('reports.index') }}"
@@ -321,6 +324,7 @@
             <span x-show="!sidebarCollapsed">Asset Naming</span>
         </a>
         @endcan
+        @if(false) {{-- PHASE 2 admin links (Depreciation Methods, Workflow Config) hidden for phase-1 launch — delete this @if and its matching @endif to restore --}}
         @can('depreciation.manage')
         <a href="{{ route('admin.depreciation-methods.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.depreciation-methods') }} hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
@@ -333,6 +337,7 @@
             <span x-show="!sidebarCollapsed">Workflow Config</span>
         </a>
         @endcan
+        @endif {{-- end PHASE 2 admin links hidden --}}
         @can('activity_log.view')
         <a href="{{ route('admin.activity-log.index') }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm {{ $navActive('admin.activity-log') }} hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
             <span class="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0"></span>
