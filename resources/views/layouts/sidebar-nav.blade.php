@@ -18,8 +18,12 @@
 <x-sidebar-section>
     <x-sidebar-link :href="route('dashboard')" :active="$isActive('dashboard')">
         <x-slot:icon>
+            {{-- 4-panel grid — the standard "Dashboard" glyph (four independent widgets/panels) --}}
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/>
+                <rect x="3" y="3" width="8" height="8" rx="1.5" stroke-width="2"/>
+                <rect x="13" y="3" width="8" height="8" rx="1.5" stroke-width="2"/>
+                <rect x="3" y="13" width="8" height="8" rx="1.5" stroke-width="2"/>
+                <rect x="13" y="13" width="8" height="8" rx="1.5" stroke-width="2"/>
             </svg>
         </x-slot:icon>
         Dashboard
