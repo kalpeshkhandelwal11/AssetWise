@@ -33,8 +33,11 @@
     :style="sidebarOpen ? 'transform:translateX(0)' : ''"
     aria-label="Sidebar">
 
-    {{-- Logo --}}
-    <div class="flex h-16 items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700/50 flex-shrink-0">
+    {{-- Logo — stacks vertically when collapsed so the w-16 rail has room for both the
+         logo square and the toggle button below it without overlapping (they no longer
+         fit side by side once the sidebar narrows to 64px). --}}
+    <div class="flex px-4 border-b border-gray-200 dark:border-gray-700/50 flex-shrink-0 transition-all duration-300 ease-in-out"
+         :class="sidebarCollapsed ? 'h-24 flex-col items-center justify-center gap-2' : 'h-16 flex-row items-center justify-between'">
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2 overflow-hidden">
             <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -46,7 +49,7 @@
         <button
             @click="sidebarCollapsed = !sidebarCollapsed"
             type="button"
-            class="hidden lg:flex items-center justify-center transition-colors duration-200"
+            class="hidden lg:flex items-center justify-center rounded-lg p-1.5 transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800"
             :class="sidebarCollapsed
                 ? 'text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400'
                 : 'text-gray-700 hover:text-gray-900 dark:text-white dark:hover:text-gray-200'"
