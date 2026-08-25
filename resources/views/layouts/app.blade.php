@@ -26,10 +26,12 @@
 
 {{-- ======== SIDEBAR ======== --}}
 <aside
+    id="app-sidebar"
     :class="sidebarCollapsed ? 'w-16' : 'w-64'"
     class="fixed inset-y-0 left-0 z-40 flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700/50 transition-all duration-300 ease-in-out
            -translate-x-full lg:translate-x-0"
-    :style="sidebarOpen ? 'transform:translateX(0)' : ''">
+    :style="sidebarOpen ? 'transform:translateX(0)' : ''"
+    aria-label="Sidebar">
 
     {{-- Logo --}}
     <div class="flex h-16 items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700/50 flex-shrink-0">
@@ -41,15 +43,26 @@
             </div>
             <span x-show="!sidebarCollapsed" class="text-gray-900 dark:text-white font-bold text-lg tracking-tight transition-opacity duration-200">AssetWise</span>
         </a>
-        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 12l-7-7 7-7"/>
+        <button
+            @click="sidebarCollapsed = !sidebarCollapsed"
+            type="button"
+            class="hidden lg:flex items-center justify-center transition-colors duration-200"
+            :class="sidebarCollapsed
+                ? 'text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400'
+                : 'text-gray-700 hover:text-gray-900 dark:text-white dark:hover:text-gray-200'"
+            :aria-expanded="(!sidebarCollapsed).toString()"
+            aria-controls="app-sidebar"
+            aria-label="Toggle sidebar">
+            {{-- Panel/sidebar-toggle icon (rounded rect + divider, the "PanelLeft" convention used by Copilot/VS Code/Linear) — shade reacts to sidebarCollapsed via the button's text color, since the SVG uses currentColor --}}
+            <svg class="w-5 h-5 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v18"/>
             </svg>
         </button>
     </div>
 
     {{-- Navigation --}}
-    <nav class="flex-1 overflow-y-auto px-2 py-4 space-y-1 scrollbar-thin scrollbar-thumb-gray-700">
+    <nav role="navigation" aria-label="Primary" class="flex-1 overflow-y-auto px-2 py-4 scrollbar-thin scrollbar-thumb-gray-700">
         @include('layouts.sidebar-nav')
     </nav>
 
