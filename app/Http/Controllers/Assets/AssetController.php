@@ -56,7 +56,13 @@ class AssetController extends Controller
             $query->where(fn ($q) => $q
                 ->where('asset_tag', 'like', "%$s%")
                 ->orWhere('name', 'like', "%$s%")
-                ->orWhere('serial_number', 'like', "%$s%"));
+                ->orWhere('serial_number', 'like', "%$s%")
+                // Custom (EAV) fields flagged searchable participate in the same search box.
+                ->orWhereHas('fieldValues', fn ($fv) => $fv
+                    ->whereHas('categoryField', fn ($cf) => $cf->where('is_searchable', true))
+                    ->where(fn ($v) => $v
+                        ->where('value_text', 'like', "%$s%")
+                        ->orWhere('value_number', 'like', "%$s%"))));
         }
 
         foreach (['company_id', 'category_id', 'asset_type_id', 'status_id', 'location_id', 'custodian_id', 'department_id', 'branch_id'] as $filter) {
