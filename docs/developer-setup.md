@@ -6,7 +6,43 @@ This guide takes you from a bare Windows machine to a fully running local develo
 
 ---
 
+## Quick Start (post-clone)
+
+Already have the prerequisites (Laragon with PHP 8.3+, MySQL 8, Node 20, Composer, Git) and an empty `assetwise` database? Run these from the project root, in order:
+
+```powershell
+composer install
+npm install
+copy .env.example .env
+php artisan key:generate
+php artisan migrate:fresh --seed   # first-time DB reset + demo data
+php artisan storage:link
+npm run build                      # REQUIRED — see note below
+php artisan optimize:clear
+```
+
+Then serve it — Laragon publishes the site at `http://assetwise.test` automatically (web root must point at `/public`), or run `php artisan serve`. Log in with `admin@assetwise.test` / `Admin@1234`.
+
+Background processes, in their own terminals, only when you need them:
+
+```powershell
+php artisan queue:work      # exports, imports, and outgoing email
+php artisan schedule:work   # expiry alerts, escalation, depreciation posting (or a cron running schedule:run)
+```
+
+> **Do NOT skip `npm run build`.** `public/build` is **gitignored**, so a fresh clone ships with *no* compiled JS/CSS. Without the build, Alpine never loads and features like the **auto-applying filter bar, QR scanner, and form auto-fill silently break** while the page still renders. For active development on that machine, run `npm run dev` (and leave it running) instead of `npm run build`.
+>
+> **If PHP isn't on your PATH**, launch the terminal from *Laragon → Menu → Terminal* (which adds it), or prefix commands with the full binary path, e.g. `C:\laragon\bin\php\php-8.3.x-...\php.exe artisan migrate`.
+>
+> **A leftover `public/hot` file** (from a previously killed `npm run dev`) makes `@vite` point at `localhost:5173`; with no dev server running, all JS 404s and the page renders unstyled/non-interactive. Delete `public/hot`, then `npm run build`.
+
+The numbered sections below walk through each of these steps (and the one-time prerequisite installs) in full detail.
+
+---
+
 ## Table of Contents
+
+0. [Quick Start (post-clone)](#quick-start-post-clone)
 
 1. [Install Laragon](#1-install-laragon)
 2. [Verify PHP extensions](#2-verify-php-extensions)
