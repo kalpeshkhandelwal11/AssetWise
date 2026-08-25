@@ -116,7 +116,6 @@
 </div>
 @endcanany
 
-@if(false) {{-- PHASE 2/3 nav hidden for phase-1 launch — delete this @if and its matching @endif (before the Divider) to restore --}}
 {{-- APPROVALS --}}
 @can('workflow.approve')
 <a href="{{ route('approvals.index') }}"
@@ -131,6 +130,7 @@
 </a>
 @endcan
 
+@if(false) {{-- PHASE 2/3 nav hidden for phase-1 launch — delete this @if and its matching @endif (before REPORTS) to restore --}}
 {{-- MOVEMENT --}}
 @canany(['movement.assign', 'movement.transfer', 'movement.verify'])
 <div x-data="{ open: {{ $navGroupActive(['movement.']) ? 'true' : 'false' }} }">
