@@ -60,24 +60,25 @@ npm run dev       # hot-reload; leave running in its own terminal
 
 ### 5. Start the server
 
+**This project runs on Laragon** — there is no `php artisan serve` step normally. Open the Laragon app and click **Start All** (Apache/Nginx + MySQL). With the project under Laragon's `www` folder, it auto-serves at `http://assetwise.test` via its virtual host — nothing else to run.
+
+If you're not using Laragon, `php artisan serve` works as a fallback:
+
 ```powershell
 php artisan serve
 ```
 
-Leave this running. The server stays in the foreground; stop it with `Ctrl+C`.
+Leave this running. The server stays in the foreground; stop it with `Ctrl+C`. If the port is already in use, pick another: `php artisan serve --port=8123`.
 
 ### 6. Verify it is running
 
 | Check | How | Expected |
 |-------|-----|----------|
-| Health endpoint | Open `http://127.0.0.1:8000/up` | A green "Application up" page |
-| Homepage | Open `http://127.0.0.1:8000` | Redirects via `/dashboard` to the login screen |
+| Homepage | Open `http://assetwise.test` (or `http://127.0.0.1:8000` if using `serve`) | Redirects via `/dashboard` to the login screen |
 | Routes registered | `php artisan route:list` | A table of routes, no errors |
-| Test suite | `php artisan test` | **273 passed** |
+| Test suite | `php artisan test` | **591 passed** |
 
-If the port is already in use, pick another: `php artisan serve --port=8123`.
-
-> **Using Laragon instead?** With the project in `C:\laragon\www\AssetWise`, Laragon serves it at `http://assetwise.test` automatically — no `php artisan serve` needed. Skip step 5 and use that URL throughout.
+> **Frontend assets not loading / page unstyled?** Run `npm run dev` in its own terminal (hot-reload, leave it running) — this is the normal dev-loop flow and is required for Vite-served CSS/JS to work with Laragon. `npm run build` is a one-off alternative if you don't need HMR.
 
 ---
 
@@ -96,6 +97,20 @@ This account is created by `php artisan migrate --seed`:
 > ```powershell
 > php artisan tinker --execute="App\Models\User::where('email','admin@assetwise.test')->update(['must_change_password'=>false]);"
 > ```
+
+> **Login fails with "these credentials do not match"?** Check whether the database is actually empty first — `migrate:fresh` run *without* `--seed` (easy to do by accident) drops all data but leaves the schema in place, so the app looks fine until you try to log in:
+>
+> ```powershell
+> php artisan tinker --execute="echo App\Models\User::count() . ' users, ' . App\Models\Asset::count() . ' assets';"
+> ```
+>
+> `0 users, 0 assets` means the seeders never ran. Fix it with:
+>
+> ```powershell
+> php artisan db:seed
+> ```
+>
+> This recreates the admin account above along with roles, masters, workflows, and demo assets — safe to run against empty tables.
 
 ### Additional demo accounts — one per role
 
