@@ -104,7 +104,6 @@
     </x-sidebar-link>
     @endcan
 
-    @if(false) {{-- PHASE 2/3 nav hidden for phase-1 launch — delete this @if and its matching @endif (before REPORTS) to restore --}}
     {{-- MOVEMENT --}}
     @canany(['movement.assign', 'movement.transfer', 'movement.verify'])
     <x-sidebar-group label="Movement" :active="$groupActive(['movement.'])">
@@ -164,8 +163,6 @@
     </x-sidebar-group>
     @endcanany
 
-    @endif {{-- end PHASE 2/3 nav hidden block --}}
-
     {{-- REPORTS --}}
     @can('reports.view')
     <x-sidebar-link :href="route('reports.index')" :active="$isActive('reports.')">
@@ -212,14 +209,12 @@
         @can('settings.manage')
         <x-sidebar-link child :href="route('admin.settings.asset-naming.edit')" :active="$isActive('admin.settings.asset-naming')">Asset Naming</x-sidebar-link>
         @endcan
-        @if(false) {{-- PHASE 2 admin links (Depreciation Methods, Workflow Config) hidden for phase-1 launch — delete this @if and its matching @endif to restore --}}
         @can('depreciation.manage')
         <x-sidebar-link child :href="route('admin.depreciation-methods.index')" :active="$isActive('admin.depreciation-methods')">Depreciation Methods</x-sidebar-link>
         @endcan
         @can('workflow.manage')
         <x-sidebar-link child :href="route('admin.workflows.index')" :active="$isActive('admin.workflows')">Workflow Config</x-sidebar-link>
         @endcan
-        @endif {{-- end PHASE 2 admin links hidden --}}
         @can('activity_log.view')
         <x-sidebar-link child :href="route('admin.activity-log.index')" :active="$isActive('admin.activity-log')">Activity Log</x-sidebar-link>
         @endcan
