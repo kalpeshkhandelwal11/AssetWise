@@ -114,11 +114,13 @@
         </x-slot:icon>
         <x-sidebar-link child :href="route('movements.create')">New Movement</x-sidebar-link>
         <x-sidebar-link child :href="route('movements.index')">Movement History</x-sidebar-link>
+        {{-- HIDDEN (M17 Kits & Bundles) — restore by uncommenting:
         <x-sidebar-link child href="#">Kits & Bundles</x-sidebar-link>
+        --}}
     </x-sidebar-group>
     @endcanany
 
-    {{-- AUDIT --}}
+    {{-- AUDIT (M10) — HIDDEN per request; restore by uncommenting this block.
     @canany(['audit.manage', 'audit.verify'])
     <x-sidebar-group label="Audit" :active="$groupActive(['audits.'])">
         <x-slot:icon>
@@ -134,8 +136,9 @@
         @endcan
     </x-sidebar-group>
     @endcanany
+    --}}
 
-    {{-- MAINTENANCE --}}
+    {{-- MAINTENANCE (M11) — HIDDEN per request; restore by uncommenting this block.
     @can('maintenance.manage')
     <x-sidebar-group label="Maintenance" :active="$groupActive(['maintenance.', 'amc.', 'warranty.'])">
         <x-slot:icon>
@@ -149,6 +152,7 @@
         <x-sidebar-link child :href="route('warranty.index')" :active="$isActive('warranty.index')">Warranty</x-sidebar-link>
     </x-sidebar-group>
     @endcan
+    --}}
 
     {{-- DISPOSAL --}}
     @canany(['disposal.request', 'disposal.approve'])
