@@ -52,6 +52,7 @@
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destination</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Receipt</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Requested By</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
                     <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
@@ -87,6 +88,9 @@
                             @endphp
                             <x-status-badge :color="$statusColor" :label="$statusLabel" />
                         </td>
+                        <td class="px-4 py-3">
+                            @include('modules.movements.partials.receipt-summary')
+                        </td>
                         <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $movement->requestedBy?->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $movement->created_at->format('d M Y') }}</td>
                         <td class="px-4 py-3 text-right">
@@ -110,7 +114,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-12 text-center text-sm text-gray-400">No movements found.</td>
+                        <td colspan="8" class="px-4 py-12 text-center text-sm text-gray-400">No movements found.</td>
                     </tr>
                 @endforelse
             </tbody>

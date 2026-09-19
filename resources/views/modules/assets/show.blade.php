@@ -376,6 +376,7 @@
                             <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
                             <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destination</th>
                             <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Receipt</th>
                             <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Requested By</th>
                             <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
                         </tr>
@@ -397,12 +398,15 @@
                                     @endphp
                                     <x-status-badge :color="$moveStatusColor" :label="ucwords(str_replace('_', ' ', $movement->status))" />
                                 </td>
+                                <td class="px-4 py-2">
+                                    @include('modules.movements.partials.receipt-summary')
+                                </td>
                                 <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $movement->requestedBy?->name ?? '—' }}</td>
                                 <td class="px-4 py-2 text-gray-500 dark:text-gray-400">{{ $movement->created_at->format('d M Y') }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-400">No movements recorded.</td>
+                                <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-400">No movements recorded.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -587,8 +591,10 @@
                                 <ul class="mt-1 text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
                                     @foreach($activity->properties['attributes'] as $field => $new)
                                         <li>
-                                            <span class="font-medium">{{ $field }}:</span>
-                                            {{ $activity->properties['old'][$field] ?? '—' }} &rarr; {{ $new }}
+                                            <span class="font-medium">{{ \App\Support\ActivityAttributePresenter::label($field) }}:</span>
+                                            {{ \App\Support\ActivityAttributePresenter::value($field, $activity->properties['old'][$field] ?? null) }}
+                                            &rarr;
+                                            {{ \App\Support\ActivityAttributePresenter::value($field, $new) }}
                                         </li>
                                     @endforeach
                                 </ul>

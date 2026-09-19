@@ -36,15 +36,16 @@
 
             @if($isAdmin)
                 {{-- Super Admin: sign off without scanning. --}}
-                <form method="POST" action="{{ route('movements.verify', $movement) }}">
+                <form method="POST" action="{{ route('movements.verify', $movement) }}" enctype="multipart/form-data">
                     @csrf
                     <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">As an administrator you can verify without scanning.</p>
+                    @include('modules.movements.partials.receipt-fields')
                     <x-primary-button type="submit">Confirm verification</x-primary-button>
                 </form>
             @else
                 {{-- Non-admin: must scan or type a tag that matches this asset. --}}
                 @php $verifyViewerId = 'verify-viewer-'.\Illuminate\Support\Str::random(8); @endphp
-                <form method="POST" action="{{ route('movements.verify', $movement) }}"
+                <form method="POST" action="{{ route('movements.verify', $movement) }}" enctype="multipart/form-data"
                       x-data="tagScanner(@js(['viewerId' => $verifyViewerId, 'inputId' => 'tag_number']))">
                     @csrf
                     <x-input-label for="tag_number" value="Scan or type the asset's tag to confirm" />
@@ -73,6 +74,7 @@
                        class="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2"></p>
 
                     <div class="mt-4">
+                        @include('modules.movements.partials.receipt-fields')
                         <x-primary-button type="submit">Verify</x-primary-button>
                     </div>
                 </form>

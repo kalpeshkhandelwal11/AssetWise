@@ -437,6 +437,47 @@ class MovementApprovalTest extends TestCase
         $this->assertNotNull($movement->fresh()->verified_at);
     }
 
+    public function test_verify_records_receipt_condition_notes_and_photos(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $this->withWorkflow();
+        $verifier = $this->createUserWithRole('Super Admin'); // scan bypass
+        $asset = Asset::factory()->create();
+        $movement = $this->completedMovementFor($asset, Employee::factory()->create());
+
+        $this->actingAs($verifier)
+             ->post(route('movements.verify', $movement), [
+                 'verification_condition' => 'damaged',
+                 'verification_notes'     => 'Screen cracked; 1 of 2 boxes missing.',
+                 'photos'                 => [
+                     \Illuminate\Http\UploadedFile::fake()->image('receipt1.jpg'),
+                     \Illuminate\Http\UploadedFile::fake()->image('receipt2.jpg'),
+                 ],
+             ])
+             ->assertRedirect(route('movements.index'));
+
+        $fresh = $movement->fresh();
+        $this->assertNotNull($fresh->verified_at);
+        $this->assertSame('damaged', $fresh->verification_condition);
+        $this->assertSame('Screen cracked; 1 of 2 boxes missing.', $fresh->verification_notes);
+        $this->assertCount(2, $fresh->verification_photos);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($fresh->verification_photos[0]);
+    }
+
+    public function test_verify_rejects_an_invalid_receipt_condition(): void
+    {
+        $this->withWorkflow();
+        $verifier = $this->createUserWithRole('Super Admin');
+        $asset = Asset::factory()->create();
+        $movement = $this->completedMovementFor($asset, Employee::factory()->create());
+
+        $this->actingAs($verifier)
+             ->post(route('movements.verify', $movement), ['verification_condition' => 'exploded'])
+             ->assertSessionHasErrors('verification_condition');
+
+        $this->assertNull($movement->fresh()->verified_at);
+    }
+
     public function test_requester_can_cancel_a_pending_movement(): void
     {
         $this->withWorkflow();

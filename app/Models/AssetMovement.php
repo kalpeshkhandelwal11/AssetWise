@@ -18,6 +18,7 @@ class AssetMovement extends Model
         'from_department_id', 'to_department_id',
         'to_status_id', 'status', 'notes',
         'verified_at', 'verified_by',
+        'verification_condition', 'verification_notes', 'verification_photos',
         'cancelled_at', 'cancelled_by',
         'approval_request_id', 'requested_by',
     ];
@@ -25,10 +26,14 @@ class AssetMovement extends Model
     protected function casts(): array
     {
         return [
-            'verified_at'  => 'datetime',
-            'cancelled_at' => 'datetime',
+            'verified_at'         => 'datetime',
+            'cancelled_at'        => 'datetime',
+            'verification_photos' => 'array',
         ];
     }
+
+    /** Receipt-condition options recorded at verify time (record-only, no status change). */
+    public const CONDITIONS = ['ok', 'damaged', 'missing'];
 
     public function asset(): BelongsTo
     {

@@ -227,16 +227,31 @@ class MovementService
         });
     }
 
-    /** Post-completion sign-off — distinct from approval, records who confirmed the move actually happened. */
-    public function verify(AssetMovement $movement, User $actor): AssetMovement
-    {
+    /**
+     * Post-completion sign-off — distinct from approval, records who confirmed the move actually
+     * happened, plus the receipt condition (ok/damaged/missing), notes and photos. The condition
+     * is record-only: it never changes the asset's status (mirrors M10 audit findings).
+     */
+    public function verify(
+        AssetMovement $movement,
+        User $actor,
+        ?string $condition = null,
+        ?string $notes = null,
+        array $photoPaths = [],
+    ): AssetMovement {
         if ($movement->status !== 'completed') {
             throw ValidationException::withMessages([
                 'movement' => 'Only completed movements can be verified.',
             ]);
         }
 
-        $movement->update(['verified_at' => now(), 'verified_by' => $actor->id]);
+        $movement->update([
+            'verified_at'            => now(),
+            'verified_by'            => $actor->id,
+            'verification_condition' => $condition,
+            'verification_notes'     => $notes,
+            'verification_photos'    => $photoPaths ?: null,
+        ]);
 
         return $movement;
     }

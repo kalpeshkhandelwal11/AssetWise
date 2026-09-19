@@ -115,19 +115,38 @@ class MovementController extends Controller
         // Non-admins must confirm physical possession by scanning/typing a tag that matches the
         // moved asset (its physical pool tag or its Asset ID). Super Admin bypasses.
         if (! $request->user()->hasRole('Super Admin')) {
-            $data = $request->validate(['tag_number' => 'required|string']);
-            $scanned = $this->normaliseTag($data['tag_number']);
+            $request->validate(['tag_number' => 'required|string']);
+            $scanned = $this->normaliseTag($request->input('tag_number'));
             $asset = $movement->asset;
             $valid = collect([$asset?->activeTag()?->tag_number, $asset?->asset_tag])
                 ->filter()
                 ->contains(fn ($t) => strcasecmp($t, $scanned) === 0);
 
             if (! $valid) {
-                return back()->withErrors(['tag_number' => 'The scanned tag does not match this asset.']);
+                return back()->withErrors(['tag_number' => 'The scanned tag does not match this asset.'])->withInput();
             }
         }
 
-        $this->movements->verify($movement, $request->user());
+        // Receipt sign-off details (record-only — never change the asset's status).
+        $receipt = $request->validate([
+            'verification_condition' => ['nullable', 'in:' . implode(',', AssetMovement::CONDITIONS)],
+            'verification_notes'     => ['nullable', 'string', 'max:2000'],
+            'photos'                 => ['nullable', 'array', 'max:8'],
+            'photos.*'               => ['file', 'max:20480', new ImageUnderSize(2048)],
+        ]);
+
+        $photoPaths = [];
+        foreach ($request->file('photos', []) as $photo) {
+            $photoPaths[] = $photo->store("movements/{$movement->id}/verification", 'public');
+        }
+
+        $this->movements->verify(
+            $movement,
+            $request->user(),
+            $receipt['verification_condition'] ?? null,
+            $receipt['verification_notes'] ?? null,
+            $photoPaths,
+        );
 
         return redirect()->route('movements.index')->with('success', 'Movement verified.');
     }
