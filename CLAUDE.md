@@ -252,11 +252,30 @@ Two things that will bite:
 
 ## Deployment (Shared Hosting)
 
+**Full guide: `docs/deployment.md`.** Live install: **https://assetwise.mandeepa.com** (cPanel).
+The model is **build locally, ship built** — `composer install --no-dev` + `npm run build` happen
+on the dev machine (`tools/build-deploy.ps1`), and only a ~14 MB tarball is uploaded; the server
+needs no Composer/Node, just PHP 8.3 + MySQL. Scripts: `tools/deploy/server-deploy.sh` (first
+install) and `tools/deploy/deploy-update.sh` (in-place update). Secrets are generated on the
+server (`key:generate`, random DB pw) and live only in the server `.env` — never in the repo.
+
 ```bash
 php artisan migrate --force
-php artisan db:seed
+php artisan db:seed          # first install only; updates use migrate --force without seed
 php artisan storage:link
-# Cron: * * * * * php /path/to/artisan schedule:run
+# Two crons (MAILTO=""): scheduler + queue worker (no daemon on shared hosting)
+# * * * * * php artisan schedule:run
+# * * * * * cd <app> && flock -n storage/queue.lock php artisan queue:work --stop-when-empty --max-time=50
 ```
 
-Point web root to `/public`. Set `APP_DEBUG=false` in production `.env`.
+Point web root to `/public`. Set `APP_DEBUG=false` in production `.env`. **Deployment gotchas
+(all detailed in `docs/deployment.md`):**
+
+- **Never run `php artisan config:cache`** — `config/notifications.php` (M12) holds closures and
+  the command aborts (`Closure::__set_state()`). Use `config:clear`; `route:cache`/`view:cache` are fine.
+- **cPanel docroot must begin with `public_html/`** — you cannot point it at `~/assetwise/public`.
+  Keep the app private outside the web root and make the docroot a **symlink** to its `public/`.
+- **A queue worker must run** (via the cron above) or queued mail (`GenericMailNotification`),
+  exports (M06/M14) and imports sit in `jobs` forever.
+- **Mail deliverability:** send as a domain whose SPF authorizes the server IP (here the root
+  `mandeepa.com`, whose SPF `a` mechanism covers the send IP), or Gmail rejects with `550-5.7.26`.
