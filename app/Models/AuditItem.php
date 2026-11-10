@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedByAssetCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class AuditItem extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, ScopedByAssetCompany;
 
     protected $fillable = [
         'campaign_id', 'asset_id', 'status',

@@ -587,14 +587,19 @@
                                 {{ $activity->description }}
                             </p>
                             <p class="text-xs text-gray-400">{{ $activity->created_at->format('d M Y, H:i') }}</p>
-                            @if($activity->event === 'updated' && $activity->properties->has('attributes'))
+                            @php $diffRows = \App\Support\ActivityAttributePresenter::diff($activity); @endphp
+                            @if($diffRows)
                                 <ul class="mt-1 text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-                                    @foreach($activity->properties['attributes'] as $field => $new)
+                                    @foreach($diffRows as $row)
                                         <li>
-                                            <span class="font-medium">{{ \App\Support\ActivityAttributePresenter::label($field) }}:</span>
-                                            {{ \App\Support\ActivityAttributePresenter::value($field, $activity->properties['old'][$field] ?? null) }}
-                                            &rarr;
-                                            {{ \App\Support\ActivityAttributePresenter::value($field, $new) }}
+                                            <span class="font-medium">{{ $row['label'] }}:</span>
+                                            @if($activity->event === 'created')
+                                                {{ $row['new'] }}
+                                            @elseif($activity->event === 'deleted')
+                                                {{ $row['old'] }}
+                                            @else
+                                                {{ $row['old'] }} &rarr; {{ $row['new'] }}
+                                            @endif
                                         </li>
                                     @endforeach
                                 </ul>

@@ -9,7 +9,7 @@
         </a>
         <div>
             <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">
-                <a href="{{ route('assets.show', $disposal->asset_id) }}" class="hover:underline">{{ $disposal->asset?->name ?? 'Asset #' . $disposal->asset_id }}</a>
+                <a href="{{ route('assets.show', $disposal->asset_id) }}" class="hover:underline">{{ \App\Models\Asset::labelFor($disposal->asset) }}</a>
             </h1>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ $disposal->disposalType?->name }} disposal request</p>
         </div>

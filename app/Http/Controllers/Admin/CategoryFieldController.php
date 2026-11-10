@@ -64,6 +64,10 @@ class CategoryFieldController extends Controller
         $data = $this->validated($request);
         $this->assertFieldKeyAvailable($category, $data['field_key'], ignoreFieldId: $field->id);
 
+        if ($data['is_unique'] && ! $field->is_unique) {
+            $this->assertNoDuplicateValues($field, $data['field_type']);
+        }
+
         if ($data['field_type'] !== $field->field_type && $field->values()->exists()) {
             throw ValidationException::withMessages([
                 'field_type' => 'Field type cannot change once assets have saved values for this field.',
@@ -102,6 +106,7 @@ class CategoryFieldController extends Controller
             'field_type'                 => 'required|in:text,number,date,dropdown,boolean,textarea',
             'is_required'                => 'boolean',
             'is_searchable'              => 'boolean',
+            'is_unique'                  => 'boolean',
             'display_order'              => 'nullable|integer|min:0',
             'validation_min'             => 'nullable|numeric',
             'validation_max'             => 'nullable|numeric',
@@ -112,6 +117,12 @@ class CategoryFieldController extends Controller
             'options.*.value'            => 'required_with:options|string|max:255',
             'options.*.label'            => 'required_with:options|string|max:255',
         ]);
+
+        if ($request->boolean('is_unique') && ! in_array($data['field_type'], ['text', 'number', 'date'], true)) {
+            throw ValidationException::withMessages([
+                'is_unique' => 'Only text, number and date fields can be made unique.',
+            ]);
+        }
 
         $rules = array_filter([
             'min'            => $data['validation_min'] ?? null,
@@ -127,10 +138,44 @@ class CategoryFieldController extends Controller
             'field_type'       => $data['field_type'],
             'is_required'      => $request->boolean('is_required'),
             'is_searchable'    => $request->boolean('is_searchable'),
+            'is_unique'        => $request->boolean('is_unique'),
             'display_order'    => $data['display_order'] ?? 0,
             'validation_rules' => $rules ?: null,
             'options'          => $data['options'] ?? [],
         ];
+    }
+
+    /**
+     * Turning "Must be unique" on for a field that already holds duplicate values would make
+     * those assets unsaveable — refuse, and show what to clean up first.
+     */
+    private function assertNoDuplicateValues(CategoryField $field, string $type): void
+    {
+        $column = match ($type) {
+            'number' => 'value_number',
+            'date'   => 'value_date',
+            default  => 'value_text',
+        };
+        $expr = $column === 'value_text' ? 'LOWER(TRIM(value_text))' : $column;
+
+        $dupes = \App\Models\AssetFieldValue::query()
+            ->where('category_field_id', $field->id)
+            ->whereNotNull($column)
+            ->whereIn('asset_id', \App\Models\Asset::withoutGlobalScopes()->whereNull('deleted_at')->select('id'))
+            ->selectRaw("$expr as v, count(*) as n")
+            ->groupByRaw($expr)
+            ->havingRaw('count(*) > 1')
+            ->limit(5)
+            ->get();
+
+        if ($dupes->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'is_unique' => sprintf(
+                    'Existing assets already share values for this field (e.g. %s). Fix those first, then make it unique.',
+                    $dupes->map(fn ($d) => '"'.$d->v.'" ×'.$d->n)->implode(', ')
+                ),
+            ]);
+        }
     }
 
     private function syncOptions(CategoryField $field, array $options): void

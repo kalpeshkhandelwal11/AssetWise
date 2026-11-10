@@ -71,7 +71,7 @@
                             <div class="mt-3 space-y-1">
                                 @foreach($item->kitAssets as $kitAsset)
                                     <div class="flex items-center justify-between text-sm">
-                                        <span class="text-gray-700 dark:text-gray-300">{{ $kitAsset->asset?->name ?? 'Asset #'.$kitAsset->asset_id }}</span>
+                                        <span class="text-gray-700 dark:text-gray-300">{{ \App\Models\Asset::labelFor($kitAsset->asset) }}</span>
                                         <form method="POST" action="{{ route('kits.items.assets.destroy', [$kit, $item, $kitAsset]) }}">
                                             @csrf @method('DELETE')
                                             <button class="text-xs text-gray-400 hover:text-red-600">Unlink</button>

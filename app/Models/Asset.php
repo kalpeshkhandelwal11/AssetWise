@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\CompanyVisibilityScope;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,13 +13,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+#[ScopedBy([CompanyVisibilityScope::class])]
 class Asset extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'asset_tag', 'name', 'description', 'serial_number', 'model', 'manufacturer',
-        'company_id', 'category_id', 'asset_type_id', 'status_id',
+        'company_id', 'operating_company_id', 'category_id', 'asset_type_id', 'status_id',
         'location_id', 'building_id', 'floor_id', 'room_id',
         'custodian_id', 'department_id', 'branch_id',
         'purchase_date', 'purchase_cost', 'vendor', 'vendor_invoice_no', 'warranty_expiry', 'amc_expiry',
@@ -38,9 +41,24 @@ class Asset extends Model
         ];
     }
 
+    /**
+     * Display name for a possibly-missing asset relation (deleted, or hidden by company
+     * isolation) — replaces the old "Asset #12" fallbacks, which leaked raw ids into the UI.
+     */
+    public static function labelFor(?self $asset): string
+    {
+        return $asset?->name ?? 'Asset (unavailable)';
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /** Internal company operating an externally owned asset (e.g. an NHAI asset at our plaza). */
+    public function operatingCompany(): BelongsTo
+    {
+        return $this->belongsTo(Company::class, 'operating_company_id');
     }
 
     public function category(): BelongsTo
@@ -209,9 +227,15 @@ class Asset extends Model
 
     public function hasPendingCreationApproval(): bool
     {
-        return $this->approvalRequests()
+        $own = $this->approvalRequests()
             ->where('status', 'pending')
             ->whereHas('workflow', fn ($q) => $q->where('module', 'asset_creation'))
+            ->exists();
+
+        // A bulk-imported draft is covered by its batch's single approval request — opening a
+        // second, per-asset request would let it be approved twice.
+        return $own || ImportBatchRow::where('asset_id', $this->id)
+            ->whereHas('batch', fn ($q) => $q->where('approval_status', 'pending'))
             ->exists();
     }
 

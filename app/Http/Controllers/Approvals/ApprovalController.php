@@ -39,14 +39,33 @@ class ApprovalController extends Controller
 
         // Bulk movement batches: eager-load the child line items so the approver can see each
         // asset in the batch (read-only) without an N+1 per row.
-        if ($approval_request->approvable instanceof \App\Models\AssetMovementBatch) {
-            $approval_request->approvable->load([
-                'movements.asset', 'movements.movementType', 'movements.toLocation',
+        $approvable = $approval_request->approvable;
+        $holdings = collect();
+
+        if ($approvable instanceof \App\Models\AssetMovementBatch) {
+            $approvable->load([
+                'movements.asset.category', 'movements.movementType', 'movements.toLocation',
                 'movements.toCustodian', 'movements.toCompany', 'movements.toDepartment',
             ]);
+            $holdings = app(\App\Services\MovementService::class)->existingHoldingsFor($approvable);
+        } elseif ($approvable instanceof \App\Models\AssetMovement) {
+            // A single movement used to show nothing but its label — give the approver the facts.
+            $approvable->load([
+                'asset.category', 'asset.status', 'movementType',
+                'fromCompany', 'toCompany', 'fromLocation', 'toLocation',
+                'fromCustodian', 'toCustodian', 'fromDepartment', 'toDepartment', 'toStatus',
+            ]);
+            $holdings = app(\App\Services\MovementService::class)->existingHoldingsFor($approvable);
+        } elseif ($approvable instanceof \App\Models\ImportBatch) {
+            $approvable->load('category', 'user');
         }
 
         return view('approvals.show', [
+            'holdings'  => $holdings,
+            'importAssets' => $approvable instanceof \App\Models\ImportBatch
+                ? \App\Models\Asset::whereIn('id', $approvable->rows()->where('status', 'success')->pluck('asset_id'))
+                    ->with('status')->orderBy('name')->paginate(25)
+                : null,
             'request'   => $approval_request,
             'canAct'    => $this->workflows->canAct(auth()->user(), $approval_request),
             'escalated' => $this->workflows->hasEscalated($approval_request),

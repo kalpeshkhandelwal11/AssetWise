@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Assets;
 
 use App\Exports\AssetExport;
+use App\Exports\AssetPdfExport;
+use App\Services\Reports\ReportPdfExporter;
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateAssetExport;
 use App\Models\Asset;
@@ -38,16 +40,18 @@ class ExportController extends Controller
         $this->authorize('assets.export');
 
         return view('modules.assets.export.index', [
-            'companies'  => Company::orderBy('name')->get(),
+            'companies'  => Company::visible()->orderBy('name')->get(),
             'categories' => AssetCategory::orderBy('name')->get(),
             'types'      => AssetType::orderBy('name')->get(),
             'statuses'   => AssetStatus::orderBy('name')->get(),
         ]);
     }
 
-    public function store(Request $request): RedirectResponse|BinaryFileResponse
+    public function store(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         $this->authorize('assets.export');
+
+        $format = $request->input('format') === 'pdf' ? 'pdf' : 'xlsx';
 
         $filters = $request->only(self::FILTER_KEYS);
         $filters = array_filter($filters, fn ($v) => $v !== null && $v !== '');
@@ -59,15 +63,27 @@ class ExportController extends Controller
 
         $count = (new AssetExport($filters, $this->fields))->buildQuery()->count();
 
+        if ($format === 'pdf' && $count > AssetPdfExport::MAX_ROWS) {
+            return back()->with('error', "PDF is limited to ".AssetPdfExport::MAX_ROWS." assets ({$count} match). Narrow the filters or export to Excel.");
+        }
+
         if ($count <= self::INLINE_ROW_THRESHOLD) {
+            $fileName = 'assets-export-'.now()->format('Ymd-His').".{$format}";
+
+            if ($format === 'pdf') {
+                $export = new AssetPdfExport($filters, $this->fields);
+                ExportLog::record('assets', $filters, $export->rowCount(), $fileName);
+
+                return app(ReportPdfExporter::class)->render('Asset Export', $export)->download($fileName);
+            }
+
             $export = new AssetExport($filters, $this->fields);
-            $fileName = 'assets-export-'.now()->format('Ymd-His').'.xlsx';
             ExportLog::record('assets', $filters, $export->rowCount(), $fileName);
 
             return Excel::download($export, $fileName);
         }
 
-        GenerateAssetExport::dispatch($request->user()->id, $filters);
+        GenerateAssetExport::dispatch($request->user()->id, $filters, $format);
 
         return redirect()->route('assets.export.index')
             ->with('success', "Export queued for {$count} rows — you'll be notified when it's ready.");

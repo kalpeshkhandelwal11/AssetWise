@@ -13,6 +13,7 @@ use App\Models\ExportLog;
 use App\Models\MaintenanceType;
 use App\Models\MovementType;
 use App\Models\User;
+use App\Services\Reports\DepreciationRegisterBuilder;
 use App\Services\Reports\ReportPdfExporter;
 use App\Services\Reports\ReportRegistry;
 use App\Services\ReportService;
@@ -40,6 +41,7 @@ class ReportController extends Controller
         'audit_compliance'       => ['company_id', 'status', 'changed_by', 'date_from', 'date_to'],
         'audit_campaign'          => ['campaign_id', 'company_id', 'status', 'search', 'date_from', 'date_to'],
         'depreciation_schedule'  => ['company_id', 'category_id', 'department_id', 'status', 'search'],
+        'depreciation_register'  => ['fy', 'company_id', 'category_id'],
     ];
 
     public function __construct(
@@ -63,9 +65,12 @@ class ReportController extends Controller
         $filters = $request->only(self::FILTER_KEYS[$type] ?? []);
         $filters = array_filter($filters, fn ($v) => $v !== null && $v !== '');
 
-        $rows = $type === 'utilization'
-            ? $this->reports->buildUtilizationRows($filters)
-            : $this->reports->queryFor($type, $filters)->paginate(20)->withQueryString();
+        $rows = match ($type) {
+            'utilization'           => $this->reports->buildUtilizationRows($filters),
+            // A register is read whole (class subtotals + grand total), never paginated.
+            'depreciation_register' => app(DepreciationRegisterBuilder::class)->rows($filters),
+            default                 => $this->reports->queryFor($type, $filters)->paginate(20)->withQueryString(),
+        };
 
         return view("modules.reports.show", [
             'type'    => $type,
@@ -75,7 +80,10 @@ class ReportController extends Controller
         ] + $this->lookups());
     }
 
-    public function export(Request $request, string $type): RedirectResponse|BinaryFileResponse
+    // Symfony Response: inline PDF returns Illuminate\Http\Response, Excel a BinaryFileResponse,
+    // the queued path a redirect. (The old RedirectResponse|BinaryFileResponse union made every
+    // inline "Export PDF" a 500.)
+    public function export(Request $request, string $type): \Symfony\Component\HttpFoundation\Response
     {
         $this->authorize('reports.export');
         ReportRegistry::assertEnabled($type);
@@ -92,7 +100,7 @@ class ReportController extends Controller
             ExportLog::record($type, $filters, $count, $fileName);
 
             return $format === 'pdf'
-                ? $this->pdfExporter->render(ReportRegistry::label($type), $export)->download($fileName)
+                ? $this->pdfExporter->render($this->pdfTitle($type, $filters), $export)->download($fileName)
                 : Excel::download($export, $fileName);
         }
 
@@ -102,10 +110,17 @@ class ReportController extends Controller
             ->with('success', "Export queued for {$count} rows — you'll be notified when it's ready.");
     }
 
+    private function pdfTitle(string $type, array $filters): string
+    {
+        return $type === 'depreciation_register'
+            ? app(DepreciationRegisterBuilder::class)->title($filters)
+            : ReportRegistry::label($type);
+    }
+
     private function lookups(): array
     {
         return [
-            'companies'     => Company::orderBy('name')->get(),
+            'companies'     => Company::visible()->orderBy('name')->get(),
             'categories'    => AssetCategory::orderBy('name')->get(),
             'statuses'      => AssetStatus::orderBy('name')->get(),
             'movementTypes' => MovementType::where('is_active', true)->orderBy('name')->get(),

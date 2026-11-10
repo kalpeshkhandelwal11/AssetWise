@@ -239,6 +239,49 @@ class WorkflowService
      * (decision P8.1): once escalated, the level+1 approver may also act, and whoever
      * acts first resolves the step.
      */
+    /**
+     * One-time "still waiting" e-mail for requests pending $hours+ on their current step: to
+     * the step's eligible approvers and to the submitter (once, even if they are also an
+     * approver). The marker is stamped BEFORE sending, so a crash mid-send never double-sends.
+     *
+     * Runs hourly (approvals:remind). Independent of — and earlier than — the 48h escalation.
+     *
+     * @return int number of requests reminded
+     */
+    public function remind(int $hours = 24): int
+    {
+        $due = ApprovalRequest::query()
+            ->where('status', 'pending')
+            ->whereNull('reminder_sent_at')
+            ->with('workflow.steps', 'submittedBy')
+            ->get()
+            // Same PHP-side date maths as escalate(), for MySQL/SQLite portability.
+            ->filter(fn (ApprovalRequest $r) => $r->current_step_started_at
+                && $r->current_step_started_at->copy()->addHours($hours)->isPast());
+
+        foreach ($due as $request) {
+            $request->forceFill([
+                'reminder_sent_at'   => now(),
+                'reminder_sent_step' => $request->current_step,
+            ])->save();
+
+            $payload = $this->payload($request) + [
+                'step_level' => $request->current_step,
+                'hours'      => $hours,
+            ];
+
+            $approvers = $this->eligibleApprovers($request)->where('is_active', true);
+            $this->notifications->sendMany($approvers, 'approval.reminder', $payload);
+
+            $submitter = $request->submittedBy;
+            if ($submitter && $submitter->is_active && ! $approvers->contains('id', $submitter->id)) {
+                $this->notifications->send($submitter, 'approval.reminder_submitter', $payload);
+            }
+        }
+
+        return $due->count();
+    }
+
     public function canAct(User $user, ApprovalRequest $request): bool
     {
         if (! $request->isPending()) {
@@ -321,7 +364,7 @@ class WorkflowService
             ->with(['workflow.steps', 'approvable', 'submittedBy'])
             ->latest('id')
             ->get()
-            ->filter(fn (ApprovalRequest $request) => $this->canAct($user, $request))
+            ->filter(fn (ApprovalRequest $request) => $this->canAct($user, $request) && $request->isVisibleToActor())
             ->values();
     }
 

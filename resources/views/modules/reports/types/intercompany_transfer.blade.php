@@ -20,7 +20,7 @@
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                     <td class="px-4 py-3">
                         <a href="{{ route('assets.show', $movement->asset) }}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
-                            {{ $movement->asset?->name ?? 'Asset #'.$movement->asset_id }}
+                            {{ \App\Models\Asset::labelFor($movement->asset) }}
                         </a>
                         <div class="text-xs text-gray-400">{{ $movement->asset?->category?->name }}</div>
                     </td>

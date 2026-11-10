@@ -73,7 +73,7 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                    {{ $movement->asset?->name ?? 'Asset #'.$movement->asset_id }}
+                                    {{ \App\Models\Asset::labelFor($movement->asset) }}
                                 </p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">
                                     {{ $movement->movementType?->name ?? '—' }}

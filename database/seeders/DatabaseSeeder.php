@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             SettingsSeeder::class,
             DepreciationMethodSeeder::class,
             SingareenipallyAssetSeeder::class,
+            ReferenceDataSeeder::class, // additive; also run on live deploys via assetwise:sync-reference-data
         ]);
     }
 }

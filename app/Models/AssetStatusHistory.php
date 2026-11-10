@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedByAssetCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AssetStatusHistory extends Model
 {
+    use ScopedByAssetCompany;
+
     public $timestamps = false;
 
     protected $fillable = ['asset_id', 'from_status_id', 'to_status_id', 'changed_by', 'reason', 'created_at'];

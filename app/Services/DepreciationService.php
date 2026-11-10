@@ -96,6 +96,13 @@ class DepreciationService
             ]);
         }
 
+        // Salvage is mandatory (a fixed amount or a percent; an explicit 0 is allowed).
+        if (($data['salvage_value'] ?? null) === null && ($data['salvage_percent'] ?? null) === null) {
+            throw ValidationException::withMessages([
+                'salvage_value' => 'A salvage value is required — enter a percentage of cost or a fixed amount.',
+            ]);
+        }
+
         return DB::transaction(function () use ($asset, $data, $actor, $changeType, $source) {
             $request = DepreciationSettingRequest::create([
                 'asset_id'               => $asset->id,
@@ -166,6 +173,11 @@ class DepreciationService
     public function applyCategoryDefault(Asset $asset): ?AssetDepreciationSetting
     {
         if ($asset->activeDepreciationSetting()) {
+            return null;
+        }
+
+        // Schedule II classes like Land are never depreciated.
+        if ($asset->category?->effectiveDepreciationClass()?->is_depreciable === false) {
             return null;
         }
 

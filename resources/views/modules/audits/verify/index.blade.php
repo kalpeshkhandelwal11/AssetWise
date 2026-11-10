@@ -50,7 +50,7 @@
                     <details id="item-{{ $item->id }}" class="bg-white dark:bg-gray-800 rounded-xl border {{ $focusItemId === $item->id ? 'border-indigo-400 ring-2 ring-indigo-200 dark:ring-indigo-800' : 'border-gray-200 dark:border-gray-700' }} shadow-sm" @if($focusItemId === $item->id) open @endif>
                         <summary class="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer select-none">
                             <div class="min-w-0">
-                                <p class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ $item->asset?->name ?? 'Asset #'.$item->asset_id }}</p>
+                                <p class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ \App\Models\Asset::labelFor($item->asset) }}</p>
                                 <p class="text-xs text-gray-400">{{ $item->asset?->asset_tag }} · expected {{ $item->expectedLocation?->name ?? '—' }} / {{ $item->expectedCustodian?->name ?? '—' }}</p>
                             </div>
                             <x-status-badge :color="$itemColor" :label="ucwords($item->status)" />

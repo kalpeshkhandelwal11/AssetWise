@@ -2,6 +2,7 @@
 
 namespace App\Models\Reports;
 
+use App\Models\Concerns\ScopedByAssetCompany;
 use App\Models\Asset;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class CoverageContract extends Model
 {
+    use ScopedByAssetCompany;
+
     protected $table = 'amc_contracts';
 
     public $timestamps = false;

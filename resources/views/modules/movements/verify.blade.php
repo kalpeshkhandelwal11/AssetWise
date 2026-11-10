@@ -18,7 +18,7 @@
             <dl class="grid grid-cols-2 gap-4 text-sm mb-6">
                 <div>
                     <dt class="text-xs text-gray-400 uppercase tracking-wide">Asset</dt>
-                    <dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ $movement->asset?->name ?? 'Asset #'.$movement->asset_id }}</dd>
+                    <dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ \App\Models\Asset::labelFor($movement->asset) }}</dd>
                 </div>
                 <div>
                     <dt class="text-xs text-gray-400 uppercase tracking-wide">Asset ID</dt>

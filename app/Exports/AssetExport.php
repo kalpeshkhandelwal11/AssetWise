@@ -21,7 +21,7 @@ class AssetExport implements FromCollection, WithHeadings, WithMapping
     private const CORE_HEADINGS = [
         'Asset Tag', 'Name', 'Description', 'Serial Number', 'Model', 'Manufacturer',
         'Company Code', 'Company Name', 'Category', 'Asset Type', 'Status', 'Location',
-        'Custodian', 'Department', 'Branch', 'Purchase Date', 'Purchase Cost', 'Vendor',
+        'Custodian', 'Custodian Code', 'Department', 'Branch', 'Purchase Date', 'Purchase Cost', 'Vendor',
         'Warranty Expiry', 'AMC Expiry', 'End of Life', 'EOL Projected Date', 'Notes',
     ];
 
@@ -121,6 +121,7 @@ class AssetExport implements FromCollection, WithHeadings, WithMapping
             $asset->status?->name,
             $asset->location?->name,
             $asset->custodian?->name,
+            $asset->custodian?->employee_code,
             $asset->department?->name,
             $asset->branch?->name,
             optional($asset->purchase_date)->format('Y-m-d'),

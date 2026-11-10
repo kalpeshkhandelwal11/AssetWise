@@ -15,7 +15,7 @@
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                     <td class="px-4 py-3">
                         <a href="{{ route('assets.show', $history->asset) }}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
-                            {{ $history->asset?->name ?? 'Asset #'.$history->asset_id }}
+                            {{ \App\Models\Asset::labelFor($history->asset) }}
                         </a>
                     </td>
                     <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $history->asset?->company?->name }}</td>

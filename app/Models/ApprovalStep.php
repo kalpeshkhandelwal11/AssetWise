@@ -38,6 +38,6 @@ class ApprovalStep extends Model
     {
         return $this->approver_type === 'role'
             ? 'Role: ' . $this->approver_role
-            : 'User: ' . ($this->approverUser?->name ?? '#' . $this->approver_user_id);
+            : 'User: ' . ($this->approverUser?->name ?? '(deleted user)');
     }
 }

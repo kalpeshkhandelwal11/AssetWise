@@ -58,8 +58,12 @@
                 To <input type="date" name="date_to" value="{{ old('date_to') }}" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
             </label>
 
-            <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                Export
+            <button type="submit" name="format" value="xlsx" class="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                Export Excel
+            </button>
+            <button type="submit" name="format" value="pdf" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    title="Core columns only (A4 landscape), up to {{ \App\Exports\AssetPdfExport::MAX_ROWS }} assets">
+                Export PDF
             </button>
         </form>
     </div>

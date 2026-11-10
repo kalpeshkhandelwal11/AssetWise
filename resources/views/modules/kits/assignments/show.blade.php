@@ -32,7 +32,7 @@
             <div class="divide-y divide-gray-100 dark:divide-gray-700">
                 @foreach($assignment->movements as $movement)
                     <div class="flex items-center justify-between py-2 text-sm">
-                        <a href="{{ route('assets.show', $movement->asset_id) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $movement->asset?->name ?? 'Asset #'.$movement->asset_id }}</a>
+                        <a href="{{ route('assets.show', $movement->asset_id) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ \App\Models\Asset::labelFor($movement->asset) }}</a>
                         @php $mc = match($movement->status) { 'completed' => 'green', 'rejected' => 'red', default => 'amber' }; @endphp
                         <x-status-badge :color="$mc" :label="ucwords(str_replace('_', ' ', $movement->status))" />
                     </div>

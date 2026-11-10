@@ -24,8 +24,10 @@
                 <div x-show="menuOpen" @click.outside="menuOpen = false" x-cloak
                      class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50 py-1">
                     @can('assets.export')
-                    <button type="button" @click="$refs.bulkForm.action='{{ route('assets.export.store') }}'; $refs.bulkForm.submit()"
-                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Export selected</button>
+                    <button type="button" @click="$refs.bulkFormat.value='xlsx'; $refs.bulkForm.action='{{ route('assets.export.store') }}'; $refs.bulkForm.submit()"
+                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Export selected (Excel)</button>
+                    <button type="button" @click="$refs.bulkFormat.value='pdf'; $refs.bulkForm.action='{{ route('assets.export.store') }}'; $refs.bulkForm.submit()"
+                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Export selected (PDF)</button>
                     @endcan
                     @if($canBulkMove)
                     <a :href="'{{ route('movements.bulk.create') }}?' + selected.map(id => 'asset_ids[]=' + id).join('&')"
@@ -66,6 +68,8 @@
     {{-- action is set per bulk-action click (not via a reactive :action, which is stale at submit time) --}}
     <form method="POST" x-ref="bulkForm" class="hidden">
         @csrf
+        {{-- Only read by the export action (xlsx|pdf); other bulk actions ignore it. --}}
+        <input type="hidden" name="format" value="xlsx" x-ref="bulkFormat">
         <template x-for="id in selected" :key="id"><input type="hidden" name="asset_ids[]" :value="id"></template>
     </form>
 

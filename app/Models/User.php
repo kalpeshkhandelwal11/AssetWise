@@ -6,6 +6,7 @@ use App\Support\NotificationCatalog;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -32,6 +33,7 @@ class User extends Authenticatable
         'department_id',
         'branch_id',
         'designation_id',
+        'all_companies',
     ];
 
     protected $hidden = [
@@ -47,6 +49,7 @@ class User extends Authenticatable
             'mfa_enabled'          => 'boolean',
             'must_change_password' => 'boolean',
             'is_active'            => 'boolean',
+            'all_companies'        => 'boolean',
             'password_changed_at'  => 'datetime',
             'last_login_at'        => 'datetime',
         ];
@@ -91,6 +94,47 @@ class User extends Authenticatable
     public function custodiedAssets(): HasManyThrough
     {
         return $this->hasManyThrough(Asset::class, Employee::class, 'user_id', 'custodian_id', 'id', 'id');
+    }
+
+    /** Companies whose data this user may see (ignored when all_companies / companies.view_all). */
+    public function companies(): BelongsToMany
+    {
+        return $this->belongsToMany(Company::class)->withTimestamps();
+    }
+
+    /** @var int[]|null|false false = not yet computed this request */
+    private array|null|false $visibleCompanyIdsCache = false;
+
+    /**
+     * Company ids this user may see, or null when unrestricted. Cached on the instance —
+     * call forgetVisibleCompanies() after changing assignments mid-request.
+     *
+     * @return int[]|null
+     */
+    public function visibleCompanyIds(): ?array
+    {
+        if ($this->visibleCompanyIdsCache !== false) {
+            return $this->visibleCompanyIdsCache;
+        }
+
+        if ($this->all_companies || $this->can('companies.view_all')) {
+            return $this->visibleCompanyIdsCache = null;
+        }
+
+        return $this->visibleCompanyIdsCache = $this->companies()->pluck('companies.id')
+            ->map(fn ($id) => (int) $id)->all();
+    }
+
+    public function canSeeCompany(?int $companyId): bool
+    {
+        $ids = $this->visibleCompanyIds();
+
+        return $ids === null || ($companyId !== null && in_array($companyId, $ids, true));
+    }
+
+    public function forgetVisibleCompanies(): void
+    {
+        $this->visibleCompanyIdsCache = false;
     }
 
     public function createdAssets(): HasMany

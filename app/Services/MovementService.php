@@ -149,6 +149,56 @@ class MovementService
     }
 
     /** Called by ApplyAssetMovement (the ApprovalRequestApproved listener) for a standalone movement. */
+    /**
+     * For an approver: what does the destination already hold in the same category(ies)?
+     * Matches the destination custodian, or the destination location when no custodian is
+     * named. Excludes the assets being moved and drafts/retired assets.
+     *
+     * @return Collection<int, array{category: ?\App\Models\AssetCategory, holder: string, total: int, assets: Collection}>
+     */
+    public function existingHoldingsFor(AssetMovement|AssetMovementBatch $subject): \Illuminate\Support\Collection
+    {
+        $movements = $subject instanceof AssetMovementBatch
+            ? $subject->movements()->with('asset')->get()
+            : collect([$subject->loadMissing('asset')]);
+
+        $first = $movements->first();
+        if (! $first) {
+            return collect();
+        }
+
+        $custodianId = $first->to_custodian_id;
+        $locationId = $custodianId ? null : $first->to_location_id;
+
+        if (! $custodianId && ! $locationId) {
+            return collect();
+        }
+
+        $holder = $custodianId
+            ? (\App\Models\Employee::find($custodianId)?->name ?? 'the custodian')
+            : (\App\Models\Location::find($locationId)?->name ?? 'the location');
+
+        $movingIds = $movements->pluck('asset_id')->all();
+        $excludedStatusIds = \App\Models\AssetStatus::whereIn('code', ['DRAFT', ...\App\Models\AssetStatus::TERMINAL])->pluck('id');
+
+        return $movements->pluck('asset.category_id')->filter()->unique()->values()
+            ->map(function (int $categoryId) use ($custodianId, $locationId, $movingIds, $excludedStatusIds, $holder) {
+                $query = Asset::query()
+                    ->where('category_id', $categoryId)
+                    ->whereNotIn('id', $movingIds)
+                    ->whereNotIn('status_id', $excludedStatusIds)
+                    ->when($custodianId, fn ($q) => $q->where('custodian_id', $custodianId))
+                    ->when($locationId, fn ($q) => $q->where('location_id', $locationId));
+
+                return [
+                    'category' => \App\Models\AssetCategory::find($categoryId),
+                    'holder'   => $holder,
+                    'total'    => (clone $query)->count(),
+                    'assets'   => $query->with('status')->orderBy('name')->limit(25)->get(),
+                ];
+            });
+    }
+
     public function apply(AssetMovement $movement): void
     {
         DB::transaction(function () use ($movement) {

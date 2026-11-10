@@ -56,6 +56,11 @@ class ReportRegistry
             'description' => 'Per-period depreciation, accumulated depreciation, and book value by asset.',
             'enabled'     => true,
         ],
+        'depreciation_register' => [
+            'label'       => 'Depreciation Register (FY)',
+            'description' => 'Schedule II register for a financial year: cost, residual, life, rate, days, depreciation and closing WDV, by class.',
+            'enabled'     => true,
+        ],
         'maintenance' => [
             'label'       => 'Maintenance Report',
             'description' => 'Service history: preventive and corrective maintenance, vendor, and repair cost.',

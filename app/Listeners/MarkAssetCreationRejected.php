@@ -20,6 +20,14 @@ class MarkAssetCreationRejected
             return;
         }
 
+        // A rejected bulk import: its assets stay DRAFT (delete or resubmit from the import
+        // screen); flag the batch so the screen shows why.
+        if ($event->request->approvable instanceof \App\Models\ImportBatch) {
+            $event->request->approvable->update(['approval_status' => 'rejected']);
+
+            return;
+        }
+
         // No state change needed — the asset stays DRAFT and the (now-rejected) request no
         // longer counts as pending. This listener exists so the intent is explicit and so
         // future side-effects (e.g. notifying the creator) have a home.

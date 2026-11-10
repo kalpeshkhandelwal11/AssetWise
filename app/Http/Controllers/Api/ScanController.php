@@ -62,6 +62,12 @@ class ScanController extends Controller
         $method = $request->query('method') === 'camera' ? 'camera' : 'manual';
         $this->tags->logScan($result->tag, $result->asset, $request->user(), $method);
 
+        // Company isolation: an assigned tag whose asset resolved to null belongs to a
+        // company the scanner cannot see. Say nothing about the asset.
+        if ($result->status === 'assigned' && ! $result->asset) {
+            abort(404, 'This tag is not linked to an asset you have access to.');
+        }
+
         if ($result->status === 'assigned' && $result->asset) {
             $item = $request->user()->can('audit.verify')
                 ? $this->audits->openItemFor($result->asset, $request->user())

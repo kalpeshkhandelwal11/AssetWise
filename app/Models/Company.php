@@ -28,6 +28,16 @@ class Company extends Model
         ];
     }
 
+    /** Companies the current actor may see (all when unrestricted) — use for pickers and filters. */
+    public function scopeVisible(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $ids = \App\Support\CompanyVisibility::ids();
+
+        if ($ids !== null) {
+            $query->whereIn($this->getTable().'.id', $ids);
+        }
+    }
+
     public function assets(): HasMany
     {
         return $this->hasMany(Asset::class);

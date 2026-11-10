@@ -18,6 +18,7 @@ final class ResolvedField implements JsonSerializable
         public readonly array $options,
         public readonly int $definedOnCategoryId,
         public readonly bool $isInherited,
+        public readonly bool $isUnique = false,
     ) {
     }
 
@@ -35,6 +36,7 @@ final class ResolvedField implements JsonSerializable
             'options'                => $this->options,
             'defined_on_category_id' => $this->definedOnCategoryId,
             'is_inherited'           => $this->isInherited,
+            'is_unique'              => $this->isUnique,
         ];
     }
 }

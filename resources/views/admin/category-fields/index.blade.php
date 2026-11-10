@@ -44,7 +44,12 @@
                             <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ $field->label }}</td>
                             <td class="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">{{ $field->field_key }}</td>
                             <td class="px-4 py-3 text-gray-700 dark:text-gray-300 capitalize">{{ $field->field_type }}</td>
-                            <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $field->is_required ? 'Yes' : 'No' }}</td>
+                            <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+                                {{ $field->is_required ? 'Yes' : 'No' }}
+                                @if($field->is_unique)
+                                    <x-status-badge color="indigo" label="Unique" :dot="false" />
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-2">
                                     <a href="{{ route('admin.categories.fields.edit', [$category, $field]) }}"

@@ -28,6 +28,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         // Picked up by the single shared-hosting cron entry: * * * * * php artisan schedule:run
         $schedule->command('approvals:escalate')->daily();
+        // Hourly so the one-time 24h reminder lands close to the 24h mark.
+        $schedule->command('approvals:remind')->hourly();
         $schedule->command('alerts:expiry')->daily();
         $schedule->command('depreciation:post-monthly')->daily();
     })

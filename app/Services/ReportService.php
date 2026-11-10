@@ -55,6 +55,7 @@ class ReportService
             'audit_compliance'       => new AuditComplianceExport($filters, $this),
             'audit_campaign'          => new AuditCampaignExport($filters, $this),
             'depreciation_schedule'  => new DepreciationReportExport($filters, $this),
+            'depreciation_register'  => new \App\Exports\DepreciationRegisterExport($filters, app(\App\Services\Reports\DepreciationRegisterBuilder::class)),
             default => throw new \InvalidArgumentException("Report type \"{$type}\" has no export class."),
         };
     }
@@ -338,7 +339,7 @@ class ReportService
             ->get()
             ->groupBy('company_id');
 
-        return Company::query()
+        return Company::query()->visible()
             ->when($companyId, fn ($q) => $q->where('id', $companyId))
             ->orderBy('name')
             ->get()

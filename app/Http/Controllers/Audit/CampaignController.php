@@ -160,7 +160,7 @@ class CampaignController extends Controller
     {
         return [
             'auditTypes' => AuditType::where('is_active', true)->orderBy('name')->get(),
-            'companies'  => Company::where('is_active', true)->orderBy('name')->get(),
+            'companies'  => Company::visible()->where('is_active', true)->orderBy('name')->get(),
             'categories' => AssetCategory::where('is_active', true)->orderBy('name')->get(),
             'assetTypes' => AssetType::where('is_active', true)->orderBy('name')->get(),
             'statuses'   => AssetStatus::where('is_active', true)->orderBy('name')->get(),

@@ -35,6 +35,20 @@ class ApprovalRequest extends Model
         return $this->morphTo();
     }
 
+    /**
+     * Company isolation: approvables are company-scoped models (Asset, AssetMovement,
+     * DisposalRequest…), so for a restricted actor the relation resolves to null when the
+     * subject belongs to a company they cannot see. Unrestricted actors always pass.
+     */
+    public function isVisibleToActor(): bool
+    {
+        if (! \App\Support\CompanyVisibility::isRestricted()) {
+            return true;
+        }
+
+        return $this->approvable !== null;
+    }
+
     public function actions(): HasMany
     {
         return $this->hasMany(ApprovalAction::class, 'request_id')->latest('created_at');
@@ -86,13 +100,14 @@ class ApprovalRequest extends Model
         $model = $this->approvable;
 
         if (! $model) {
-            return class_basename($this->approvable_type) . ' #' . $this->approvable_id;
+            return \Illuminate\Support\Str::headline(class_basename($this->approvable_type)) . ' (unavailable)';
         }
 
         if (method_exists($model, 'getApprovalLabel')) {
             return $model->getApprovalLabel();
         }
 
-        return class_basename($model) . ' #' . $model->getKey();
+        return \Illuminate\Support\Str::headline(class_basename($model))
+            . (filled($model->getAttribute('name')) ? ' — ' . $model->getAttribute('name') : '');
     }
 }

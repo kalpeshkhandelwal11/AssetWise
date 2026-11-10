@@ -14,6 +14,18 @@ class KitAssignment extends Model
 {
     use HasFactory, LogsActivity;
 
+    protected static function booted(): void
+    {
+        // Company isolation — visible when any member movement is (see AssetMovement).
+        static::addGlobalScope('company_visibility', function (\Illuminate\Database\Eloquent\Builder $builder) {
+            $ids = \App\Support\CompanyVisibility::ids();
+
+            if ($ids !== null) {
+                $builder->where(fn ($q) => $q->whereHas('movements')->orWhereIn('to_company_id', $ids));
+            }
+        });
+    }
+
     protected $fillable = [
         'kit_id', 'direction', 'parent_assignment_id',
         'movement_type_id', 'to_company_id', 'to_custodian_id', 'to_location_id', 'to_department_id',

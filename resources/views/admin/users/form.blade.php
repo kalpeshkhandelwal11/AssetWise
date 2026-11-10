@@ -96,6 +96,41 @@
                 <x-input-error :messages="$errors->get('roles')" class="mt-1" />
             </div>
 
+            {{-- Company access (company isolation) --}}
+            @php
+                $access = old('company_access', ($user->exists ? $user->all_companies : false) ? 'all' : 'selected');
+                $pickedCompanies = array_map('intval', old('companies', $userCompanyIds));
+            @endphp
+            <div class="pt-2 border-t border-gray-100 dark:border-gray-700" x-data="{ access: @js($access) }">
+                <x-input-label value="Company access *" />
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">The user sees only assets, movements, reports and approvals of these companies.</p>
+                <div class="mt-2 flex flex-wrap gap-4 text-sm text-gray-700 dark:text-gray-300">
+                    <label class="flex items-center gap-2">
+                        <input type="radio" name="company_access" value="selected" x-model="access"
+                               class="border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500">
+                        Selected companies
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="radio" name="company_access" value="all" x-model="access"
+                               class="border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500">
+                        All companies
+                    </label>
+                </div>
+                <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2" x-show="access === 'selected'">
+                    @foreach($companies as $company)
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                            <input type="checkbox" name="companies[]" value="{{ $company->id }}"
+                                   class="rounded border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500"
+                                   @checked(in_array($company->id, $pickedCompanies, true))>
+                            {{ $company->name }} <span class="text-xs text-gray-400">({{ $company->code }})</span>
+                        </label>
+                    @endforeach
+                </div>
+                <x-input-error :messages="$errors->get('company_access')" class="mt-1" />
+                <x-input-error :messages="$errors->get('companies')" class="mt-1" />
+                <x-input-error :messages="$errors->get('companies.*')" class="mt-1" />
+            </div>
+
             {{-- Flags --}}
             <div class="flex items-center gap-6 pt-2 border-t border-gray-100 dark:border-gray-700">
                 <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">

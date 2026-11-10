@@ -25,6 +25,10 @@ class ApprovalRequestPolicy
      */
     public function view(User $user, ApprovalRequest $request): bool
     {
+        if (! $request->isVisibleToActor()) {
+            return false;
+        }
+
         return (int) $request->submitted_by === (int) $user->id
             || $this->workflow->canAct($user, $request)
             || $request->actions()->where('user_id', $user->id)->exists()
@@ -34,6 +38,6 @@ class ApprovalRequestPolicy
     /** Eligibility is instance-scoped — delegate entirely to the one source of truth. */
     public function act(User $user, ApprovalRequest $request): bool
     {
-        return $this->workflow->canAct($user, $request);
+        return $request->isVisibleToActor() && $this->workflow->canAct($user, $request);
     }
 }

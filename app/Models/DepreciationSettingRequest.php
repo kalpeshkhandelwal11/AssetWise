@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedByAssetCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class DepreciationSettingRequest extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, ScopedByAssetCompany;
 
     protected $fillable = [
         'asset_id', 'depreciation_method_id',
@@ -59,7 +60,7 @@ class DepreciationSettingRequest extends Model
     /** Consumed by ApprovalRequest::getApprovableLabelAttribute() for the approver inbox. */
     public function getApprovalLabel(): string
     {
-        return 'Depreciation — ' . ($this->asset?->name ?? 'Asset #' . $this->asset_id);
+        return 'Depreciation — ' . (\App\Models\Asset::labelFor($this->asset));
     }
 
     public function getActivitylogOptions(): LogOptions

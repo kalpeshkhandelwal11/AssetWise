@@ -32,6 +32,16 @@ class Employee extends Model
         ];
     }
 
+    /** Employees the current actor may pick: their companies' staff plus unattached employees. */
+    public function scopeVisible(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $ids = \App\Support\CompanyVisibility::ids();
+
+        if ($ids !== null) {
+            $query->where(fn ($q) => $q->whereNull('company_id')->orWhereIn('company_id', $ids));
+        }
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

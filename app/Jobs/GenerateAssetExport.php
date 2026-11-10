@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Support\CompanyVisibility;
 use App\Exports\AssetExport;
 use App\Models\ExportLog;
 use App\Models\User;
@@ -32,6 +33,7 @@ class GenerateAssetExport implements ShouldQueue
     public function __construct(
         public readonly int $userId,
         public readonly array $filters,
+        public readonly string $format = 'xlsx',
     ) {
     }
 
@@ -39,10 +41,22 @@ class GenerateAssetExport implements ShouldQueue
     {
         $user = User::findOrFail($this->userId);
 
-        $export = new AssetExport($this->filters, $fields);
-        $fileName = 'exports/assets-export-'.now()->format('Ymd-His').'-'.Str::random(6).'.xlsx';
+        // No session in a queued job — evaluate company visibility as the requester, or the
+        // export would contain every company's assets.
+        CompanyVisibility::actingAs($user, fn () => $this->run($user, $fields, $notifications));
+    }
 
-        Excel::store($export, $fileName, 'public');
+    private function run(User $user, DynamicFieldService $fields, NotificationService $notifications): void
+    {
+        $fileName = 'exports/assets-export-'.now()->format('Ymd-His').'-'.Str::random(6).".{$this->format}";
+
+        if ($this->format === 'pdf') {
+            $export = new \App\Exports\AssetPdfExport($this->filters, $fields);
+            app(\App\Services\Reports\ReportPdfExporter::class)->render('Asset Export', $export)->save($fileName, 'public');
+        } else {
+            $export = new AssetExport($this->filters, $fields);
+            Excel::store($export, $fileName, 'public');
+        }
 
         ExportLog::record('assets', $this->filters, $export->rowCount(), $fileName, $user->id);
 

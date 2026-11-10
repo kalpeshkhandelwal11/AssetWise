@@ -30,10 +30,15 @@ class CategoryDepreciationController extends Controller
         $data = $request->validate([
             'depreciation_method_id' => ['required', Rule::exists('depreciation_methods', 'id')->where('is_active', true)],
             'useful_life_months'     => ['required', 'integer', 'min:1'],
-            'salvage_value'          => ['nullable', 'numeric', 'min:0'],
-            'salvage_percent'        => ['nullable', 'numeric', 'min:0', 'max:100'],
+            // Salvage is mandatory: exactly one of a fixed amount or a percent of cost.
+            'salvage_value'          => ['nullable', 'numeric', 'min:0', 'required_without:salvage_percent', 'prohibits:salvage_percent'],
+            'salvage_percent'        => ['nullable', 'numeric', 'min:0', 'max:100', 'required_without:salvage_value', 'prohibits:salvage_value'],
             'start_basis'            => ['required', Rule::in(['purchase_date', 'commission_date'])],
         ]);
+
+        // Store exactly one of the two so the other can't silently win in computeSalvage().
+        $data['salvage_value'] = $data['salvage_value'] ?? null;
+        $data['salvage_percent'] = $data['salvage_percent'] ?? null;
 
         $category->depreciationDefault()->updateOrCreate(['category_id' => $category->id], $data);
 

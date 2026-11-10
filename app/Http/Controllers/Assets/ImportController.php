@@ -69,6 +69,24 @@ class ImportController extends Controller
             ->with('success', 'Import started — the batch report will update as rows are processed.');
     }
 
+    /**
+     * A rejected bulk import keeps its DRAFT assets; resubmitting sends the whole batch for a
+     * fresh asset_creation approval (rejection is terminal per request — M08).
+     */
+    public function resubmit(\Illuminate\Http\Request $request, ImportBatch $batch): \Illuminate\Http\RedirectResponse
+    {
+        $this->authorize('imports.manage');
+
+        abort_unless(in_array($batch->approval_status, ['rejected', null], true) && $batch->success_count > 0, 422);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($batch, $request) {
+            $approval = app(\App\Services\WorkflowService::class)->submit($batch, 'asset_creation', $request->user());
+            $batch->update(['approval_request_id' => $approval->id, 'approval_status' => 'pending']);
+        });
+
+        return back()->with('success', 'Import resubmitted for approval.');
+    }
+
     public function show(ImportBatch $batch): View
     {
         $this->authorize('imports.manage');

@@ -84,7 +84,7 @@ class MovementBatchController extends Controller
             'companies'     => Company::where('is_active', true)->orderBy('name')->get(),
             'locations'     => Location::where('is_active', true)->orderBy('name')->get(),
             'departments'   => Department::where('is_active', true)->orderBy('name')->get(),
-            'custodians'    => Employee::where('is_active', true)->orderBy('name')->get(),
+            'custodians'    => Employee::visible()->where('is_active', true)->orderBy('name')->get(),
         ];
     }
 }

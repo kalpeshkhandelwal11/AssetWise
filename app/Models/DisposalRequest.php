@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedByAssetCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class DisposalRequest extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, ScopedByAssetCompany;
 
     protected $fillable = [
         'asset_id', 'disposal_type_id', 'reason', 'status',
@@ -64,7 +65,7 @@ class DisposalRequest extends Model
     /** Forward-compat hook consumed by ApprovalRequest::getApprovableLabelAttribute(). */
     public function getApprovalLabel(): string
     {
-        return 'Disposal — ' . ($this->asset?->name ?? 'Asset #' . $this->asset_id);
+        return 'Disposal — ' . (\App\Models\Asset::labelFor($this->asset));
     }
 
     public function getActivitylogOptions(): LogOptions

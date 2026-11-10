@@ -218,6 +218,7 @@
         @endcan
         @can('depreciation.manage')
         <x-sidebar-link child :href="route('admin.depreciation-methods.index')" :active="$isActive('admin.depreciation-methods')">Depreciation Methods</x-sidebar-link>
+        <x-sidebar-link child :href="route('admin.depreciation-classes.index')" :active="$isActive('admin.depreciation-classes')">Schedule II Classes</x-sidebar-link>
         @endcan
         @can('workflow.manage')
         <x-sidebar-link child :href="route('admin.workflows.index')" :active="$isActive('admin.workflows')">Workflow Config</x-sidebar-link>

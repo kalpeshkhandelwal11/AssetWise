@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Support\CompanyVisibility;
 use App\Models\ExportLog;
 use App\Models\User;
 use App\Services\Reports\ReportPdfExporter;
@@ -39,13 +40,23 @@ class GenerateReportExport implements ShouldQueue
     public function handle(ReportService $reports, ReportPdfExporter $pdfExporter, NotificationService $notifications): void
     {
         $user = User::findOrFail($this->userId);
+
+        // No session in a queued job — evaluate company visibility as the requester.
+        CompanyVisibility::actingAs($user, fn () => $this->run($user, $reports, $pdfExporter, $notifications));
+    }
+
+    private function run(User $user, ReportService $reports, ReportPdfExporter $pdfExporter, NotificationService $notifications): void
+    {
         $export = $reports->exportFor($this->reportType, $this->filters);
         $rowCount = $export->rowCount();
 
         $fileName = "exports/{$this->reportType}-report-".now()->format('Ymd-His').'-'.Str::random(6).".{$this->format}";
 
         if ($this->format === 'pdf') {
-            $pdfExporter->render(ReportRegistry::label($this->reportType), $export)->save($fileName, 'public');
+            $title = $this->reportType === 'depreciation_register'
+                ? app(\App\Services\Reports\DepreciationRegisterBuilder::class)->title($this->filters)
+                : ReportRegistry::label($this->reportType);
+            $pdfExporter->render($title, $export)->save($fileName, 'public');
         } else {
             Excel::store($export, $fileName, 'public');
         }

@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedByAssetCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TagReplacementRequest extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedByAssetCompany;
 
     protected $fillable = [
         'asset_id', 'current_tag_id', 'new_tag_id', 'reason', 'status', 'approval_request_id', 'requested_by',
@@ -42,6 +43,6 @@ class TagReplacementRequest extends Model
     /** Forward-compat hook consumed by ApprovalRequest::getApprovableLabelAttribute(). */
     public function getApprovalLabel(): string
     {
-        return 'Tag Replacement — ' . ($this->asset?->name ?? 'Asset #' . $this->asset_id);
+        return 'Tag Replacement — ' . (\App\Models\Asset::labelFor($this->asset));
     }
 }

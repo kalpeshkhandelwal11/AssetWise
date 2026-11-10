@@ -199,6 +199,27 @@
                 </select>
                 @break
 
+            @case('depreciation_register')
+                @php $fyNow = \App\Services\Reports\DepreciationRegisterBuilder::currentFyStartYear(); @endphp
+                <select name="fy" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    @for($y = $fyNow + 1; $y >= $fyNow - 6; $y--)
+                        <option value="{{ $y }}" @selected((int) ($filters['fy'] ?? $fyNow) === $y)>{{ \App\Services\Reports\DepreciationRegisterBuilder::fyLabel($y) }}</option>
+                    @endfor
+                </select>
+                <select name="company_id" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">All Companies</option>
+                    @foreach($companies as $company)
+                        <option value="{{ $company->id }}" @selected(($filters['company_id'] ?? null) == $company->id)>{{ $company->name }}</option>
+                    @endforeach
+                </select>
+                <select name="category_id" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                    <option value="">All Categories</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}" @selected(($filters['category_id'] ?? null) == $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
+                @break
+
             @case('utilization')
                 <select name="company_id" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
                     <option value="">All Companies</option>

@@ -8,8 +8,12 @@
         $prefill = [
             'method'          => old('depreciation_method_id', $setting?->depreciation_method_id ?? ($defaults['depreciation_method_id'] ?? null)),
             'useful_life'     => old('useful_life_months', $setting?->useful_life_months ?? ($defaults['useful_life_months'] ?? null)),
-            'salvage_value'   => old('salvage_value', $setting?->salvage_value ?? ($defaults['salvage_value'] ?? null)),
-            'salvage_percent' => old('salvage_percent', $setting?->salvage_percent ?? ($defaults['salvage_percent'] ?? null)),
+            // A setting stores the resolved amount AND the original percent; show percent mode
+            // when a percent was used, otherwise the fixed amount.
+            'salvage_percent' => $setting ? $setting->salvage_percent : ($defaults['salvage_percent'] ?? null),
+            'salvage_value'   => $setting
+                ? ($setting->salvage_percent === null ? $setting->salvage_value : null)
+                : ($defaults['salvage_value'] ?? null),
             'start_date'      => old('start_date', $startDefault),
             'cost_basis'      => old('cost_basis', $setting?->cost_basis ?? $asset->purchase_cost),
         ];
@@ -31,7 +35,8 @@
                     <div><dt class="text-gray-400 text-xs uppercase tracking-wide">Method</dt><dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ $setting->method?->name }}</dd></div>
                     <div><dt class="text-gray-400 text-xs uppercase tracking-wide">Useful Life</dt><dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ $setting->useful_life_months }} months</dd></div>
                     <div><dt class="text-gray-400 text-xs uppercase tracking-wide">Cost Basis</dt><dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ number_format($setting->cost_basis, 2) }}</dd></div>
-                    <div><dt class="text-gray-400 text-xs uppercase tracking-wide">Salvage Value</dt><dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ number_format($setting->salvage_value, 2) }}</dd></div>
+                    <div><dt class="text-gray-400 text-xs uppercase tracking-wide">Salvage Value</dt><dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ number_format($setting->salvage_value, 2) }}@if($setting->salvage_percent !== null) <span class="text-xs text-gray-400">({{ rtrim(rtrim(number_format($setting->salvage_percent, 4), '0'), '.') }}%)</span>@endif</dd></div>
+                    <div><dt class="text-gray-400 text-xs uppercase tracking-wide">Depreciable Amount</dt><dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ number_format(max(0, $setting->cost_basis - $setting->salvage_value), 2) }}</dd></div>
                     <div><dt class="text-gray-400 text-xs uppercase tracking-wide">Accumulated</dt><dd class="text-gray-900 dark:text-gray-100 mt-0.5">{{ number_format($setting->accumulated_depreciation, 2) }}</dd></div>
                     <div><dt class="text-gray-400 text-xs uppercase tracking-wide">Book Value</dt><dd class="text-gray-900 dark:text-gray-100 mt-0.5 font-semibold">{{ number_format($setting->current_book_value, 2) }}</dd></div>
                 </dl>
@@ -98,16 +103,11 @@
                             <x-input-error :messages="$errors->get('start_date')" class="mt-1" />
                         </div>
                         <div></div>
-                        <div>
-                            <x-input-label for="salvage_value" value="Salvage Value (fixed)" />
-                            <x-text-input id="salvage_value" name="salvage_value" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="$prefill['salvage_value']" />
-                            <x-input-error :messages="$errors->get('salvage_value')" class="mt-1" />
-                        </div>
-                        <div>
-                            <x-input-label for="salvage_percent" value="Salvage Percent (%)" />
-                            <x-text-input id="salvage_percent" name="salvage_percent" type="number" step="0.0001" min="0" max="100" class="mt-1 block w-full" :value="$prefill['salvage_percent']" />
-                            <x-input-error :messages="$errors->get('salvage_percent')" class="mt-1" />
-                        </div>
+                        @include('modules.depreciation.partials.salvage-fields', [
+                            'salvagePercent' => $prefill['salvage_percent'],
+                            'salvageValue'   => $prefill['salvage_value'],
+                            'costInput'      => 'cost_basis',
+                        ])
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">

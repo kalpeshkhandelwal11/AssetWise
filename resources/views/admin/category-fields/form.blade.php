@@ -73,7 +73,13 @@
                     <input type="checkbox" name="is_searchable" value="1" @checked(old('is_searchable', $field->is_searchable)) class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                     Searchable
                 </label>
+                <label x-show="['text', 'number', 'date'].includes(fieldType)" class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                       title="No two assets (in any company) may share a value — e.g. MAC ID, IMEI">
+                    <input type="checkbox" name="is_unique" value="1" @checked(old('is_unique', $field->is_unique)) class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                    Must be unique (across all assets)
+                </label>
             </div>
+            <x-input-error :messages="$errors->get('is_unique')" class="mt-1" />
 
             {{-- Dropdown options --}}
             <div x-show="fieldType === 'dropdown'" class="pt-2 border-t border-gray-100 dark:border-gray-700">

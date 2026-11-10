@@ -53,6 +53,22 @@
             </div>
 
             <div>
+                <x-input-label for="depreciation_class_id" value="Schedule II Class (depreciation)" />
+                @php $depClasses = \App\Models\DepreciationClass::where('is_active', true)->orderBy('name')->get(); @endphp
+                <select id="depreciation_class_id" name="depreciation_class_id"
+                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <option value="">— Inherit from parent / none —</option>
+                    @foreach($depClasses as $class)
+                        <option value="{{ $class->id }}" @selected(old('depreciation_class_id', $category->depreciation_class_id) == $class->id)>
+                            {{ $class->name }} — {{ $class->is_depreciable ? rtrim(rtrim(number_format($class->useful_life_years, 2), '0'), '.') . ' yrs' : 'not depreciated' }}
+                        </option>
+                    @endforeach
+                </select>
+                <p class="mt-1 text-xs text-gray-400">Companies Act Schedule II class. Supplies the default useful life for this category's depreciation; Land-type classes are never depreciated.</p>
+                <x-input-error :messages="$errors->get('depreciation_class_id')" class="mt-1" />
+            </div>
+
+            <div>
                 <x-input-label for="description" value="Description" />
                 <textarea id="description" name="description" rows="2"
                           class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">{{ old('description', $category->description) }}</textarea>

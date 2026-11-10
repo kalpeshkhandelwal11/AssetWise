@@ -52,6 +52,7 @@
                             <tr>
                                 <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asset</th>
                                 <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tag</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
                                 <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destination</th>
                             </tr>
                         </thead>
@@ -59,9 +60,10 @@
                             @foreach($request->approvable->movements as $line)
                                 <tr>
                                     <td class="px-4 py-2 text-gray-900 dark:text-gray-100">
-                                        <a href="{{ route('assets.show', $line->asset_id) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $line->asset?->name ?? 'Asset #'.$line->asset_id }}</a>
+                                        <a href="{{ route('assets.show', $line->asset_id) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ \App\Models\Asset::labelFor($line->asset) }}</a>
                                     </td>
                                     <td class="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">{{ $line->asset?->asset_tag ?? '—' }}</td>
+                                    <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-400">{{ $line->asset?->category?->name ?? '—' }}</td>
                                     <td class="px-4 py-2 text-gray-600 dark:text-gray-400 text-xs">
                                         {{ collect([$line->toCompany?->name, $line->toLocation?->name, $line->toDepartment?->name, $line->toCustodian?->name])->filter()->join(' · ') ?: '—' }}
                                     </td>
@@ -71,6 +73,99 @@
                     </table>
                 </div>
                 <p class="px-6 py-3 text-xs text-gray-400 border-t border-gray-100 dark:border-gray-700">Approve or reject applies to the whole batch.</p>
+            </div>
+        @endif
+
+        {{-- Single movement: what is moving, from where to where --}}
+        @if($request->approvable instanceof \App\Models\AssetMovement)
+            @php $mv = $request->approvable; @endphp
+            <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Movement details</h2>
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                    <div>
+                        <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</dt>
+                        <dd class="mt-1 text-gray-900 dark:text-gray-100">{{ $mv->movementType?->name ?? '—' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asset</dt>
+                        <dd class="mt-1">
+                            @if($mv->asset)
+                                <a href="{{ route('assets.show', $mv->asset) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $mv->asset->asset_tag }} — {{ $mv->asset->name }}</a>
+                                <span class="text-xs text-gray-400">· {{ $mv->asset->category?->name }}</span>
+                            @else
+                                {{ \App\Models\Asset::labelFor(null) }}
+                            @endif
+                        </dd>
+                    </div>
+                    @foreach([
+                        'Custodian'  => [$mv->fromCustodian?->name, $mv->toCustodian?->name],
+                        'Location'   => [$mv->fromLocation?->name, $mv->toLocation?->name],
+                        'Department' => [$mv->fromDepartment?->name, $mv->toDepartment?->name],
+                        'Company'    => [$mv->fromCompany?->name, $mv->toCompany?->name],
+                    ] as $what => [$from, $to])
+                        @if($from || $to)
+                            <div>
+                                <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $what }}</dt>
+                                <dd class="mt-1 text-gray-900 dark:text-gray-100">{{ $from ?? '—' }} <span class="text-gray-400">&rarr;</span> {{ $to ?? 'unchanged' }}</dd>
+                            </div>
+                        @endif
+                    @endforeach
+                    @if($mv->notes)
+                        <div class="sm:col-span-2">
+                            <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notes</dt>
+                            <dd class="mt-1 text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ $mv->notes }}</dd>
+                        </div>
+                    @endif
+                </dl>
+            </div>
+        @endif
+
+        {{-- What the destination already holds in the same category --}}
+        @foreach($holdings as $holding)
+            <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+                        Already assigned to {{ $holding['holder'] }} in {{ $holding['category']?->name ?? 'this category' }}
+                    </h2>
+                    <span class="text-xs {{ $holding['total'] ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-gray-400' }}">{{ $holding['total'] }} asset(s)</span>
+                </div>
+                @if($holding['total'] === 0)
+                    <p class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">None — this will be their first {{ $holding['category']?->name ?? 'asset in this category' }}.</p>
+                @else
+                    <ul class="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
+                        @foreach($holding['assets'] as $held)
+                            <li class="px-6 py-2 flex items-center justify-between">
+                                <a href="{{ route('assets.show', $held) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $held->asset_tag }} — {{ $held->name }}</a>
+                                <span class="text-xs text-gray-400">{{ $held->status?->name }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                    @if($holding['total'] > $holding['assets']->count())
+                        <p class="px-6 py-2 text-xs text-gray-400 border-t border-gray-100 dark:border-gray-700">…and {{ $holding['total'] - $holding['assets']->count() }} more.</p>
+                    @endif
+                @endif
+            </div>
+        @endforeach
+
+        {{-- Bulk import awaiting creation approval --}}
+        @if($request->approvable instanceof \App\Models\ImportBatch && $importAssets)
+            <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Assets in this import</h2>
+                    <a href="{{ route('assets.import.show', $request->approvable) }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
+                        {{ $request->approvable->filename }} · {{ $request->approvable->category?->name }}
+                    </a>
+                </div>
+                <ul class="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
+                    @foreach($importAssets as $imported)
+                        <li class="px-6 py-2 flex items-center justify-between">
+                            <a href="{{ route('assets.show', $imported) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $imported->asset_tag }} — {{ $imported->name }}</a>
+                            <span class="text-xs text-gray-400">{{ $imported->serial_number }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+                <div class="px-6 py-3 border-t border-gray-100 dark:border-gray-700">{{ $importAssets->links() }}</div>
+                <p class="px-6 py-3 text-xs text-gray-400 border-t border-gray-100 dark:border-gray-700">Approving makes every asset in the import live at once.</p>
             </div>
         @endif
 

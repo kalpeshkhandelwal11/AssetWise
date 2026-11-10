@@ -21,6 +21,8 @@ class NotificationCatalogTest extends TestCase
             ['approval.approved'],
             ['approval.rejected'],
             ['approval.escalated'],
+            ['approval.reminder'],
+            ['approval.reminder_submitter'],
             ['audit.campaign_activated'],
             ['audit.campaign_closed'],
             ['movement.completed'],

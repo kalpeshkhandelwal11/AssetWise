@@ -34,6 +34,33 @@
         </div>
     </div>
 
+    @if($batch->approval_status)
+        @php
+            $approvalColor = ['pending' => 'yellow', 'approved' => 'green', 'rejected' => 'red'][$batch->approval_status] ?? 'gray';
+        @endphp
+        <div class="mb-6 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm flex flex-wrap items-center gap-3">
+            <span class="text-sm text-gray-600 dark:text-gray-300">Creation approval:</span>
+            <x-status-badge :color="$approvalColor" :label="ucfirst($batch->approval_status)" :dot="false" />
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+                @switch($batch->approval_status)
+                    @case('pending') All {{ $batch->success_count }} imported asset(s) are in Draft until this one request is approved. @break
+                    @case('approved') The imported assets are live. @break
+                    @case('rejected') The imported assets remain in Draft — fix them and resubmit, or delete them. @break
+                @endswitch
+            </span>
+            @if($batch->approvalRequest)
+                <a href="{{ route('approvals.show', $batch->approvalRequest) }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">View request</a>
+            @endif
+            @if($batch->approval_status === 'rejected')
+                <form method="POST" action="{{ route('assets.import.resubmit', $batch) }}" class="ml-auto">
+                    @csrf
+                    <x-primary-button>Resubmit for approval</x-primary-button>
+                </form>
+            @endif
+            @error('workflow')<p class="w-full text-sm text-red-600">{{ $message }}</p>@enderror
+        </div>
+    @endif
+
     @if($batch->status === 'processing')
         {{-- Auto-refresh while the queued ProcessAssetImport job runs, so counts update without
              a manual reload. Requires a queue worker (php artisan queue:work); with no worker the

@@ -14,7 +14,7 @@ class AssetCategory extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'parent_id', 'name', 'code', 'asset_prefix', 'description', 'is_active', 'sort_order',
+        'parent_id', 'depreciation_class_id', 'name', 'code', 'asset_prefix', 'description', 'is_active', 'sort_order',
     ];
 
     protected function casts(): array
@@ -45,6 +45,27 @@ class AssetCategory extends Model
     public function fieldOverrides(): HasMany
     {
         return $this->hasMany(CategoryFieldOverride::class, 'category_id');
+    }
+
+    public function depreciationClass(): BelongsTo
+    {
+        return $this->belongsTo(DepreciationClass::class);
+    }
+
+    /** The Schedule II class of this category, inherited from the nearest ancestor if unset. */
+    public function effectiveDepreciationClass(): ?DepreciationClass
+    {
+        $cursor = $this;
+        $guard = 0;
+
+        while ($cursor && $guard++ < 20) {
+            if ($cursor->depreciation_class_id) {
+                return $cursor->depreciationClass;
+            }
+            $cursor = $cursor->parent;
+        }
+
+        return null;
     }
 
     public function depreciationDefault(): HasOne

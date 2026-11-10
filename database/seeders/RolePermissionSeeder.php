@@ -26,7 +26,7 @@ class RolePermissionSeeder extends Seeder
             'activity_log.view',
 
             // Masters
-            'masters.view', 'masters.manage', 'companies.manage',
+            'masters.view', 'masters.manage', 'companies.manage', 'companies.view_all',
             'departments.manage', 'branches.manage', 'designations.manage',
             'employees.view', 'employees.manage',
 

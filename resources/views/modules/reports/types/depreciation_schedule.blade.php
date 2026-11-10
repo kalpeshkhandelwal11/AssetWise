@@ -16,7 +16,7 @@
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                     <td class="px-4 py-3">
                         <a href="{{ route('assets.depreciation.schedule', $line->asset_id) }}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
-                            {{ $line->asset?->name ?? 'Asset #'.$line->asset_id }}
+                            {{ \App\Models\Asset::labelFor($line->asset) }}
                         </a>
                     </td>
                     <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $line->asset?->company?->name }}</td>

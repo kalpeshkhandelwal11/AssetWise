@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CategoryFieldController;
 use App\Http\Controllers\Admin\CategoryDepreciationController;
 use App\Http\Controllers\Admin\AssetNamingSettingController;
 use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\Admin\DepreciationClassController;
 use App\Http\Controllers\Admin\DepreciationMethodController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\FieldOverrideController;
@@ -86,6 +87,7 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::get('assets/import/template/{category}', [ImportController::class, 'template'])->name('assets.import.template');
     Route::post('assets/import', [ImportController::class, 'store'])->name('assets.import.store');
     Route::get('assets/import/{batch}', [ImportController::class, 'show'])->name('assets.import.show');
+    Route::post('assets/import/{batch}/resubmit', [ImportController::class, 'resubmit'])->name('assets.import.resubmit');
     Route::get('assets/export', [ExportController::class, 'index'])->name('assets.export.index');
     Route::post('assets/export', [ExportController::class, 'store'])->name('assets.export.store');
 
@@ -238,6 +240,9 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         // Depreciation methods master + category defaults (M16)
         Route::get('depreciation-methods', [DepreciationMethodController::class, 'index'])->name('depreciation-methods.index');
         Route::patch('depreciation-methods/{method}/toggle', [DepreciationMethodController::class, 'toggle'])->name('depreciation-methods.toggle');
+        Route::get('depreciation-classes', [DepreciationClassController::class, 'index'])->name('depreciation-classes.index');
+        Route::post('depreciation-classes', [DepreciationClassController::class, 'store'])->name('depreciation-classes.store');
+        Route::put('depreciation-classes/{class}', [DepreciationClassController::class, 'update'])->name('depreciation-classes.update');
         Route::get('categories/{category}/depreciation', [CategoryDepreciationController::class, 'edit'])->name('categories.depreciation.edit');
         Route::put('categories/{category}/depreciation', [CategoryDepreciationController::class, 'update'])->name('categories.depreciation.update');
 

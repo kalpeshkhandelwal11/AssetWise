@@ -50,6 +50,8 @@ class ActivityLogTest extends TestCase
         $this->actingAs($admin)
              ->get(route('admin.activity-log.index'))
              ->assertOk()
-             ->assertSee('Asset #' . $asset->id);
+             // Subject resolves withTrashed, so the row names the asset — never "Asset #12".
+             ->assertSee('Renamed Laptop')
+             ->assertDontSee('Asset #' . $asset->id);
     }
 }

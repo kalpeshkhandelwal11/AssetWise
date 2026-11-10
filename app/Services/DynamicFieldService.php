@@ -57,6 +57,7 @@ class DynamicFieldService
                     options: $field->options->map(fn ($o) => ['value' => $o->option_value, 'label' => $o->option_label])->values()->all(),
                     definedOnCategoryId: $field->category_id,
                     isInherited: $field->category_id !== $categoryId,
+                    isUnique: (bool) $field->is_unique,
                 );
             })
             ->sortBy(fn (ResolvedField $f) => $f->displayOrder)
@@ -86,18 +87,18 @@ class DynamicFieldService
      * @param Collection<int, ResolvedField> $fields
      * @return array<string, mixed> validated data, keyed by field_key
      */
-    public function validate(array $input, Collection $fields): array
+    public function validate(array $input, Collection $fields, ?int $ignoreAssetId = null): array
     {
         $rules = [];
 
         foreach ($fields as $field) {
-            $rules[$field->fieldKey] = $this->rulesFor($field);
+            $rules[$field->fieldKey] = $this->rulesFor($field, $ignoreAssetId);
         }
 
         return Validator::make($input, $rules)->validate();
     }
 
-    private function rulesFor(ResolvedField $field): array
+    private function rulesFor(ResolvedField $field, ?int $ignoreAssetId = null): array
     {
         $rules = [$field->isRequired ? 'required' : 'nullable'];
         $vr = $field->validationRules;
@@ -135,7 +136,51 @@ class DynamicFieldService
             $rules[] = 'regex:/' . $vr['regex'] . '/';
         }
 
+        if ($field->isUnique) {
+            $rules[] = function (string $attribute, mixed $value, \Closure $fail) use ($field, $ignoreAssetId) {
+                if ($value === null || $value === '') {
+                    return;
+                }
+
+                $clash = $this->findDuplicate($field, $value, $ignoreAssetId);
+
+                if ($clash) {
+                    // Don't reveal another company's asset through the error message.
+                    $who = \App\Support\CompanyVisibility::canSee($clash->company_id) || \App\Support\CompanyVisibility::canSee($clash->operating_company_id)
+                        ? 'asset ' . ($clash->asset_tag ?: $clash->name)
+                        : 'another asset';
+                    $fail("{$field->label} \"{$value}\" is already used by {$who}.");
+                }
+            };
+        }
+
         return $rules;
+    }
+
+    /**
+     * The asset that already holds $value for this field, if any. Global across companies
+     * (uniqueness must hold system-wide, so company isolation is bypassed here), case-
+     * insensitive for text, and ignoring soft-deleted assets. Inherited fields share one
+     * category_field_id, so this spans every child category automatically.
+     */
+    public function findDuplicate(ResolvedField $field, mixed $value, ?int $ignoreAssetId = null): ?Asset
+    {
+        $query = AssetFieldValue::query()->where('category_field_id', $field->id);
+
+        match ($field->fieldType) {
+            'number' => $query->where('value_number', $value),
+            'date'   => $query->whereDate('value_date', $value),
+            default  => $query->whereRaw('LOWER(TRIM(value_text)) = ?', [mb_strtolower(trim((string) $value))]),
+        };
+
+        if ($ignoreAssetId) {
+            $query->where('asset_id', '!=', $ignoreAssetId);
+        }
+
+        $assetId = $query->whereIn('asset_id', Asset::withoutGlobalScopes()->whereNull('deleted_at')->select('id'))
+            ->value('asset_id');
+
+        return $assetId ? Asset::withoutGlobalScopes()->find($assetId) : null;
     }
 
     /**
@@ -162,7 +207,7 @@ class DynamicFieldService
             $columns = ['value_text' => null, 'value_number' => null, 'value_date' => null, 'value_boolean' => null];
 
             match ($field->fieldType) {
-                'text', 'textarea', 'dropdown' => $columns['value_text'] = $raw,
+                'text', 'textarea', 'dropdown' => $columns['value_text'] = $field->isUnique ? trim((string) $raw) : $raw,
                 'number'  => $columns['value_number'] = $raw,
                 'date'    => $columns['value_date'] = $raw,
                 'boolean' => $columns['value_boolean'] = (bool) $raw,

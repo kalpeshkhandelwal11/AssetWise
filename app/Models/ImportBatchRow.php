@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ImportBatchRow extends Model
 {
     protected $fillable = [
-        'batch_id', 'row_number', 'status', 'errors', 'asset_id',
+        'batch_id', 'row_number', 'status', 'errors', 'asset_id', 'intended_status_id',
     ];
 
     protected function casts(): array

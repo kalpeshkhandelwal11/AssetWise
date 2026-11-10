@@ -21,7 +21,7 @@
                     </td>
                     <td class="px-4 py-3">
                         <a href="{{ route('assets.show', $item->asset_id) }}" class="text-gray-700 dark:text-gray-300 hover:underline">
-                            {{ $item->asset?->name ?? 'Asset #'.$item->asset_id }}
+                            {{ \App\Models\Asset::labelFor($item->asset) }}
                         </a>
                     </td>
                     <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $item->asset?->company?->name }}</td>

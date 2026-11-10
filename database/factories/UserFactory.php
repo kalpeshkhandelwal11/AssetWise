@@ -33,7 +33,16 @@ class UserFactory extends Factory
             'mfa_enabled'          => false,
             'must_change_password' => false,
             'is_active'            => true,
+            // Tests predate company isolation; restricted users opt in via restrictedTo().
+            'all_companies'        => true,
         ];
+    }
+
+    /** A user who only sees the given companies. */
+    public function restrictedTo(array|int $companyIds): static
+    {
+        return $this->state(['all_companies' => false])
+            ->afterCreating(fn ($user) => $user->companies()->sync((array) $companyIds));
     }
 
     public function unverified(): static

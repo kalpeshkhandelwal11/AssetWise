@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedByAssetCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AmcContract extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedByAssetCompany;
 
     protected $fillable = [
         'asset_id', 'vendor', 'start_date', 'end_date', 'coverage', 'cost', 'created_by',

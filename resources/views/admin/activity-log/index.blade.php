@@ -55,7 +55,7 @@
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $activity->event }}</td>
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
                                 @if($activity->subject_type)
-                                    {{ $activity->subject?->name ?? (class_basename($activity->subject_type) . ' #' . $activity->subject_id) }}
+                                    {{ \App\Support\ActivityAttributePresenter::subjectLabel($activity) }}
                                 @else
                                     <span class="text-gray-400">—</span>
                                 @endif
@@ -75,7 +75,42 @@
                         @if($activity->properties->isNotEmpty())
                             <tr x-show="open" x-cloak class="bg-gray-50 dark:bg-gray-900/30">
                                 <td colspan="7" class="px-4 py-3">
-                                    <pre class="text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-all">{{ json_encode($activity->properties, JSON_PRETTY_PRINT) }}</pre>
+                                    @php $diffRows = \App\Support\ActivityAttributePresenter::diff($activity); @endphp
+                                    @if($diffRows)
+                                        <table class="text-xs w-full max-w-3xl">
+                                            <thead>
+                                                <tr class="text-left text-gray-400">
+                                                    <th class="py-1 pr-4 font-medium">Field</th>
+                                                    @if($activity->event !== 'created')<th class="py-1 pr-4 font-medium">Old</th>@endif
+                                                    @if($activity->event !== 'deleted')<th class="py-1 font-medium">New</th>@endif
+                                                </tr>
+                                            </thead>
+                                            <tbody class="text-gray-600 dark:text-gray-300">
+                                                @foreach($diffRows as $row)
+                                                    <tr class="border-t border-gray-200 dark:border-gray-700">
+                                                        <td class="py-1 pr-4 font-medium">{{ $row['label'] }}</td>
+                                                        @if($activity->event !== 'created')<td class="py-1 pr-4 text-gray-500 dark:text-gray-400">{{ $row['old'] }}</td>@endif
+                                                        @if($activity->event !== 'deleted')<td class="py-1">{{ $row['new'] }}</td>@endif
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    @endif
+                                    @php $extra = collect($activity->properties)->except(['attributes', 'old']); @endphp
+                                    @if($extra->isNotEmpty())
+                                        <dl class="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+                                            @foreach($extra as $key => $value)
+                                                <div><dt class="inline font-medium">{{ \Illuminate\Support\Str::headline($key) }}:</dt>
+                                                    <dd class="inline">{{ \App\Support\ActivityAttributePresenter::value($key, $value) }}</dd></div>
+                                            @endforeach
+                                        </dl>
+                                    @endif
+                                    @role('Super Admin')
+                                        <details class="mt-2">
+                                            <summary class="text-xs text-gray-400 cursor-pointer">Raw</summary>
+                                            <pre class="text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-all">{{ json_encode($activity->properties, JSON_PRETTY_PRINT) }}</pre>
+                                        </details>
+                                    @endrole
                                 </td>
                             </tr>
                         @endif

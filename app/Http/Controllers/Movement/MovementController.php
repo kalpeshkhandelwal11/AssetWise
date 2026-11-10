@@ -173,9 +173,11 @@ class MovementController extends Controller
     }
 
     /** Download the currently-filtered movement history as Excel (reuses the M14 export). */
-    public function export(Request $request): BinaryFileResponse
+    public function export(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         $this->authorize('assets.view');
+
+        $format = $request->input('format') === 'pdf' ? 'pdf' : 'xlsx';
 
         $filters = array_filter($request->only(['movement_type_id', 'status', 'search']), fn ($v) => $v !== null && $v !== '');
 
@@ -185,10 +187,21 @@ class MovementController extends Controller
             $filters['status'] = 'rejected';
         }
 
-        return Excel::download(
-            new MovementReportExport($filters, app(ReportService::class)),
-            'movements-' . now()->format('Ymd-His') . '.xlsx',
-        );
+        $export = new MovementReportExport($filters, app(ReportService::class));
+        $fileName = 'movements-' . now()->format('Ymd-His') . ".{$format}";
+
+        if ($format === 'pdf') {
+            // Large histories go through the queued M14 report export (notified when ready).
+            if ($export->rowCount() > 500) {
+                \App\Jobs\GenerateReportExport::dispatch($request->user()->id, 'movement', $filters, 'pdf');
+
+                return back()->with('success', "PDF export queued for {$export->rowCount()} movements — you'll be notified when it's ready.");
+            }
+
+            return app(\App\Services\Reports\ReportPdfExporter::class)->render('Movement History', $export)->download($fileName);
+        }
+
+        return Excel::download($export, $fileName);
     }
 
     private function rules(): array
@@ -216,7 +229,7 @@ class MovementController extends Controller
             'companies'     => Company::where('is_active', true)->orderBy('name')->get(),
             'locations'     => Location::where('is_active', true)->orderBy('name')->get(),
             'departments'   => Department::where('is_active', true)->orderBy('name')->get(),
-            'custodians'    => Employee::where('is_active', true)->orderBy('name')->get(),
+            'custodians'    => Employee::visible()->where('is_active', true)->orderBy('name')->get(),
         ];
     }
 }

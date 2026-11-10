@@ -39,6 +39,7 @@ class CategoryController extends Controller
         $data = $request->validate([
             'parent_id'   => 'nullable|exists:asset_categories,id',
             'name'        => 'required|string|max:255',
+            'depreciation_class_id' => 'nullable|exists:depreciation_classes,id',
             'code'         => 'required|string|max:50|alpha_dash|unique:asset_categories,code',
             'asset_prefix' => 'nullable|string|max:20|alpha_dash',
             'description'  => 'nullable|string',
@@ -69,6 +70,7 @@ class CategoryController extends Controller
         $data = $request->validate([
             'parent_id'   => 'nullable|exists:asset_categories,id|different:id',
             'name'        => 'required|string|max:255',
+            'depreciation_class_id' => 'nullable|exists:depreciation_classes,id',
             'code'         => 'required|string|max:50|alpha_dash|unique:asset_categories,code,' . $category->id,
             'asset_prefix' => 'nullable|string|max:20|alpha_dash',
             'description'  => 'nullable|string',

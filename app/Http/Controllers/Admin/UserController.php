@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalStep;
 use App\Models\Branch;
+use App\Models\Company;
+use App\Support\CompanyVisibility;
 use App\Models\Department;
 use App\Models\Designation;
 use App\Models\Role;
@@ -75,8 +77,12 @@ class UserController extends Controller
         $data['must_change_password'] = $request->boolean('must_change_password');
         $data['email_verified_at']    = now();
 
+        [$allCompanies, $companyIds] = $this->companyAccess($request, null);
+        $data['all_companies'] = $allCompanies;
+
         $user = User::create($data);
         $user->syncRoles($roles);
+        $user->companies()->sync($companyIds);
 
         activity('user')
             ->causedBy($request->user())
@@ -149,7 +155,14 @@ class UserController extends Controller
             return back()->withInput()->with('error', 'Cannot deactivate: this user is custodian of active assets. Reassign them first.');
         }
 
+        [$allCompanies, $companyIds] = $this->companyAccess($request, $user);
+        $data['all_companies'] = $allCompanies;
+
         $user->update($data);
+
+        if ($companyIds !== null) {
+            $user->companies()->sync($companyIds);
+        }
 
         if ($rolesChanged) {
             $user->syncRoles($roles);
@@ -253,7 +266,9 @@ class UserController extends Controller
 
     private function activeCustodyCount(User $user): int
     {
-        return $user->custodiedAssets()->where('assets.is_active', true)->count();
+        return CompanyVisibility::unrestricted(
+            fn () => $user->custodiedAssets()->where('assets.is_active', true)->count()
+        );
     }
 
     private function isNamedApprover(User $user): bool
@@ -261,9 +276,52 @@ class UserController extends Controller
         return ApprovalStep::where('approver_user_id', $user->id)->exists();
     }
 
+    /**
+     * Company access from the form's `company_access` (all|selected) + `companies[]`.
+     *
+     * When the field is absent (older clients / API callers) a new user defaults to all
+     * companies and an existing user's access is left untouched (null company list).
+     * A restricted admin may only grant companies they can see themselves, and can never
+     * grant "all companies".
+     *
+     * @return array{0: bool, 1: int[]|null}
+     */
+    private function companyAccess(Request $request, ?User $user): array
+    {
+        if (! $request->has('company_access')) {
+            return [$user?->all_companies ?? true, $user ? null : []];
+        }
+
+        $visible = CompanyVisibility::ids();
+
+        $request->validate([
+            'company_access' => ['required', Rule::in(['all', 'selected'])],
+            'companies'      => ['required_if:company_access,selected', 'array'],
+            'companies.*'    => array_values(array_filter(['integer', Rule::exists('companies', 'id'),
+                $visible === null ? null : Rule::in($visible)])),
+        ], [
+            'companies.required_if' => 'Pick at least one company, or give access to all companies.',
+            'companies.*.in'        => 'You can only grant access to companies you can see yourself.',
+        ]);
+
+        if ($request->input('company_access') === 'all') {
+            if ($visible !== null) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'company_access' => 'Only an administrator with access to all companies can grant it.',
+                ]);
+            }
+
+            return [true, []];
+        }
+
+        return [false, array_map('intval', $request->input('companies', []))];
+    }
+
     private function formData(User $user): array
     {
         return [
+            'companies'    => Company::visible()->where('is_active', true)->orderBy('name')->get(),
+            'userCompanyIds' => $user->exists ? $user->companies()->pluck('companies.id')->all() : [],
             'user'         => $user,
             'roles'        => Role::orderBy('name')->get(),
             'userRoles'    => $user->exists ? $user->getRoleNames()->all() : [],

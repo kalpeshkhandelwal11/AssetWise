@@ -13,7 +13,7 @@ class CategoryField extends Model
 
     protected $fillable = [
         'category_id', 'field_key', 'label', 'field_type', 'is_required',
-        'validation_rules', 'display_order', 'is_searchable', 'is_active',
+        'validation_rules', 'display_order', 'is_searchable', 'is_active', 'is_unique',
     ];
 
     protected function casts(): array
@@ -22,6 +22,7 @@ class CategoryField extends Model
             'validation_rules' => 'array',
             'is_required'      => 'boolean',
             'is_searchable'    => 'boolean',
+            'is_unique'        => 'boolean',
             'is_active'        => 'boolean',
         ];
     }

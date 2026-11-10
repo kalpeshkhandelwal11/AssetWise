@@ -26,7 +26,7 @@
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                         <td class="px-4 py-3">
                             <a href="{{ route('assets.show', $record->asset) }}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
-                                {{ $record->asset?->name ?? 'Asset #'.$record->asset_id }}
+                                {{ \App\Models\Asset::labelFor($record->asset) }}
                             </a>
                             <div class="text-xs text-gray-400">{{ $record->asset?->company?->name }}</div>
                         </td>

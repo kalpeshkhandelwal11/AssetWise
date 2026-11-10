@@ -16,7 +16,7 @@ class DashboardController extends Controller
         $companyId = $request->filled('company_id') ? $request->integer('company_id') : null;
 
         return view('dashboard', $this->dashboard->summary($request->user(), $companyId) + [
-            'companies'        => Company::orderBy('name')->get(),
+            'companies'        => Company::visible()->orderBy('name')->get(),
             'selectedCompany'  => $companyId,
         ]);
     }

@@ -430,16 +430,16 @@ class WorkflowServiceTest extends TestCase
         $this->assertTrue($other->fresh()->is_active, 'Other modules are untouched.');
     }
 
-    public function test_approvable_label_falls_back_to_class_and_id(): void
+    public function test_approvable_label_falls_back_to_class_and_name_never_an_id(): void
     {
         $this->seedRolesAndPermissions();
         $this->workflow();
-        // A model with no getApprovalLabel() exercises the class-#id fallback. (Asset now
-        // defines getApprovalLabel() for the creation-approval inbox, so it no longer does.)
-        $company = \App\Models\Company::factory()->create();
+        // A model with no getApprovalLabel() exercises the fallback: class + name, never "#id".
+        // (Asset defines getApprovalLabel() for the creation-approval inbox, so it doesn't.)
+        $company = \App\Models\Company::factory()->create(['name' => 'Acme Ltd']);
 
         $request = $this->service()->submit($company, 'transfer', User::factory()->create());
 
-        $this->assertSame('Company #' . $company->id, ApprovalRequest::find($request->id)->approvable_label);
+        $this->assertSame('Company — Acme Ltd', ApprovalRequest::find($request->id)->approvable_label);
     }
 }

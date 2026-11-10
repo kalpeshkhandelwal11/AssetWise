@@ -98,7 +98,7 @@ class AssetController extends Controller
 
         return view('modules.assets.index', [
             'assets'     => $assets,
-            'companies'  => Company::orderBy('name')->get(),
+            'companies'  => Company::visible()->orderBy('name')->get(),
             'statuses'   => AssetStatus::orderBy('name')->get(),
             'types'      => AssetType::orderBy('name')->get(),
             'categories' => AssetCategory::orderBy('name')->get(),
@@ -319,7 +319,7 @@ class AssetController extends Controller
             'resolvedFields'    => $this->fields->resolveForCategory($categoryId),
             'fieldValues'       => $fieldValues,
             'canChangeCategory' => $canChangeCategory,
-        ] + $this->formLookups());
+        ] + $this->formLookups($asset));
     }
 
     public function update(Request $request, Asset $asset): RedirectResponse
@@ -388,13 +388,13 @@ class AssetController extends Controller
         $dynamic = [];
 
         try {
-            $core = validator($request->all(), $this->rules($companyRequired, $companyEditable, categoryLocked: $locked, hasPurchaseDate: $request->filled('purchase_date')))->validate();
+            $core = validator($request->all(), $this->rules($companyRequired, $companyEditable, categoryLocked: $locked, hasPurchaseDate: $request->filled('purchase_date'), asset: $asset))->validate();
         } catch (ValidationException $e) {
             $errors = $e->errors();
         }
 
         try {
-            $dynamic = $this->fields->validate($request->input('fields', []), $resolved);
+            $dynamic = $this->fields->validate($request->input('fields', []), $resolved, $asset?->id);
         } catch (ValidationException $e) {
             foreach ($e->errors() as $key => $messages) {
                 $errors["fields.$key"] = $messages;
@@ -412,11 +412,15 @@ class AssetController extends Controller
         return $core + ['fields' => $dynamic, '_resolved_fields' => $resolved];
     }
 
-    private function rules(bool $companyRequired, bool $companyEditable = true, bool $categoryLocked = false, bool $hasPurchaseDate = false): array
+    private function rules(bool $companyRequired, bool $companyEditable = true, bool $categoryLocked = false, bool $hasPurchaseDate = false, ?Asset $asset = null): array
     {
+        // Company isolation: a restricted user may only file assets under their own companies.
+        $visibleCompanies = \App\Support\CompanyVisibility::ids();
+        $companyIn = $visibleCompanies === null ? [] : [\Illuminate\Validation\Rule::in($visibleCompanies)];
+
         $companyRule = match (true) {
-            $companyRequired => 'required|exists:companies,id',
-            $companyEditable => 'sometimes|exists:companies,id',
+            $companyRequired => ['required', 'exists:companies,id', ...$companyIn],
+            $companyEditable => ['sometimes', 'exists:companies,id', ...$companyIn],
             default           => 'prohibited',
         };
 
@@ -424,15 +428,19 @@ class AssetController extends Controller
 
         return [
             'name'             => 'required|string|max:255',
-            'asset_tag'        => 'nullable|string|max:255|unique:assets,asset_tag',
+            // ->ignore(): saving an asset with its own tag must not fail as a "duplicate".
+            'asset_tag'        => ['nullable', 'string', 'max:255', \Illuminate\Validation\Rule::unique('assets', 'asset_tag')->ignore($asset?->id)],
             'description'      => 'nullable|string',
-            'serial_number'    => 'nullable|string|max:255',
+            'serial_number'    => ['nullable', 'string', 'max:255', new \App\Rules\UniqueSerialNumber($asset?->id)],
             'model'            => 'nullable|string|max:255',
             'manufacturer'     => 'nullable|string|max:255',
             'company_id'       => $companyRule,
             'category_id'      => $categoryLocked ? 'sometimes|exists:asset_categories,id' : 'required|exists:asset_categories,id',
             'asset_type_id'    => 'required|exists:asset_types,id',
-            'status_id'        => 'required|exists:asset_statuses,id',
+            // Workflow-only statuses (Draft, In Transit, Scrapped, Sold…) can't be picked by hand;
+            // an edit may keep the asset's current one.
+            'status_id'        => ['required', 'exists:asset_statuses,id',
+                \Illuminate\Validation\Rule::notIn(array_values(array_diff(AssetStatus::workflowOnlyIds(), [(int) $asset?->status_id])))],
             'location_id'      => 'nullable|exists:locations,id',
             'building_id'      => 'nullable|exists:buildings,id',
             'floor_id'         => 'nullable|exists:floors,id',
@@ -455,17 +463,17 @@ class AssetController extends Controller
         ];
     }
 
-    private function formLookups(): array
+    private function formLookups(?Asset $asset = null): array
     {
         return [
-            'companies'   => Company::where('is_active', true)->orderBy('name')->get(),
+            'companies'   => Company::visible()->where('is_active', true)->orderBy('name')->get(),
             'categories'  => AssetCategory::where('is_active', true)->orderBy('name')->get(),
             'types'       => AssetType::where('is_active', true)->orderBy('name')->get(),
-            'statuses'    => AssetStatus::where('is_active', true)->orderBy('name')->get(),
+            'statuses'    => AssetStatus::where('is_active', true)->manuallySelectable($asset?->status_id)->orderBy('name')->get(),
             'locations'   => Location::where('is_active', true)->orderBy('name')->get(),
             'departments' => Department::where('is_active', true)->orderBy('name')->get(),
             'branches'    => Branch::where('is_active', true)->orderBy('name')->get(),
-            'custodians'  => Employee::where('is_active', true)->orderBy('name')->get(['id', 'name', 'department_id', 'branch_id']),
+            'custodians'  => Employee::visible()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'department_id', 'branch_id']),
             'availableTags' => Tag::where('status', 'available')->orderBy('tag_number')->get(),
             'assetNamingEnabled' => $this->naming->enabled(),
             'assetNamingPreview' => $this->naming->enabled() ? $this->naming->preview() : null,

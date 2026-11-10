@@ -66,6 +66,24 @@ return [
             'link'     => 'url',
         ],
 
+        'approval.reminder' => [
+            'label'    => 'Approval reminder (24h)',
+            'icon'     => 'clock',
+            'title'    => 'Reminder: :workflow — :subject',
+            'body'     => 'This request has been waiting for your approval for over :hours hours (step :step_level).',
+            'channels' => ['database', 'mail'],
+            'link'     => 'url',
+        ],
+
+        'approval.reminder_submitter' => [
+            'label'    => 'Your request is still pending (24h)',
+            'icon'     => 'clock',
+            'title'    => 'Still pending: :workflow — :subject',
+            'body'     => 'Your request has been waiting for approval for over :hours hours (step :step_level). The approvers have been reminded.',
+            'channels' => ['database', 'mail'],
+            'link'     => 'url',
+        ],
+
         'audit.campaign_activated' => [
             'label'    => 'Audit campaign assigned',
             'icon'     => 'clipboard-check',

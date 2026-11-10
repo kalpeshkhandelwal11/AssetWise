@@ -10,7 +10,7 @@
 
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">
-                Assets in <span class="font-medium text-gray-700 dark:text-gray-300">{{ $category->name }}</span> inherit these defaults when depreciation is first configured. Leave salvage blank to use the {{ \App\Models\Setting::get('depreciation_default_salvage_percent', '5') }}% Companies Act residual.
+                Assets in <span class="font-medium text-gray-700 dark:text-gray-300">{{ $category->name }}</span> inherit these defaults when depreciation is first configured. A salvage (residual) value is required — {{ \App\Models\Setting::get('depreciation_default_salvage_percent', '5') }}% of cost is the Companies Act default.
             </p>
 
             <form method="POST" action="{{ route('admin.categories.depreciation.update', $category) }}" class="space-y-5">
@@ -32,7 +32,14 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
                         <x-input-label for="useful_life_months" value="Useful Life (months)" />
-                        <x-text-input id="useful_life_months" name="useful_life_months" type="number" min="1" class="mt-1 block w-full" :value="old('useful_life_months', $default?->useful_life_months)" required />
+                        @php $depClass = $category->effectiveDepreciationClass(); @endphp
+                        <x-text-input id="useful_life_months" name="useful_life_months" type="number" min="1" class="mt-1 block w-full" :value="old('useful_life_months', $default?->useful_life_months ?? $depClass?->usefulLifeMonths())" required />
+                        @if($depClass)
+                            <p class="mt-1 text-xs text-gray-400">
+                                Schedule II: {{ $depClass->name }} —
+                                {{ $depClass->is_depreciable ? $depClass->usefulLifeMonths() . ' months (' . rtrim(rtrim(number_format($depClass->ratePercent(), 2), '0'), '.') . '% SLM)' : 'not depreciated' }}
+                            </p>
+                        @endif
                         <x-input-error :messages="$errors->get('useful_life_months')" class="mt-1" />
                     </div>
                     <div>
@@ -45,16 +52,10 @@
                         </select>
                         <x-input-error :messages="$errors->get('start_basis')" class="mt-1" />
                     </div>
-                    <div>
-                        <x-input-label for="salvage_value" value="Salvage Value (fixed)" />
-                        <x-text-input id="salvage_value" name="salvage_value" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('salvage_value', $default?->salvage_value)" />
-                        <x-input-error :messages="$errors->get('salvage_value')" class="mt-1" />
-                    </div>
-                    <div>
-                        <x-input-label for="salvage_percent" value="Salvage Percent (%)" />
-                        <x-text-input id="salvage_percent" name="salvage_percent" type="number" step="0.0001" min="0" max="100" class="mt-1 block w-full" :value="old('salvage_percent', $default?->salvage_percent)" />
-                        <x-input-error :messages="$errors->get('salvage_percent')" class="mt-1" />
-                    </div>
+                    @include('modules.depreciation.partials.salvage-fields', [
+                        'salvagePercent' => $default?->salvage_percent,
+                        'salvageValue'   => $default?->salvage_percent === null ? $default?->salvage_value : null,
+                    ])
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
