@@ -105,22 +105,27 @@
     @endcan
 
     {{-- MOVEMENT --}}
-    @canany(['movement.assign', 'movement.transfer', 'movement.verify'])
-    <x-sidebar-group label="Movement" :active="$groupActive(['movement.'])">
+    @canany(['movement.assign', 'movement.transfer', 'movement.verify', 'kits.manage', 'kits.assign', 'kits.view'])
+    <x-sidebar-group label="Movement" :active="$groupActive(['movement.', 'movements.', 'kits.', 'kit-assignments.'])">
         <x-slot:icon>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
             </svg>
         </x-slot:icon>
+        @canany(['movement.assign', 'movement.transfer', 'movement.verify'])
         <x-sidebar-link child :href="route('movements.create')">New Movement</x-sidebar-link>
         <x-sidebar-link child :href="route('movements.index')">Movement History</x-sidebar-link>
-        {{-- HIDDEN (M17 Kits & Bundles) — restore by uncommenting:
-        <x-sidebar-link child href="#">Kits & Bundles</x-sidebar-link>
-        --}}
+        @endcanany
+        @canany(['kits.manage', 'kits.view'])
+        <x-sidebar-link child :href="route('kits.index')" :active="$isActive('kits.')">Kits & Bundles</x-sidebar-link>
+        @endcanany
+        @canany(['kits.assign', 'kits.view'])
+        <x-sidebar-link child :href="route('kit-assignments.index')" :active="$isActive('kit-assignments.')">Kit Assignments</x-sidebar-link>
+        @endcanany
     </x-sidebar-group>
     @endcanany
 
-    {{-- AUDIT (M10) — HIDDEN per request; restore by uncommenting this block.
+    {{-- AUDIT (M10) --}}
     @canany(['audit.manage', 'audit.verify'])
     <x-sidebar-group label="Audit" :active="$groupActive(['audits.'])">
         <x-slot:icon>
@@ -136,9 +141,8 @@
         @endcan
     </x-sidebar-group>
     @endcanany
-    --}}
 
-    {{-- MAINTENANCE (M11) — HIDDEN per request; restore by uncommenting this block.
+    {{-- MAINTENANCE (M11) --}}
     @can('maintenance.manage')
     <x-sidebar-group label="Maintenance" :active="$groupActive(['maintenance.', 'amc.', 'warranty.'])">
         <x-slot:icon>
@@ -152,7 +156,6 @@
         <x-sidebar-link child :href="route('warranty.index')" :active="$isActive('warranty.index')">Warranty</x-sidebar-link>
     </x-sidebar-group>
     @endcan
-    --}}
 
     {{-- DISPOSAL --}}
     @canany(['disposal.request', 'disposal.approve'])
