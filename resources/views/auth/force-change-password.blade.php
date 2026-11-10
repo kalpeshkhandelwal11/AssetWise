@@ -22,14 +22,14 @@
         <div class="space-y-4">
             <div>
                 <x-input-label for="password" :value="__('New Password')" />
-                <x-text-input id="password" class="block mt-1 w-full" type="password"
+                <x-password-input id="password" class="block w-full"
                     name="password" required autocomplete="new-password" />
                 <x-input-error :messages="$errors->get('password')" class="mt-2" />
             </div>
 
             <div>
                 <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
-                <x-text-input id="password_confirmation" class="block mt-1 w-full" type="password"
+                <x-password-input id="password_confirmation" class="block w-full"
                     name="password_confirmation" required autocomplete="new-password" />
             </div>
         </div>
