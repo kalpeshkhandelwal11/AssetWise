@@ -24,6 +24,11 @@ class AssetMovement extends Model
         'verification_condition', 'verification_notes', 'verification_photos',
         'cancelled_at', 'cancelled_by',
         'approval_request_id', 'requested_by',
+        // Phase 2 — receipt
+        'receipt_status', 'dispatched_at', 'previous_status_id',
+        'received_at', 'received_by', 'receipt_method',
+        'short_type', 'short_reported_at', 'short_reported_by',
+        'resolution', 'resolution_notes', 'resolved_at', 'resolved_by',
     ];
 
     protected function casts(): array
@@ -32,11 +37,80 @@ class AssetMovement extends Model
             'verified_at'         => 'datetime',
             'cancelled_at'        => 'datetime',
             'verification_photos' => 'array',
+            'dispatched_at'       => 'datetime',
+            'received_at'         => 'datetime',
+            'short_reported_at'   => 'datetime',
+            'resolved_at'         => 'datetime',
         ];
     }
 
-    /** Receipt-condition options recorded at verify time (record-only, no status change). */
-    public const CONDITIONS = ['ok', 'damaged', 'missing'];
+    /** Receipt-condition options. 'incomplete' = arrived without parts/accessories (short). */
+    public const CONDITIONS = ['ok', 'damaged', 'missing', 'incomplete'];
+
+    /** Short-received resolutions an admin can choose. */
+    public const RESOLUTIONS = [
+        'received_later'     => 'Received later',
+        'lost'               => 'Mark lost (write off — needs approval)',
+        'returned_to_sender' => 'Return to sender',
+        'accepted_as_is'     => 'Accept as-is (incomplete)',
+    ];
+
+    public function isInTransit(): bool
+    {
+        return $this->receipt_status === 'in_transit';
+    }
+
+    public function isShort(): bool
+    {
+        return $this->receipt_status === 'short';
+    }
+
+    /** Awaiting the destination's receipt or an admin's short-received resolution. */
+    public function isOpen(): bool
+    {
+        return in_array($this->receipt_status, ['in_transit', 'short'], true);
+    }
+
+    /** One word for lists/exports — combines approval state and physical receipt state. */
+    public function getDisplayStatusAttribute(): string
+    {
+        if ($this->cancelled_at) {
+            return 'Cancelled';
+        }
+
+        return match (true) {
+            $this->status === 'pending_approval' => 'Pending Approval',
+            $this->status === 'rejected'         => 'Rejected',
+            default => match ($this->receipt_status) {
+                'in_transit' => 'In Transit',
+                'short'      => 'Short Received',
+                'received'   => $this->resolution === 'accepted_as_is' ? 'Received (incomplete)' : 'Received',
+                'lost'       => 'Lost (written off)',
+                'returned'   => 'Returned to Sender',
+                default      => 'Completed',
+            },
+        };
+    }
+
+    public function receivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
+    }
+
+    public function shortReportedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'short_reported_by');
+    }
+
+    public function resolvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
+    }
+
+    public function previousStatus(): BelongsTo
+    {
+        return $this->belongsTo(AssetStatus::class, 'previous_status_id');
+    }
 
     /**
      * Company isolation: a movement is visible when its asset is, or when either side of it

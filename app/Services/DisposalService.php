@@ -51,6 +51,29 @@ class DisposalService
         });
     }
 
+    /**
+     * A disposal whose approval already happened elsewhere — a loss write-off (asset_loss
+     * workflow) or a plaza handover. Created directly as `approved`; no `disposal` workflow is
+     * needed because the owning approval IS the disposal approval. Callers then writeOff() and
+     * finalize() in the same transaction.
+     */
+    public function createApproved(Asset $asset, string $typeCode, string $reason, User $requester, ?int $approvalRequestId = null): DisposalRequest
+    {
+        $type = DisposalType::firstOrCreate(
+            ['code' => $typeCode],
+            ['name' => \Illuminate\Support\Str::headline(strtolower($typeCode)), 'is_active' => true],
+        );
+
+        return DisposalRequest::create([
+            'asset_id'            => $asset->id,
+            'disposal_type_id'    => $type->id,
+            'reason'              => $reason,
+            'status'              => 'approved',
+            'requested_by'        => $requester->id,
+            'approval_request_id' => $approvalRequestId,
+        ]);
+    }
+
     /** Called by MarkDisposalApproved (the ApprovalRequestApproved listener) — unlocks write-off, nothing else. */
     public function markApproved(DisposalRequest $disposalRequest): void
     {
@@ -109,29 +132,7 @@ class DisposalService
             ]);
         }
 
-        DB::transaction(function () use ($disposalRequest, $actor) {
-            $asset = $disposalRequest->asset;
-            $disposedStatus = AssetStatus::where('code', 'DISPOSED')->first();
-
-            if ($disposedStatus && $disposedStatus->id !== $asset->status_id) {
-                AssetStatusHistory::create([
-                    'asset_id'       => $asset->id,
-                    'from_status_id' => $asset->status_id,
-                    'to_status_id'   => $disposedStatus->id,
-                    'changed_by'     => $actor->id,
-                    'reason'         => 'Disposal scrapped',
-                    'created_at'     => now(),
-                ]);
-
-                $asset->update(['status_id' => $disposedStatus->id]);
-            }
-
-            $disposalRequest->update([
-                'scrapped_at' => now(),
-                'scrapped_by' => $actor->id,
-                'status'      => 'scrapped',
-            ]);
-        });
+        $this->finalize($disposalRequest, $actor);
 
         if ($disposalRequest->requestedBy) {
             $this->notifications->send($disposalRequest->requestedBy, 'disposal.completed', [
@@ -143,8 +144,60 @@ class DisposalService
         return $disposalRequest;
     }
 
+    /**
+     * Close a written-off disposal and move the asset to its terminal status — DISPOSED for a
+     * scrap, LOST for a loss write-off, SOLD_EXT / HANDED_OVER for a plaza handover. The
+     * disposal row ends `scrapped` (its enum is unchanged); the asset status says why.
+     */
+    public function finalize(DisposalRequest $disposalRequest, User $actor, string $statusCode = 'DISPOSED', string $reason = 'Disposal scrapped'): DisposalRequest
+    {
+        DB::transaction(function () use ($disposalRequest, $actor, $statusCode, $reason) {
+            $asset = Asset::withoutGlobalScopes()->findOrFail($disposalRequest->asset_id);
+            $status = AssetStatus::where('code', $statusCode)->first();
+
+            if ($status && $status->id !== $asset->status_id) {
+                AssetStatusHistory::create([
+                    'asset_id'       => $asset->id,
+                    'from_status_id' => $asset->status_id,
+                    'to_status_id'   => $status->id,
+                    'changed_by'     => $actor->id,
+                    'reason'         => $reason,
+                    'created_at'     => now(),
+                ]);
+
+                $asset->update(['status_id' => $status->id]);
+            }
+
+            $disposalRequest->update([
+                'scrapped_at' => now(),
+                'scrapped_by' => $actor->id,
+                'status'      => 'scrapped',
+            ]);
+        });
+
+        return $disposalRequest;
+    }
+
     private function assertDisposable(Asset $asset): void
     {
+        if ($asset->isRetired() || $asset->status?->code === 'LOST') {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" has already left the register.",
+            ]);
+        }
+
+        if ($asset->isInTransit()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" is in transit — receive it first.",
+            ]);
+        }
+
+        if ($asset->hasPendingLoss()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" has a loss write-off pending approval.",
+            ]);
+        }
+
         if ($asset->isDisposed()) {
             throw ValidationException::withMessages([
                 'asset' => "\"{$asset->name}\" is already disposed.",

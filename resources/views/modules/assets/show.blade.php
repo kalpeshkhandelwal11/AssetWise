@@ -33,6 +33,29 @@
                 @endcan
             </div>
         @endif
+        @php $openTransit = $asset->openTransitMovement(); @endphp
+        @if($openTransit)
+            @php $openTransit->loadMissing('toLocation.manager', 'toCompany', 'movementType'); @endphp
+            <div class="mb-4 rounded-lg border {{ $openTransit->isShort() ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20' : 'border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20' }} px-4 py-3 flex items-center justify-between gap-3">
+                <p class="text-sm {{ $openTransit->isShort() ? 'text-red-800 dark:text-red-300' : 'text-indigo-800 dark:text-indigo-300' }}">
+                    @if($openTransit->isShort())
+                        <strong>Short received</strong> — {{ $openTransit->short_type === 'incomplete' ? 'arrived incomplete' : 'not received' }}; awaiting an administrator's resolution.
+                    @else
+                        <strong>In transit</strong> ({{ $openTransit->movementType?->name }}) to
+                        {{ collect([$openTransit->toCompany?->name, $openTransit->toLocation?->name])->filter()->join(' · ') ?: 'stores' }}
+                        since {{ $openTransit->dispatched_at?->format('d M Y') }}. Custody and location change when it is scanned in.
+                    @endif
+                </p>
+                @if($openTransit->isInTransit() && app(\App\Services\MovementService::class)->canReceive(auth()->user(), $openTransit))
+                    <a href="{{ $openTransit->batch_id ? route('movements.batches.receive', $openTransit->batch_id) : route('movements.receive.form', $openTransit) }}"
+                       class="flex-shrink-0 px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Receive</a>
+                @elseif($openTransit->isShort())
+                    @can('movement.verify')
+                        <a href="{{ route('movements.short.index') }}" class="flex-shrink-0 px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700">Resolve</a>
+                    @endcan
+                @endif
+            </div>
+        @endif
         <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-3">
                 <a href="{{ route('assets.index') }}" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">

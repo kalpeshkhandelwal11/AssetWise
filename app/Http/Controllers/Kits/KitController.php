@@ -138,7 +138,7 @@ class KitController extends Controller
     {
         return [
             'categories' => AssetCategory::orderBy('name')->get(),
-            'assets'     => Asset::where('is_active', true)->orderBy('name')->get(),
+            'assets'     => Asset::where('is_active', true)->operable()->orderBy('name')->get(),
         ];
     }
 }

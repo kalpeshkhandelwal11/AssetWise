@@ -97,6 +97,13 @@ class MaintenanceService
 
     private function startMaintenance(Asset $asset, MaintenanceRecord $record, User $actor): void
     {
+        // Its previous_status_id restore would otherwise overwrite the IN_TRANSIT state.
+        if ($asset->isInTransit()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'status' => "\"{$asset->name}\" is in transit — receive it before starting maintenance.",
+            ]);
+        }
+
         $maintenanceStatus = AssetStatus::where('code', 'MAINTENANCE')->first();
 
         if (! $maintenanceStatus || $maintenanceStatus->id === $asset->status_id) {

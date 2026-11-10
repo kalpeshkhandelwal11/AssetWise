@@ -19,9 +19,10 @@ class LocationController extends Controller
     {
         $this->authorize('masters.manage');
 
-        $locations = Location::with('buildings.floors.rooms')->orderBy('name')->get();
+        $locations = Location::with('buildings.floors.rooms', 'manager')->orderBy('name')->get();
+        $managers = \App\Models\Employee::where('is_active', true)->orderBy('name')->get(['id', 'name', 'employee_code', 'user_id']);
 
-        return view('admin.locations.index', compact('locations'));
+        return view('admin.locations.index', compact('locations', 'managers'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -32,6 +33,7 @@ class LocationController extends Controller
             'name'    => 'required|string|max:255',
             'code'    => 'required|string|max:50|alpha_dash|unique:locations,code',
             'address' => 'nullable|string|max:500',
+            'manager_employee_id' => 'nullable|exists:employees,id',
         ]);
 
         $data['code'] = strtoupper($data['code']);
@@ -49,6 +51,7 @@ class LocationController extends Controller
             'name'    => 'required|string|max:255',
             'code'    => 'required|string|max:50|alpha_dash|unique:locations,code,' . $location->id,
             'address' => 'nullable|string|max:500',
+            'manager_employee_id' => 'nullable|exists:employees,id',
         ]);
 
         $data['code'] = strtoupper($data['code']);

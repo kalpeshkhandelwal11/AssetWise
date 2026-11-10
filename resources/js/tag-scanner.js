@@ -10,7 +10,7 @@
  * html5-qrcode (~300 kB) is lazy-imported inside start() so it only loads when the user taps
  * the button — the same reason it lives in the bundle rather than inline in a Blade attribute.
  */
-export default function tagScanner({ viewerId, inputId }) {
+export default function tagScanner({ viewerId, inputId, autoSubmit = false }) {
     return {
         scanner: null,
         active: false,
@@ -144,6 +144,11 @@ export default function tagScanner({ viewerId, inputId }) {
                 input.dispatchEvent(new Event('input', { bubbles: true }));
             }
             this.captured = tag;
+
+            // Batch receipt: each scan posts straight away so the next asset can be scanned.
+            if (autoSubmit && input?.form) {
+                input.form.requestSubmit();
+            }
         },
 
         describe(error) {

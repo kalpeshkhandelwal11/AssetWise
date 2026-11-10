@@ -9,6 +9,7 @@ use App\Models\AssetStatus;
 use App\Models\AssetStatusHistory;
 use App\Models\MovementType;
 use App\Models\User;
+use App\Support\CompanyVisibility;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -16,12 +17,26 @@ use Illuminate\Validation\ValidationException;
 /**
  * Assignment / Return / Transfer / Custodian Change / Inter-Company Transfer (M09).
  * Every movement is approval-gated — submit() only opens the request; apply()/applyBulk()
- * run the actual field changes once WorkflowService fires ApprovalRequestApproved.
+ * run once WorkflowService fires ApprovalRequestApproved.
+ *
+ * Phase 2 — physical movements go IN TRANSIT. For Transfer (with a destination location),
+ * Return and Inter-Company Transfer, approval only dispatches: the asset becomes IN_TRANSIT
+ * and keeps its old location/custodian/company. The move lands when the destination —
+ * the location manager or a movement.verify holder (stores/admin) — scans the barcode
+ * (receive()). Assignment / Custodian Change apply immediately at approval (the custodian
+ * may have no login, so there is no receipt step). Anything not received can be reported
+ * short and is then resolved by an admin (resolveShort()).
  */
 class MovementService
 {
     /** Movement type codes gated by movement.transfer; everything else needs only movement.assign. */
     private const TRANSFER_TYPE_CODES = ['TRANSFER', 'INTER_COMPANY_TRANSFER'];
+
+    /** Physical movements: approval dispatches, receipt (barcode scan) applies. */
+    public const TRANSIT_TYPE_CODES = ['TRANSFER', 'RETURN', 'INTER_COMPANY_TRANSFER'];
+
+    /** Reported through the asset_loss approval (write-off), not the transfer workflow. */
+    public const LOSS_TYPE_CODES = ['LOST', 'STOLEN'];
 
     /** Memoised status-code -> id lookups for defaultStatusIdForType() across a bulk apply. */
     private array $statusIdByCode = [];
@@ -69,6 +84,17 @@ class MovementService
                 'requested_by'       => $actor->id,
             ]);
 
+            // Lost/Stolen: one asset_loss approval writes the asset off (LossService), instead
+            // of a transfer approval that would only flip a status.
+            if (in_array($movementType->code, self::LOSS_TYPE_CODES, true)) {
+                $loss = app(LossService::class)->request(
+                    $asset, strtolower($movementType->code), $data['notes'] ?? null, $actor, $movement,
+                );
+                $movement->update(['approval_request_id' => $loss->approval_request_id]);
+
+                return $movement;
+            }
+
             $approvalRequest = $this->workflows->submit($movement, 'transfer', $actor);
             $movement->update(['approval_request_id' => $approvalRequest->id]);
 
@@ -106,6 +132,12 @@ class MovementService
     public function buildBatch(Collection $assets, array $data, User $actor, ?int $kitAssignmentId = null): AssetMovementBatch
     {
         $movementType = MovementType::findOrFail($data['movement_type_id']);
+
+        if (in_array($movementType->code, self::LOSS_TYPE_CODES, true)) {
+            throw ValidationException::withMessages([
+                'movement_type_id' => 'Lost / Stolen must be reported per asset (each one is a separate write-off).',
+            ]);
+        }
 
         foreach ($assets as $asset) {
             $this->assertMovable($asset, $movementType, $data);
@@ -148,7 +180,6 @@ class MovementService
         });
     }
 
-    /** Called by ApplyAssetMovement (the ApprovalRequestApproved listener) for a standalone movement. */
     /**
      * For an approver: what does the destination already hold in the same category(ies)?
      * Matches the destination custodian, or the destination location when no custodian is
@@ -199,37 +230,372 @@ class MovementService
             });
     }
 
+    /** Called by ApplyAssetMovement (the ApprovalRequestApproved listener) for a standalone movement. */
     public function apply(AssetMovement $movement): void
     {
-        DB::transaction(function () use ($movement) {
-            $this->applyToAsset($movement->asset, $movement);
-            $movement->update(['status' => 'completed']);
-        });
+        // Approval is system-level work: company isolation must not hide the asset from the
+        // approver's request (e.g. the receiving side approving an inter-company transfer).
+        CompanyVisibility::unrestricted(function () use ($movement) {
+            DB::transaction(fn () => $this->dispatchOrApply($movement));
 
-        $this->notifyCustodian($movement->fresh(['toCustodian.user', 'asset', 'movementType']));
+            $this->notifyAfterApproval($movement->fresh(['toCustodian.user', 'toLocation.manager.user', 'asset', 'movementType']));
+        });
     }
 
     /**
-     * Called by ApplyAssetMovement for a batch. Atomic across every asset in the batch —
-     * either the whole bulk move lands or none of it does.
+     * Called by ApplyAssetMovement for a batch (and M17 kit assignment). Atomic across every
+     * asset — either the whole bulk move is dispatched/applied or none of it is.
      */
     public function applyBulk(AssetMovementBatch $batch): void
     {
-        DB::transaction(function () use ($batch) {
+        CompanyVisibility::unrestricted(function () use ($batch) {
+            $batch->load('movements.asset', 'movements.movementType');
+            $anyTransit = false;
+
+            DB::transaction(function () use ($batch, &$anyTransit) {
+                foreach ($batch->movements as $movement) {
+                    $movement->kit_assignment_id = $batch->kit_assignment_id;
+                    $anyTransit = $this->dispatchOrApply($movement) || $anyTransit;
+                }
+
+                $batch->update([
+                    'status'         => 'completed',
+                    'receipt_status' => $anyTransit ? 'in_transit' : null,
+                    'dispatched_at'  => $anyTransit ? now() : null,
+                ]);
+            });
+
             foreach ($batch->movements as $movement) {
-                $this->applyToAsset($movement->asset, $movement);
-                $movement->update([
-                    'status'            => 'completed',
-                    'kit_assignment_id' => $batch->kit_assignment_id,
+                $this->notifyAfterApproval($movement->fresh(['toCustodian.user', 'toLocation.manager.user', 'asset', 'movementType']));
+            }
+        });
+    }
+
+    /** Does this movement have a physical receipt step? */
+    public function isTransit(AssetMovement $movement): bool
+    {
+        $code = $movement->movementType?->code;
+
+        if (! in_array($code, self::TRANSIT_TYPE_CODES, true)) {
+            return false;
+        }
+
+        // A Transfer that only re-files the asset under another department moves nothing.
+        return $code !== 'TRANSFER' || $movement->to_location_id !== null;
+    }
+
+    /**
+     * Approval-time half: physical moves are dispatched (IN_TRANSIT, nothing else changes);
+     * everything else applies immediately. Returns true when the movement went in transit.
+     */
+    private function dispatchOrApply(AssetMovement $movement): bool
+    {
+        $asset = Asset::withoutGlobalScopes()->findOrFail($movement->asset_id);
+
+        if (! $this->isTransit($movement)) {
+            $this->applyToAsset($asset, $movement);
+            $movement->fill(['status' => 'completed'])->save();
+
+            return false;
+        }
+
+        $inTransitId = $this->inTransitStatusId();
+
+        $movement->fill([
+            'status'             => 'completed',
+            'receipt_status'     => 'in_transit',
+            'dispatched_at'      => now(),
+            'previous_status_id' => $asset->status_id,
+        ])->save();
+
+        $this->setStatus($asset, $inTransitId, $movement->requested_by, ($movement->movementType->name ?? 'Movement').' approved — in transit');
+
+        return true;
+    }
+
+    // ------------------------------------------------------------------ receipt
+
+    /**
+     * Who may confirm receipt: the destination location's manager (their linked login), or any
+     * movement.verify holder — stores/admin, who also receive on behalf of anyone without a login.
+     */
+    public function canReceive(User $user, AssetMovement $movement): bool
+    {
+        if ($user->can('movement.verify')) {
+            return true;
+        }
+
+        $managerUserId = $movement->toLocation?->manager?->user_id;
+
+        return $managerUserId !== null && (int) $managerUserId === (int) $user->id;
+    }
+
+    /** People to tell "this is on its way to you": the location manager, else stores/admins. */
+    public function receiversFor(AssetMovement $movement): \Illuminate\Support\Collection
+    {
+        $manager = $movement->toLocation?->manager?->user;
+
+        if ($manager && $manager->is_active) {
+            return collect([$manager]);
+        }
+
+        return $this->verifiers();
+    }
+
+    /** Does the scanned/typed value identify this asset (pool tag, a /scan/{n} URL, or Asset ID)? */
+    public function tagMatches(?Asset $asset, string $raw): bool
+    {
+        $scanned = trim($raw);
+        if (preg_match('#/scan/([^/?\#]+)#', $scanned, $m)) {
+            $scanned = urldecode($m[1]);
+        }
+
+        return collect([$asset?->activeTag()?->tag_number, $asset?->asset_tag])
+            ->filter()
+            ->contains(fn ($t) => strcasecmp($t, $scanned) === 0);
+    }
+
+    /**
+     * Confirm receipt of an in-transit movement. ok/damaged → the move lands now;
+     * incomplete/missing → reported short for an admin to resolve.
+     *
+     * @param array{condition?: ?string, notes?: ?string, photos?: string[], method?: string} $data
+     */
+    public function receive(AssetMovement $movement, User $actor, array $data): AssetMovement
+    {
+        if (! $movement->isInTransit()) {
+            throw ValidationException::withMessages([
+                'movement' => 'This movement is not awaiting receipt.',
+            ]);
+        }
+
+        $condition = $data['condition'] ?? 'ok';
+
+        if (in_array($condition, ['incomplete', 'missing'], true)) {
+            if (blank($data['notes'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'verification_notes' => 'Describe what is missing or incomplete.',
                 ]);
             }
 
-            $batch->update(['status' => 'completed']);
-        });
-
-        foreach ($batch->movements as $movement) {
-            $this->notifyCustodian($movement->fresh(['toCustodian.user', 'asset', 'movementType']));
+            return $this->reportShort($movement, $condition, $actor, $data['notes'], $data['photos'] ?? []);
         }
+
+        return CompanyVisibility::unrestricted(fn () => DB::transaction(fn () => $this->finalizeReceipt(
+            $movement, $actor, $condition, $data['notes'] ?? null, $data['photos'] ?? [], $data['method'] ?? 'scan',
+        )));
+    }
+
+    /**
+     * Report a movement short. `missing` = never arrived (a batch member not scanned);
+     * `incomplete` = arrived without parts/accessories. The asset stays IN_TRANSIT with its old
+     * custodian/location until an admin resolves it.
+     */
+    public function reportShort(AssetMovement $movement, string $type, User $actor, ?string $notes, array $photos = []): AssetMovement
+    {
+        if (! $movement->isInTransit()) {
+            throw ValidationException::withMessages(['movement' => 'Only an in-transit movement can be reported short.']);
+        }
+
+        $movement->update([
+            'receipt_status'         => 'short',
+            'short_type'             => $type === 'incomplete' ? 'incomplete' : 'missing',
+            'short_reported_at'      => now(),
+            'short_reported_by'      => $actor->id,
+            'verification_condition' => $type === 'incomplete' ? 'incomplete' : 'missing',
+            'verification_notes'     => $notes,
+            'verification_photos'    => $photos ?: null,
+        ]);
+
+        $this->refreshBatchReceipt($movement->batch);
+
+        $recipients = $this->verifiers()
+            ->merge(array_filter([$movement->requestedBy]))
+            ->unique('id');
+
+        $this->notifications->sendMany($recipients, 'movement.short_received', [
+            'asset'     => Asset::labelFor($movement->asset),
+            'short'     => $movement->short_type === 'incomplete' ? 'received incomplete' : 'not received',
+            'notes'     => $notes,
+            'url'       => route('movements.short.index'),
+        ]);
+
+        return $movement;
+    }
+
+    /**
+     * Batch receipt "finish": every member still in transit (not scanned) is reported missing.
+     *
+     * @return int number of members reported short
+     */
+    public function finishBatchReceipt(AssetMovementBatch $batch, User $actor, ?string $notes = null): int
+    {
+        $pending = $batch->movements()->where('receipt_status', 'in_transit')->get();
+
+        foreach ($pending as $movement) {
+            $this->reportShort($movement, 'missing', $actor, $notes ?: 'Not received with the rest of the batch.');
+        }
+
+        return $pending->count();
+    }
+
+    /**
+     * Admin resolution of a short-received movement:
+     *   received_later     → the asset turned up; the move lands now.
+     *   accepted_as_is     → keep it incomplete (note recorded); the move lands now.
+     *   returned_to_sender → cancel the move for this asset; previous status restored.
+     *   lost               → raise a loss write-off (asset_loss approval); closes on approval.
+     */
+    public function resolveShort(AssetMovement $movement, string $resolution, User $admin, ?string $notes): AssetMovement
+    {
+        if (! $movement->isShort()) {
+            throw ValidationException::withMessages(['movement' => 'This movement has no open short-received issue.']);
+        }
+
+        if (! array_key_exists($resolution, AssetMovement::RESOLUTIONS)) {
+            throw ValidationException::withMessages(['resolution' => 'Pick a resolution.']);
+        }
+
+        if (blank($notes)) {
+            throw ValidationException::withMessages(['resolution_notes' => 'Add a note explaining the resolution.']);
+        }
+
+        return CompanyVisibility::unrestricted(fn () => DB::transaction(function () use ($movement, $resolution, $admin, $notes) {
+            $stamp = ['resolution' => $resolution, 'resolution_notes' => $notes, 'resolved_at' => now(), 'resolved_by' => $admin->id];
+
+            switch ($resolution) {
+                case 'received_later':
+                    $movement->fill($stamp);
+                    $this->finalizeReceipt($movement, $admin, 'ok', $notes, [], 'manual');
+                    break;
+
+                case 'accepted_as_is':
+                    $movement->fill($stamp);
+                    $this->finalizeReceipt($movement, $admin, 'incomplete', $movement->verification_notes, $movement->verification_photos ?? [], 'manual');
+                    break;
+
+                case 'returned_to_sender':
+                    $asset = Asset::withoutGlobalScopes()->findOrFail($movement->asset_id);
+                    $this->setStatus($asset, $movement->previous_status_id, $admin->id, 'Short received — returned to sender');
+                    $movement->update($stamp + ['receipt_status' => 'returned']);
+                    $this->refreshBatchReceipt($movement->batch);
+                    break;
+
+                case 'lost':
+                    // Stays `short` until the write-off is approved (ApplyAssetLoss closes it).
+                    $movement->update($stamp);
+                    app(LossService::class)->request(
+                        Asset::withoutGlobalScopes()->findOrFail($movement->asset_id), 'lost', $notes, $admin, $movement,
+                    );
+                    break;
+            }
+
+            $this->notifications->sendMany(
+                collect(array_filter([$movement->requestedBy, $movement->shortReportedBy]))->unique('id'),
+                'movement.short_resolved',
+                [
+                    'asset'      => Asset::labelFor($movement->asset),
+                    'resolution' => AssetMovement::RESOLUTIONS[$resolution],
+                    'url'        => route('assets.show', $movement->asset_id),
+                ],
+            );
+
+            return $movement->fresh();
+        }));
+    }
+
+    /** The move actually lands: destination applied, status set, receipt stamped. */
+    private function finalizeReceipt(AssetMovement $movement, User $actor, string $condition, ?string $notes, array $photos, string $method): AssetMovement
+    {
+        $asset = Asset::withoutGlobalScopes()->findOrFail($movement->asset_id);
+
+        $this->applyToAsset($asset, $movement, receipt: true, actorId: $actor->id);
+
+        $movement->fill([
+            'receipt_status'         => 'received',
+            'received_at'            => now(),
+            'received_by'            => $actor->id,
+            'receipt_method'         => $method,
+            'verified_at'            => now(),
+            'verified_by'            => $actor->id,
+            'verification_condition' => $condition,
+            'verification_notes'     => $notes,
+            'verification_photos'    => $photos ?: null,
+        ])->save();
+
+        $this->refreshBatchReceipt($movement->batch);
+        $this->notifyCustodian($movement->fresh(['toCustodian.user', 'asset', 'movementType']));
+
+        return $movement;
+    }
+
+    /** Batch receipt state: closed once nothing is in transit or short; partial in between. */
+    public function refreshBatchReceipt(?AssetMovementBatch $batch): void
+    {
+        if (! $batch || ! $batch->receipt_status) {
+            return;
+        }
+
+        $open = $batch->movements()->whereIn('receipt_status', ['in_transit', 'short'])->count();
+        $done = $batch->movements()->whereIn('receipt_status', ['received', 'lost', 'returned'])->count();
+
+        $batch->update(match (true) {
+            $open === 0 => ['receipt_status' => 'closed', 'closed_at' => now()],
+            $done > 0   => ['receipt_status' => 'partial'],
+            default     => ['receipt_status' => 'in_transit'],
+        });
+    }
+
+    /** Stores/admins who receive and resolve (movement.verify). Empty if the permission isn't seeded. */
+    private function verifiers(): \Illuminate\Support\Collection
+    {
+        try {
+            return User::permission('movement.verify')->where('is_active', true)->get();
+        } catch (\Spatie\Permission\Exceptions\PermissionDoesNotExist) {
+            return collect();
+        }
+    }
+
+    private function inTransitStatusId(): int
+    {
+        return $this->statusIdByCode['IN_TRANSIT'] ??= AssetStatus::firstOrCreate(
+            ['code' => 'IN_TRANSIT'],
+            ['name' => 'In Transit', 'color' => '#f97316', 'is_system' => true, 'is_active' => true],
+        )->id;
+    }
+
+    private function setStatus(Asset $asset, ?int $statusId, ?int $actorId, string $reason): void
+    {
+        if (! $statusId || (int) $statusId === (int) $asset->status_id) {
+            return;
+        }
+
+        AssetStatusHistory::create([
+            'asset_id'       => $asset->id,
+            'from_status_id' => $asset->status_id,
+            'to_status_id'   => $statusId,
+            'changed_by'     => $actorId,
+            'reason'         => $reason,
+            'created_at'     => now(),
+        ]);
+
+        $asset->update(['status_id' => $statusId]);
+    }
+
+    private function notifyAfterApproval(AssetMovement $movement): void
+    {
+        if ($movement->receipt_status !== 'in_transit') {
+            $this->notifyCustodian($movement);
+
+            return;
+        }
+
+        $this->notifications->sendMany($this->receiversFor($movement), 'movement.in_transit', [
+            'asset'         => Asset::labelFor($movement->asset),
+            'movement_type' => $movement->movementType?->name,
+            'destination'   => $movement->toLocation?->name ?? $movement->toCompany?->name ?? 'stores',
+            'url'           => route('movements.receive.form', $movement),
+        ]);
     }
 
     /**
@@ -311,13 +677,13 @@ class MovementService
      * rather than reading to_custodian_id, since "returned" means back to the pool, not
      * reassigned to whoever the form happened to submit.
      */
-    private function applyToAsset(Asset $asset, AssetMovement $movement): void
+    private function applyToAsset(Asset $asset, AssetMovement $movement, bool $receipt = false, ?int $actorId = null): void
     {
         $code = $movement->movementType->code;
 
         $updates = match ($code) {
             'ASSIGNMENT', 'CUSTODIAN_CHANGE' => ['custodian_id' => $movement->to_custodian_id],
-            'RETURN' => ['custodian_id' => null],
+            'RETURN' => array_filter(['custodian_id' => null, 'location_id' => $movement->to_location_id], fn ($v, $k) => $k === 'custodian_id' || $v !== null, ARRAY_FILTER_USE_BOTH),
             // A relocation may also hand the asset to a new custodian; each destination is
             // optional (null = leave that attribute unchanged), so only set what was provided.
             'TRANSFER' => array_filter([
@@ -328,6 +694,12 @@ class MovementService
             'INTER_COMPANY_TRANSFER' => ['company_id' => $movement->to_company_id],
             default => [],
         };
+
+        // A physical move that lands without a named recipient ends Available at its new home,
+        // so the previous person's custody ends with it.
+        if ($receipt && in_array($code, ['TRANSFER', 'INTER_COMPANY_TRANSFER'], true) && ! $movement->to_custodian_id) {
+            $updates['custodian_id'] = null;
+        }
 
         if ($updates) {
             $asset->update($updates);
@@ -342,20 +714,23 @@ class MovementService
         // The movement's explicit to_status_id wins; otherwise assignment/return imply a status
         // (ASSIGNMENT/CUSTODIAN_CHANGE -> ASSIGNED, RETURN -> AVAILABLE) so an approved assignment
         // no longer leaves the asset showing "Available".
-        $targetStatusId = $movement->to_status_id ?? $this->defaultStatusIdForType($code);
+        // On receipt a physical move ends Assigned when it names a recipient, else Available.
+        $targetStatusId = $movement->to_status_id
+            ?? ($receipt
+                ? $this->statusId($movement->to_custodian_id ? 'ASSIGNED' : 'AVAILABLE')
+                : $this->defaultStatusIdForType($code));
 
-        if ($targetStatusId && $targetStatusId !== $asset->status_id) {
-            AssetStatusHistory::create([
-                'asset_id'       => $asset->id,
-                'from_status_id' => $asset->status_id,
-                'to_status_id'   => $targetStatusId,
-                'changed_by'     => $movement->requested_by,
-                'reason'         => ($movement->movementType->name ?? 'Movement') . ' movement',
-                'created_at'     => now(),
-            ]);
+        $this->setStatus(
+            $asset,
+            $targetStatusId,
+            $actorId ?? $movement->requested_by,
+            ($movement->movementType->name ?? 'Movement') . ($receipt ? ' received' : ' movement'),
+        );
+    }
 
-            $asset->update(['status_id' => $targetStatusId]);
-        }
+    private function statusId(string $code): ?int
+    {
+        return $this->statusIdByCode[$code] ??= AssetStatus::where('code', $code)->value('id');
     }
 
     /** Status a movement type moves the asset into by default (null = leave status untouched). */
@@ -380,6 +755,24 @@ class MovementService
         if ($asset->isDisposed()) {
             throw ValidationException::withMessages([
                 'asset' => "\"{$asset->name}\" is disposed and cannot be moved.",
+            ]);
+        }
+
+        if ($asset->isRetired()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" has left the register ({$asset->status?->name}) and cannot be moved.",
+            ]);
+        }
+
+        if ($asset->isInTransit() || $asset->openTransitMovement()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" is in transit — it must be received (or its short-received issue resolved) before it can be moved again.",
+            ]);
+        }
+
+        if ($asset->hasPendingLoss()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" has a loss write-off pending approval.",
             ]);
         }
 

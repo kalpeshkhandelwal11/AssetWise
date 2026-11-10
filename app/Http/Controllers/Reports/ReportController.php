@@ -31,7 +31,7 @@ class ReportController extends Controller
     /** Filters accepted per report type — whitelisted from the request, same shape ReportService expects. */
     private const FILTER_KEYS = [
         'asset_register'        => ['company_id', 'category_id', 'asset_type_id', 'status_id', 'location_id', 'department_id', 'branch_id', 'search'],
-        'movement'               => ['company_id', 'movement_type_id', 'status', 'date_from', 'date_to', 'search'],
+        'movement'               => ['company_id', 'movement_type_id', 'status', 'receipt_status', 'date_from', 'date_to', 'search'],
         'intercompany_transfer'  => ['from_company_id', 'to_company_id', 'date_from', 'date_to', 'search'],
         'disposal'               => ['company_id', 'disposal_type_id', 'status', 'date_from', 'date_to', 'search'],
         'maintenance'            => ['company_id', 'maintenance_type_id', 'status', 'is_capitalized', 'date_from', 'date_to', 'search'],

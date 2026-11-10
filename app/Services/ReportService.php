@@ -447,7 +447,15 @@ class ReportService
         }
 
         if (! empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            // In transit / short are receipt states of an approved (status=completed) movement.
+            match ($filters['status']) {
+                'in_transit', 'short', 'received' => $query->where('receipt_status', $filters['status']),
+                default                           => $query->where('status', $filters['status']),
+            };
+        }
+
+        if (! empty($filters['receipt_status'])) {
+            $query->where('receipt_status', $filters['receipt_status']);
         }
 
         if (! empty($filters['search'])) {

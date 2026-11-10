@@ -72,7 +72,7 @@
                 </select>
                 <select name="status" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
                     <option value="">All Statuses</option>
-                    @foreach(['pending_approval' => 'Pending Approval', 'completed' => 'Completed', 'rejected' => 'Rejected'] as $value => $optionLabel)
+                    @foreach(['pending_approval' => 'Pending Approval', 'in_transit' => 'In Transit', 'short' => 'Short Received', 'received' => 'Received', 'completed' => 'Completed', 'rejected' => 'Rejected'] as $value => $optionLabel)
                         <option value="{{ $value }}" @selected(($filters['status'] ?? null) === $value)>{{ $optionLabel }}</option>
                     @endforeach
                 </select>

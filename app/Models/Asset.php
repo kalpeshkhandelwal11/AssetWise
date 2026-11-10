@@ -219,6 +219,38 @@ class Asset extends Model
         return $this->status?->code === 'DISPOSED';
     }
 
+    /** Left the active register: scrapped, returned to NHAI, handed over, sold externally. */
+    public function isRetired(): bool
+    {
+        return in_array($this->status?->code, AssetStatus::TERMINAL, true);
+    }
+
+    /** Approved for a physical move but not yet received at the destination. */
+    public function isInTransit(): bool
+    {
+        return $this->status?->code === 'IN_TRANSIT';
+    }
+
+    /** The movement currently awaiting receipt (or a short-received resolution), if any. */
+    public function openTransitMovement(): ?AssetMovement
+    {
+        return $this->movements()->whereIn('receipt_status', ['in_transit', 'short'])->first();
+    }
+
+    public function hasPendingLoss(): bool
+    {
+        return AssetLossRequest::where('asset_id', $this->id)->where('status', 'pending_approval')->exists();
+    }
+
+    /**
+     * Assets that can be acted on (picked for a movement, kit, disposal, maintenance): not a
+     * draft, not in transit, not retired.
+     */
+    public function scopeOperable(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $query->whereDoesntHave('status', fn ($q) => $q->whereIn('code', ['DRAFT', 'IN_TRANSIT', ...AssetStatus::TERMINAL]));
+    }
+
     /** In the creation-approval holding state (M-create): saved but not yet approved live. */
     public function isDraft(): bool
     {

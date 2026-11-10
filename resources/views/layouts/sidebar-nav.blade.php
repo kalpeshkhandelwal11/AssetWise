@@ -105,7 +105,7 @@
     @endcan
 
     {{-- MOVEMENT --}}
-    @canany(['movement.assign', 'movement.transfer', 'movement.verify', 'kits.manage', 'kits.assign', 'kits.view'])
+    @canany(['movement.assign', 'movement.transfer', 'movement.verify', 'movement.receive', 'kits.manage', 'kits.assign', 'kits.view'])
     <x-sidebar-group label="Movement" :active="$groupActive(['movement.', 'movements.', 'kits.', 'kit-assignments.'])">
         <x-slot:icon>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,6 +116,20 @@
         <x-sidebar-link child :href="route('movements.create')">New Movement</x-sidebar-link>
         <x-sidebar-link child :href="route('movements.index')">Movement History</x-sidebar-link>
         @endcanany
+        @can('movement.receive')
+        <x-sidebar-link child :href="route('movements.incoming')" :active="$isActive('movements.incoming') || $isActive('movements.receive') || $isActive('movements.batches')">Incoming / Receive</x-sidebar-link>
+        @endcan
+        @can('movement.verify')
+        @php $shortCount = \App\Models\AssetMovement::where('receipt_status', 'short')->count(); @endphp
+        <x-sidebar-link child :href="route('movements.short.index')" :active="$isActive('movements.short')">
+            @if($shortCount)
+                <x-slot:badge>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">{{ $shortCount > 9 ? '9+' : $shortCount }}</span>
+                </x-slot:badge>
+            @endif
+            Short Received
+        </x-sidebar-link>
+        @endcan
         @canany(['kits.manage', 'kits.view'])
         <x-sidebar-link child :href="route('kits.index')" :active="$isActive('kits.')">Kits & Bundles</x-sidebar-link>
         @endcanany

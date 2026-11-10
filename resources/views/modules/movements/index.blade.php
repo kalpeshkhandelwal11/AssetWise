@@ -43,6 +43,8 @@
             <option value="">All Statuses</option>
             <option value="pending_approval" @selected(request('status') === 'pending_approval')>Pending Approval</option>
             <option value="completed" @selected(request('status') === 'completed')>Completed</option>
+            <option value="in_transit" @selected(request('status') === 'in_transit')>In Transit</option>
+            <option value="short" @selected(request('status') === 'short')>Short Received</option>
             <option value="rejected" @selected(request('status') === 'rejected')>Rejected</option>
             <option value="cancelled" @selected(request('status') === 'cancelled')>Cancelled</option>
         </select>
@@ -82,12 +84,14 @@
                         </td>
                         <td class="px-4 py-3">
                             @php
-                                $isCancelled = $movement->cancelled_at !== null;
-                                $statusLabel = $isCancelled ? 'Cancelled' : ucwords(str_replace('_', ' ', $movement->status));
-                                $statusColor = $isCancelled ? 'gray' : match($movement->status) {
-                                    'completed' => 'green',
-                                    'rejected'  => 'red',
-                                    default     => 'amber',
+                                $statusLabel = $movement->display_status;
+                                $statusColor = match($statusLabel) {
+                                    'Completed', 'Received'  => 'green',
+                                    'In Transit'             => 'indigo',
+                                    'Short Received', 'Received (incomplete)' => 'amber',
+                                    'Rejected', 'Lost (written off)' => 'red',
+                                    'Cancelled', 'Returned to Sender' => 'gray',
+                                    default                  => 'amber',
                                 };
                             @endphp
                             <x-status-badge :color="$statusColor" :label="$statusLabel" />
@@ -99,8 +103,16 @@
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $movement->created_at->format('d M Y') }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
+                                @if($movement->isInTransit() && app(\App\Services\MovementService::class)->canReceive(auth()->user(), $movement))
+                                    <a href="{{ $movement->batch_id ? route('movements.batches.receive', $movement->batch_id) : route('movements.receive.form', $movement) }}"
+                                       class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Receive</a>
+                                @elseif($movement->isShort())
+                                    @can('movement.verify')
+                                        <a href="{{ route('movements.short.index') }}" class="text-xs text-amber-600 dark:text-amber-400 hover:underline">Resolve</a>
+                                    @endcan
+                                @endif
                                 @can('movement.verify')
-                                    @if($movement->status === 'completed' && ! $movement->verified_at)
+                                    @if($movement->status === 'completed' && ! $movement->verified_at && $movement->receipt_status === null)
                                         <a href="{{ route('movements.verify.form', $movement) }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Verify</a>
                                     @elseif($movement->verified_at)
                                         <span class="text-xs text-gray-400">Verified</span>

@@ -324,6 +324,18 @@ class AssetController extends Controller
 
     public function update(Request $request, Asset $asset): RedirectResponse
     {
+        // While in transit the destination is decided by the movement — custody, location and
+        // ownership can't be edited by hand until it is received.
+        if ($asset->isInTransit()) {
+            foreach (['custodian_id', 'location_id', 'company_id'] as $locked) {
+                if ($request->has($locked) && (string) $request->input($locked) !== (string) $asset->{$locked}) {
+                    throw ValidationException::withMessages([
+                        $locked => 'This asset is in transit — its custodian, location and company change only when it is received.',
+                    ]);
+                }
+            }
+        }
+
         $this->authorize('update', $asset);
 
         $canChangeCompany = $request->user()->can('companies.manage');

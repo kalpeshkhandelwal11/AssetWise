@@ -10,7 +10,7 @@ class ApprovalWorkflow extends Model
 {
     use HasFactory;
 
-    public const MODULES = ['transfer', 'disposal', 'tag_replacement', 'kit_assignment', 'asset_creation', 'depreciation'];
+    public const MODULES = ['transfer', 'disposal', 'tag_replacement', 'kit_assignment', 'asset_creation', 'depreciation', 'asset_loss'];
 
     protected $fillable = ['name', 'module', 'is_active'];
 

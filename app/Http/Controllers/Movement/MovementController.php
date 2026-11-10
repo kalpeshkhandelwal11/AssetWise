@@ -49,7 +49,9 @@ class MovementController extends Controller
         if ($request->filled('status')) {
             // "Cancelled" is status=rejected + cancelled_at set; keep the two distinct in filters.
             match ($request->input('status')) {
-                'cancelled' => $query->whereNotNull('cancelled_at'),
+                'cancelled'  => $query->whereNotNull('cancelled_at'),
+                'in_transit' => $query->where('receipt_status', 'in_transit'),
+                'short'      => $query->where('receipt_status', 'short'),
                 'rejected'  => $query->where('status', 'rejected')->whereNull('cancelled_at'),
                 default     => $query->where('status', $request->input('status')),
             };
@@ -224,7 +226,7 @@ class MovementController extends Controller
     private function formLookups(): array
     {
         return [
-            'assets'        => Asset::where('is_active', true)->orderBy('name')->get(),
+            'assets'        => Asset::where('is_active', true)->operable()->orderBy('name')->get(),
             'movementTypes' => MovementType::where('is_active', true)->orderBy('name')->get(),
             'companies'     => Company::where('is_active', true)->orderBy('name')->get(),
             'locations'     => Location::where('is_active', true)->orderBy('name')->get(),

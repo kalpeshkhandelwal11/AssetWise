@@ -12,8 +12,12 @@ class AssetStatus extends Model
      */
     public const WORKFLOW_ONLY = ['DRAFT', 'IN_TRANSIT', 'DISPOSED', 'RETURNED', 'HANDED_OVER', 'SOLD_EXT', 'ICT'];
 
-    /** End-of-life statuses — the asset has left the active register. */
-    public const TERMINAL = ['DISPOSED', 'RETURNED', 'HANDED_OVER', 'SOLD_EXT'];
+    /**
+     * End-of-life statuses — the asset has left the active register. LOST is terminal (a
+     * written-off loss) but deliberately NOT workflow-only: if the asset turns up, an admin
+     * can edit it back to Available.
+     */
+    public const TERMINAL = ['DISPOSED', 'RETURNED', 'HANDED_OVER', 'SOLD_EXT', 'LOST'];
 
     protected $fillable = ['name', 'code', 'color', 'is_system', 'is_active'];
 

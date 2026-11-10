@@ -42,6 +42,7 @@ use App\Http\Controllers\Maintenance\MaintenanceController;
 use App\Http\Controllers\Maintenance\WarrantyController;
 use App\Http\Controllers\Movement\MovementBatchController;
 use App\Http\Controllers\Movement\MovementController;
+use App\Http\Controllers\Movement\MovementReceiptController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
@@ -154,6 +155,15 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::post('bulk', [MovementBatchController::class, 'store'])->name('bulk.store');
         Route::get('create', [MovementController::class, 'create'])->name('create');
         Route::post('/', [MovementController::class, 'store'])->name('store');
+        // Phase 2 — receipt of physical movements (literal paths before the {movement} wildcards)
+        Route::get('incoming', [MovementReceiptController::class, 'incoming'])->name('incoming');
+        Route::get('short', [MovementReceiptController::class, 'shortIndex'])->name('short.index');
+        Route::get('batches/{batch}/receive', [MovementReceiptController::class, 'batchForm'])->name('batches.receive');
+        Route::post('batches/{batch}/scan', [MovementReceiptController::class, 'batchScan'])->name('batches.scan');
+        Route::post('batches/{batch}/finish', [MovementReceiptController::class, 'batchFinish'])->name('batches.finish');
+        Route::get('{movement}/receive', [MovementReceiptController::class, 'receiveForm'])->name('receive.form');
+        Route::post('{movement}/receive', [MovementReceiptController::class, 'receive'])->name('receive');
+        Route::post('{movement}/short/resolve', [MovementReceiptController::class, 'resolveShort'])->name('short.resolve');
         Route::get('{movement}/verify', [MovementController::class, 'verifyForm'])->name('verify.form');
         Route::post('{movement}/verify', [MovementController::class, 'verify'])->name('verify');
         Route::post('{movement}/cancel', [MovementController::class, 'cancel'])->name('cancel');

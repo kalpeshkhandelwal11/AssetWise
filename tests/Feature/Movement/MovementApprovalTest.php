@@ -13,6 +13,7 @@ use App\Services\MovementService;
 use Database\Seeders\WorkflowSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsRolesAndPermissions;
+use Tests\Concerns\ReceivesMovements;
 use Tests\TestCase;
 
 /**
@@ -23,7 +24,7 @@ use Tests\TestCase;
  */
 class MovementApprovalTest extends TestCase
 {
-    use RefreshDatabase, SeedsRolesAndPermissions;
+    use RefreshDatabase, SeedsRolesAndPermissions, ReceivesMovements;
 
     private function withWorkflow(): void
     {
@@ -182,6 +183,10 @@ class MovementApprovalTest extends TestCase
         $this->actingAs($levelOneApprover)->post(route('approvals.approve', $movement->approval_request_id));
         $this->actingAs($levelTwoApprover)->post(route('approvals.approve', $movement->approval_request_id));
 
+        // Phase 2: a physical move lands on receipt, not at approval.
+        $this->assertSame('IN_TRANSIT', $asset->fresh()->status->code);
+        $this->receiveInTransit($asset);
+
         $this->assertNull($asset->fresh()->custodian_id);
         $this->assertSame('AVAILABLE', $asset->fresh()->status->code);
     }
@@ -266,6 +271,10 @@ class MovementApprovalTest extends TestCase
         $this->actingAs($levelOneApprover)->post(route('approvals.approve', $movement->approval_request_id));
         $this->actingAs($levelTwoApprover)->post(route('approvals.approve', $movement->approval_request_id));
 
+        // Phase 2: a physical move lands on receipt, not at approval.
+        $this->assertSame('IN_TRANSIT', $asset->fresh()->status->code);
+        $this->receiveInTransit($asset);
+
         $this->assertSame($destinationCompany->id, $asset->fresh()->company_id);
     }
 
@@ -302,6 +311,10 @@ class MovementApprovalTest extends TestCase
         $movement = \App\Models\AssetMovement::where('asset_id', $asset->id)->firstOrFail();
         $this->actingAs($levelOneApprover)->post(route('approvals.approve', $movement->approval_request_id));
         $this->actingAs($levelTwoApprover)->post(route('approvals.approve', $movement->approval_request_id));
+
+        // Phase 2: a physical move lands on receipt, not at approval.
+        $this->assertSame('IN_TRANSIT', $asset->fresh()->status->code);
+        $this->receiveInTransit($asset);
 
         $this->assertNull($asset->fresh()->custodian_id);
     }

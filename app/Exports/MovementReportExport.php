@@ -15,6 +15,7 @@ class MovementReportExport implements FromCollection, WithHeadings, WithMapping
         'Asset Tag', 'Asset Name', 'Movement Type', 'From Company', 'To Company',
         'From Location', 'To Location', 'From Custodian', 'To Custodian',
         'Status', 'Requested By', 'Requested At', 'Verified By', 'Verified At',
+        'Dispatched At', 'Received By', 'Received At', 'Receipt Condition', 'Short Resolution',
     ];
 
     private Collection $movements;
@@ -55,11 +56,16 @@ class MovementReportExport implements FromCollection, WithHeadings, WithMapping
             $movement->toLocation?->name,
             $movement->fromCustodian?->name,
             $movement->toCustodian?->name,
-            ucfirst(str_replace('_', ' ', $movement->status)),
+            $movement->display_status,
             $movement->requestedBy?->name,
             optional($movement->created_at)->format('Y-m-d H:i'),
             $movement->verifiedBy?->name,
             optional($movement->verified_at)->format('Y-m-d H:i'),
+            optional($movement->dispatched_at)->format('Y-m-d H:i'),
+            $movement->receivedBy?->name,
+            optional($movement->received_at)->format('Y-m-d H:i'),
+            $movement->verification_condition ? ucfirst($movement->verification_condition) : null,
+            $movement->resolution ? (AssetMovement::RESOLUTIONS[$movement->resolution] ?? $movement->resolution) : null,
         ];
     }
 }

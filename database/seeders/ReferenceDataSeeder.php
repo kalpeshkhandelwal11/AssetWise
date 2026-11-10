@@ -34,6 +34,15 @@ class ReferenceDataSeeder extends Seeder
             ['level' => 1, 'approver_type' => 'role', 'approver_role' => 'Approver',      'escalation_hours' => 48],
             ['level' => 2, 'approver_type' => 'role', 'approver_role' => 'Asset Manager', 'escalation_hours' => 48],
         ]],
+        'asset_loss' => ['Standard Loss Write-off Approval', [
+            ['level' => 1, 'approver_type' => 'role', 'approver_role' => 'Approver',      'escalation_hours' => 48],
+            ['level' => 2, 'approver_type' => 'role', 'approver_role' => 'Asset Manager', 'escalation_hours' => 48],
+        ]],
+    ];
+
+    /** System statuses (code => attributes), created if missing. */
+    public const STATUSES = [
+        'IN_TRANSIT' => ['name' => 'In Transit', 'color' => '#f97316', 'is_system' => true],
     ];
 
     public function run(): void
@@ -56,6 +65,13 @@ class ReferenceDataSeeder extends Seeder
         }
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        foreach (self::STATUSES as $code => $attributes) {
+            \App\Models\AssetStatus::firstOrCreate(['code' => $code], $attributes + ['is_active' => true]);
+        }
+
+        // LOST now means "written off as lost" (asset_loss approval) — rename only if untouched.
+        \App\Models\AssetStatus::where('code', 'LOST')->where('name', 'Lost')->update(['name' => 'Lost (Written Off)']);
 
         // Companies Act Schedule II classes (life in years) — added if missing, never overwritten.
         foreach (\App\Models\DepreciationClass::SCHEDULE_II as $class) {

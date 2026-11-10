@@ -59,7 +59,7 @@ class DisposalController extends Controller
 
         return view('modules.disposals.create', [
             'asset'         => $preselected,
-            'assets'        => Asset::where('is_active', true)->orderBy('name')->get(),
+            'assets'        => Asset::where('is_active', true)->operable()->orderBy('name')->get(),
             'disposalTypes' => DisposalType::where('is_active', true)->orderBy('name')->get(),
         ]);
     }

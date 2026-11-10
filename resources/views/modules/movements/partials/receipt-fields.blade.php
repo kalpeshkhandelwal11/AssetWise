@@ -1,12 +1,21 @@
-{{-- Receipt sign-off: condition + notes + photos. Record-only (never changes asset status). --}}
+{{--
+    Receipt condition + notes + photos.
+    $conditions        value => label (defaults to the legacy sign-off options)
+    $requireCondition  receipt forms require a choice; the legacy verify sign-off does not
+--}}
+@php
+    $conditions ??= ['ok' => 'Received OK', 'damaged' => 'Damaged', 'missing' => 'Missing / short'];
+    $requireCondition ??= false;
+@endphp
 <div class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4 mb-4">
     <div>
-        <x-input-label value="Condition on receipt" />
+        <x-input-label value="{{ $requireCondition ? 'Condition on receipt *' : 'Condition on receipt' }}" />
         <div class="mt-1.5 flex flex-wrap gap-4 text-sm">
-            @foreach(['ok' => 'Received OK', 'damaged' => 'Damaged', 'missing' => 'Missing / short'] as $val => $lbl)
+            @foreach($conditions as $val => $lbl)
                 <label class="inline-flex items-center gap-1.5 cursor-pointer">
                     <input type="radio" name="verification_condition" value="{{ $val }}"
-                           @checked(old('verification_condition') === $val)
+                           @checked(old('verification_condition', $requireCondition ? 'ok' : null) === $val)
+                           @if($requireCondition) required @endif
                            class="text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900">
                     <span class="text-gray-700 dark:text-gray-300">{{ $lbl }}</span>
                 </label>
@@ -16,10 +25,11 @@
     </div>
 
     <div>
-        <x-input-label for="verification_notes" value="Notes (optional)" />
+        <x-input-label for="verification_notes" value="Notes" />
         <textarea id="verification_notes" name="verification_notes" rows="2"
-                  placeholder="e.g. 1 of 2 boxes missing; screen cracked on arrival"
+                  placeholder="e.g. charger and mouse missing; screen cracked on arrival"
                   class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">{{ old('verification_notes') }}</textarea>
+        <p class="mt-1 text-xs text-gray-400">Required when the asset is incomplete or short.</p>
         <x-input-error :messages="$errors->get('verification_notes')" class="mt-1" />
     </div>
 

@@ -53,7 +53,8 @@ class SharedMastersSeeder extends Seeder
             ['name' => 'In Maintenance',  'code' => 'MAINTENANCE',    'color' => '#f59e0b', 'is_system' => true],
             ['name' => 'Scrapped',        'code' => 'DISPOSED',       'color' => '#ef4444', 'is_system' => true],
             ['name' => 'Under Audit',     'code' => 'AUDIT',          'color' => '#8b5cf6', 'is_system' => false],
-            ['name' => 'Lost',            'code' => 'LOST',           'color' => '#6b7280', 'is_system' => false],
+            ['name' => 'Lost (Written Off)', 'code' => 'LOST',        'color' => '#6b7280', 'is_system' => false],
+            ['name' => 'In Transit',      'code' => 'IN_TRANSIT',     'color' => '#f97316', 'is_system' => true],
             ['name' => 'Sold',            'code' => 'ICT',            'color' => '#06b6d4', 'is_system' => false],
         ];
 

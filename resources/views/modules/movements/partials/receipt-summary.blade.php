@@ -1,10 +1,11 @@
-{{-- Compact receipt sign-off summary for history tables. Expects $movement. --}}
-@if($movement->verified_at)
+{{-- Compact receipt summary for history tables. Expects $movement. --}}
+@if($movement->verified_at || $movement->isShort())
     @php
         $condMap = [
-            'ok'      => ['Received OK', 'green'],
-            'damaged' => ['Damaged', 'amber'],
-            'missing' => ['Missing / short', 'red'],
+            'ok'         => ['Received OK', 'green'],
+            'damaged'    => ['Damaged', 'amber'],
+            'missing'    => ['Missing / short', 'red'],
+            'incomplete' => ['Incomplete', 'amber'],
         ];
         $cond = $movement->verification_condition;
     @endphp
@@ -13,6 +14,20 @@
             <x-status-badge :color="$condMap[$cond][1]" :label="$condMap[$cond][0]" />
         @else
             <span class="text-xs text-gray-400">Verified</span>
+        @endif
+
+        @if($movement->received_at)
+            <p class="text-xs text-gray-400">
+                {{ $movement->receipt_method === 'on_behalf' ? 'Confirmed on behalf' : 'Scanned in' }}
+                by {{ $movement->receivedBy?->name ?? '—' }}, {{ $movement->received_at->format('d M Y') }}
+            </p>
+        @endif
+
+        @if($movement->resolution)
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+                Resolution: {{ \App\Models\AssetMovement::RESOLUTIONS[$movement->resolution] ?? $movement->resolution }}
+                @if($movement->resolution_notes) — {{ $movement->resolution_notes }}@endif
+            </p>
         @endif
 
         @if($movement->verification_notes)
@@ -30,6 +45,8 @@
             </div>
         @endif
     </div>
+@elseif($movement->isInTransit())
+    <span class="text-xs text-indigo-600 dark:text-indigo-400">Awaiting receipt</span>
 @else
     <span class="text-xs text-gray-300 dark:text-gray-600">—</span>
 @endif

@@ -34,6 +34,7 @@ class AssetMovementBatch extends Model
         'to_department_id', 'to_status_id', 'kit_assignment_id', 'status', 'notes',
         'cancelled_at', 'cancelled_by',
         'approval_request_id', 'requested_by',
+        'receipt_status', 'dispatched_at', 'closed_at',
     ];
 
     protected function casts(): array

@@ -116,7 +116,7 @@ class KitAssignmentController extends Controller
     private function lookups(): array
     {
         return [
-            'assets'        => Asset::where('is_active', true)->orderBy('name')->get(),
+            'assets'        => Asset::where('is_active', true)->operable()->orderBy('name')->get(),
             // Kits are moved with any type except RETURN, which is reserved for the kit-return action.
             'movementTypes' => MovementType::where('is_active', true)->where('code', '!=', 'RETURN')->orderBy('name')->get(),
             'companies'     => Company::where('is_active', true)->orderBy('name')->get(),

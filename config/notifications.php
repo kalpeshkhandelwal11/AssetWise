@@ -84,6 +84,33 @@ return [
             'link'     => 'url',
         ],
 
+        'movement.in_transit' => [
+            'label'    => 'Asset on its way to you',
+            'icon'     => 'truck',
+            'title'    => 'In transit: :asset',
+            'body'     => ':movement_type approved — scan the asset on arrival at :destination to confirm receipt.',
+            'channels' => ['database', 'mail'],
+            'link'     => 'url',
+        ],
+
+        'movement.short_received' => [
+            'label'    => 'Short received',
+            'icon'     => 'exclamation-triangle',
+            'title'    => 'Short received: :asset',
+            'body'     => 'The asset was :short. :notes',
+            'channels' => ['database', 'mail'],
+            'link'     => 'url',
+        ],
+
+        'movement.short_resolved' => [
+            'label'    => 'Short-received issue resolved',
+            'icon'     => 'check-circle',
+            'title'    => 'Resolved: :asset',
+            'body'     => 'Resolution: :resolution.',
+            'channels' => ['database'],
+            'link'     => 'url',
+        ],
+
         'audit.campaign_activated' => [
             'label'    => 'Audit campaign assigned',
             'icon'     => 'clipboard-check',

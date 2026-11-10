@@ -26,7 +26,7 @@ class ScanController extends Controller
      */
     public function index(): View
     {
-        $this->authorize('tags.view');
+        $this->authorize('scan.use');
 
         return view('scan.index');
     }
@@ -38,7 +38,7 @@ class ScanController extends Controller
      */
     public function lookup(Request $request): RedirectResponse
     {
-        $this->authorize('tags.view');
+        $this->authorize('scan.use');
 
         $data = $request->validate([
             'tag_number' => 'required|string|max:100',
@@ -56,16 +56,28 @@ class ScanController extends Controller
      */
     public function resolve(Request $request, string $tag_number): View|RedirectResponse
     {
-        $this->authorize('tags.view');
+        $this->authorize('scan.use');
 
         $result = $this->tags->resolveScan($tag_number);
         $method = $request->query('method') === 'camera' ? 'camera' : 'manual';
         $this->tags->logScan($result->tag, $result->asset, $request->user(), $method);
 
+        // Phase 2 — an asset arriving at its destination: route whoever may receive it straight
+        // to the receipt form. Checked before company isolation, because the receiver of an
+        // inter-company transfer cannot see the asset until it is received.
+        if ($result->status === 'assigned' && ($receipt = $this->receiptRedirect($request, $result->tag))) {
+            return $receipt;
+        }
+
         // Company isolation: an assigned tag whose asset resolved to null belongs to a
         // company the scanner cannot see. Say nothing about the asset.
         if ($result->status === 'assigned' && ! $result->asset) {
             abort(404, 'This tag is not linked to an asset you have access to.');
+        }
+
+        // Location managers may scan to receive without holding tags.view — nothing else here.
+        if (! $request->user()->can('tags.view')) {
+            return redirect()->route('movements.incoming')->with('error', 'Nothing awaiting your receipt for tag '.$result->tag->tag_number.'.');
         }
 
         if ($result->status === 'assigned' && $result->asset) {
@@ -88,6 +100,29 @@ class ScanController extends Controller
                     ->orderBy('name')->limit(200)->get()
                 : collect(),
         ]);
+    }
+
+    private function receiptRedirect(Request $request, \App\Models\Tag $tag): ?RedirectResponse
+    {
+        $assetId = $tag->activeAssignment?->asset_id;
+
+        if (! $assetId) {
+            return null;
+        }
+
+        $movement = \App\Support\CompanyVisibility::unrestricted(fn () => \App\Models\AssetMovement::query()
+            ->where('asset_id', $assetId)
+            ->where('receipt_status', 'in_transit')
+            ->with('toLocation.manager')
+            ->first());
+
+        if (! $movement || ! app(\App\Services\MovementService::class)->canReceive($request->user(), $movement)) {
+            return null;
+        }
+
+        return redirect()
+            ->route($movement->batch_id ? 'movements.batches.receive' : 'movements.receive.form', $movement->batch_id ?: $movement)
+            ->with('success', 'Tag scanned: '.$tag->tag_number.' — confirm receipt.');
     }
 
     /** POST /api/scan — mobile scan logging (Alpine.js / html5-qrcode client). */

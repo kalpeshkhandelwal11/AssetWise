@@ -18,11 +18,12 @@ use App\Services\Depreciation\StraightLineCalculator;
 use App\Services\DepreciationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsRolesAndPermissions;
+use Tests\Concerns\ReceivesMovements;
 use Tests\TestCase;
 
 class KitAssignmentTest extends TestCase
 {
-    use RefreshDatabase, SeedsRolesAndPermissions;
+    use RefreshDatabase, SeedsRolesAndPermissions, ReceivesMovements;
 
     private function kitWorkflow(): void
     {
@@ -163,6 +164,7 @@ class KitAssignmentTest extends TestCase
         $this->assertSame($assignment->id, $return->parent_assignment_id);
 
         $this->actingAs($approver)->post(route('approvals.approve', $return->approval_request_id));
+        $this->receiveInTransit($asset); // Phase 2: a kit return lands on receipt at stores
 
         $this->assertNull($asset->fresh()->custodian_id); // RETURN clears custodian
         $this->assertSame('completed', $return->fresh()->status);
@@ -201,6 +203,7 @@ class KitAssignmentTest extends TestCase
 
         $assignment = KitAssignment::firstOrFail();
         $this->actingAs($approver)->post(route('approvals.approve', $assignment->approval_request_id));
+        $this->receiveInTransit($asset); // Phase 2: the company changes on receipt
 
         $this->assertSame($companyB->id, $asset->fresh()->company_id);
         $this->assertFalse($setting->fresh()->is_active); // superseded by the transfer reset
