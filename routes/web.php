@@ -43,6 +43,9 @@ use App\Http\Controllers\Maintenance\WarrantyController;
 use App\Http\Controllers\Movement\MovementBatchController;
 use App\Http\Controllers\Movement\MovementController;
 use App\Http\Controllers\Movement\MovementReceiptController;
+use App\Http\Controllers\Nhai\HandoverController;
+use App\Http\Controllers\Nhai\NhaiController;
+use App\Http\Controllers\Nhai\TakeoverController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
@@ -220,6 +223,35 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('{type}', [ReportController::class, 'show'])->name('show');
         Route::post('{type}/export', [ReportController::class, 'export'])->name('export');
+    });
+
+    // NHAI / toll plaza (Phase 3) — literal paths before the {takeover}/{handover} wildcards
+    Route::prefix('nhai')->name('nhai.')->group(function () {
+        Route::get('/', [NhaiController::class, 'index'])->name('index');
+        Route::get('export', [NhaiController::class, 'export'])->name('export');
+
+        Route::get('takeovers/create', [TakeoverController::class, 'create'])->name('takeovers.create');
+        Route::post('takeovers', [TakeoverController::class, 'store'])->name('takeovers.store');
+        Route::get('takeovers/{takeover}', [TakeoverController::class, 'show'])->name('takeovers.show');
+        Route::get('takeovers/{takeover}/edit', [TakeoverController::class, 'edit'])->name('takeovers.edit');
+        Route::put('takeovers/{takeover}', [TakeoverController::class, 'update'])->name('takeovers.update');
+        Route::post('takeovers/{takeover}/lines', [TakeoverController::class, 'storeLine'])->name('takeovers.lines.store');
+        Route::delete('takeovers/{takeover}/lines/{line}', [TakeoverController::class, 'destroyLine'])->name('takeovers.lines.destroy');
+        Route::get('takeovers/{takeover}/template', [TakeoverController::class, 'template'])->name('takeovers.template');
+        Route::post('takeovers/{takeover}/import', [TakeoverController::class, 'import'])->name('takeovers.import');
+        Route::post('takeovers/{takeover}/submit', [TakeoverController::class, 'submit'])->name('takeovers.submit');
+        Route::post('takeovers/{takeover}/reopen', [TakeoverController::class, 'reopen'])->name('takeovers.reopen');
+        Route::get('takeovers/{takeover}/certificate', [TakeoverController::class, 'certificate'])->name('takeovers.certificate');
+
+        Route::get('handovers/create', [HandoverController::class, 'create'])->name('handovers.create');
+        Route::post('handovers', [HandoverController::class, 'store'])->name('handovers.store');
+        Route::get('handovers/{handover}', [HandoverController::class, 'show'])->name('handovers.show');
+        Route::put('handovers/{handover}/lines', [HandoverController::class, 'updateLines'])->name('handovers.lines.update');
+        Route::post('handovers/{handover}/refresh', [HandoverController::class, 'refresh'])->name('handovers.refresh');
+        Route::post('handovers/{handover}/submit', [HandoverController::class, 'submit'])->name('handovers.submit');
+        Route::post('handovers/{handover}/reopen', [HandoverController::class, 'reopen'])->name('handovers.reopen');
+        Route::post('handovers/{handover}/retry', [HandoverController::class, 'retry'])->name('handovers.retry');
+        Route::get('handovers/{handover}/certificate', [HandoverController::class, 'certificate'])->name('handovers.certificate');
     });
 
     // Approvals (M08) — the param is {approval_request}, not {request}, so it never

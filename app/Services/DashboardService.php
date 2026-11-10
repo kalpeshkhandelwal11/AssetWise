@@ -21,12 +21,32 @@ class DashboardService
 {
     use FiltersByCompany;
 
+    private array $dashboardFilters = [];
+
+    /** Company scope + external-owner exclusion for every Asset count on the dashboard. */
+    protected function scopeByCompany(\Illuminate\Database\Eloquent\Builder $query, ?int $companyId, string $column = 'company_id'): \Illuminate\Database\Eloquent\Builder
+    {
+        if ($companyId !== null) {
+            $query->where($column, $companyId);
+        }
+
+        if ($query->getModel() instanceof Asset && $column === 'company_id') {
+            $this->excludeExternalOwners($query, $this->dashboardFilters);
+        }
+
+        return $query;
+    }
+
     public function __construct(private readonly WorkflowService $workflow)
     {
     }
 
     public function summary(User $user, ?int $companyId): array
     {
+        // The dashboard is about our own assets: NHAI-owned assets count only when NHAI itself
+        // is the selected company.
+        $this->dashboardFilters = ['company_id' => $companyId];
+
         $totalAssets    = $this->scopeByCompany(Asset::query(), $companyId)->count();
         $assignedAssets = $this->scopeByCompany(
             Asset::whereHas('status', fn ($q) => $q->where('code', 'ASSIGNED')), $companyId

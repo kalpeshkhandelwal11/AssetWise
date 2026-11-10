@@ -198,6 +198,22 @@
 </x-sidebar-section>
 @endcanany
 
+{{-- NHAI / TOLL PLAZAS (Phase 3) --}}
+@can('nhai.view')
+<x-sidebar-section label="NHAI / Toll Plazas">
+    <x-sidebar-group label="NHAI" :active="$groupActive(['nhai.'])">
+        <x-slot:icon>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+            </svg>
+        </x-slot:icon>
+        <x-sidebar-link child :href="route('nhai.index', ['tab' => 'assets'])" :active="request()->routeIs('nhai.index') && request('tab', 'assets') === 'assets'">NHAI Assets</x-sidebar-link>
+        <x-sidebar-link child :href="route('nhai.index', ['tab' => 'takeovers'])" :active="$isActive('nhai.takeovers') || request('tab') === 'takeovers'">Takeovers</x-sidebar-link>
+        <x-sidebar-link child :href="route('nhai.index', ['tab' => 'handovers'])" :active="$isActive('nhai.handovers') || request('tab') === 'handovers'">Handovers</x-sidebar-link>
+    </x-sidebar-group>
+</x-sidebar-section>
+@endcan
+
 {{-- ADMINISTRATION --}}
 @canany(['users.view', 'roles.manage', 'masters.manage', 'masters.view', 'companies.manage', 'employees.manage', 'workflow.manage', 'login_history.view', 'activity_log.view'])
 <x-sidebar-section label="Administration">

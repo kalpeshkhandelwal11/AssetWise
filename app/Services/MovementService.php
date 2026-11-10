@@ -776,6 +776,14 @@ class MovementService
             ]);
         }
 
+        if ($asset->hasPendingHandover()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" is in a plaza handover awaiting approval.",
+            ]);
+        }
+
+        $this->assertOwnershipAllows($asset, $movementType, $data);
+
         if ($asset->isDraft()) {
             throw ValidationException::withMessages([
                 'asset' => "\"{$asset->name}\" is a draft pending creation approval and cannot be moved.",
@@ -816,6 +824,39 @@ class MovementService
         if ($movementType->code === 'INTER_COMPANY_TRANSFER' && empty($data['to_company_id'])) {
             throw ValidationException::withMessages([
                 'to_company_id' => 'A destination company is required for an inter-company transfer.',
+            ]);
+        }
+    }
+
+    /**
+     * NHAI-owned assets belong to their plaza: custodian, room and lane changes are fine, but
+     * they never change company and never leave the plaza (they go back to NHAI only through a
+     * handover). And none of our assets can be "transferred" to an external party — that is a
+     * sale or a handover.
+     */
+    private function assertOwnershipAllows(Asset $asset, MovementType $movementType, array $data): void
+    {
+        $code = $movementType->code;
+
+        if ($code === 'INTER_COMPANY_TRANSFER') {
+            if ($asset->isExternallyOwned()) {
+                throw ValidationException::withMessages([
+                    'to_company_id' => "\"{$asset->name}\" belongs to {$asset->company?->name} and cannot be transferred between companies.",
+                ]);
+            }
+
+            $to = ! empty($data['to_company_id']) ? \App\Models\Company::find($data['to_company_id']) : null;
+            if ($to?->isExternal()) {
+                throw ValidationException::withMessages([
+                    'to_company_id' => "{$to->name} is an external party — hand assets over through a plaza handover or a sale.",
+                ]);
+            }
+        }
+
+        if ($asset->isExternallyOwned() && in_array($code, ['TRANSFER', 'RETURN'], true)
+            && ! empty($data['to_location_id']) && (int) $data['to_location_id'] !== (int) $asset->location_id) {
+            throw ValidationException::withMessages([
+                'to_location_id' => "\"{$asset->name}\" is NHAI property and stays at its plaza.",
             ]);
         }
     }

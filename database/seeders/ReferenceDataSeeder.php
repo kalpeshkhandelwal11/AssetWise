@@ -23,6 +23,10 @@ class ReferenceDataSeeder extends Seeder
     /** permission => roles that receive it on first creation (Super Admin always does). */
     public const PERMISSIONS = [
         'companies.view_all' => [],
+        // Phase 3 — NHAI / toll plaza
+        'nhai.view'          => ['Asset Manager', 'Approver', 'Auditor', 'Viewer'],
+        'takeover.manage'    => ['Asset Manager'],
+        'handover.manage'    => ['Asset Manager'],
     ];
 
     /**
@@ -38,11 +42,23 @@ class ReferenceDataSeeder extends Seeder
             ['level' => 1, 'approver_type' => 'role', 'approver_role' => 'Approver',      'escalation_hours' => 48],
             ['level' => 2, 'approver_type' => 'role', 'approver_role' => 'Asset Manager', 'escalation_hours' => 48],
         ]],
+        'takeover' => ['Standard Plaza Takeover Approval', [
+            ['level' => 1, 'approver_type' => 'role', 'approver_role' => 'Approver',      'escalation_hours' => 48],
+            ['level' => 2, 'approver_type' => 'role', 'approver_role' => 'Asset Manager', 'escalation_hours' => 48],
+        ]],
+        'handover' => ['Standard Plaza Handover Approval', [
+            ['level' => 1, 'approver_type' => 'role', 'approver_role' => 'Approver',      'escalation_hours' => 48],
+            ['level' => 2, 'approver_type' => 'role', 'approver_role' => 'Asset Manager', 'escalation_hours' => 48],
+        ]],
     ];
 
     /** System statuses (code => attributes), created if missing. */
     public const STATUSES = [
-        'IN_TRANSIT' => ['name' => 'In Transit', 'color' => '#f97316', 'is_system' => true],
+        'IN_TRANSIT'  => ['name' => 'In Transit', 'color' => '#f97316', 'is_system' => true],
+        // Plaza handover outcomes (ICT keeps its "Sold" label)
+        'RETURNED'    => ['name' => 'Returned to NHAI', 'color' => '#64748b', 'is_system' => true],
+        'HANDED_OVER' => ['name' => 'Handed Over (Written Off)', 'color' => '#78716c', 'is_system' => true],
+        'SOLD_EXT'    => ['name' => 'Sold (External)', 'color' => '#0e7490', 'is_system' => true],
     ];
 
     public function run(): void
@@ -69,6 +85,15 @@ class ReferenceDataSeeder extends Seeder
         foreach (self::STATUSES as $code => $attributes) {
             \App\Models\AssetStatus::firstOrCreate(['code' => $code], $attributes + ['is_active' => true]);
         }
+
+        // NHAI — the authority that hands plazas (and their assets) to us. Never one of ours.
+        \App\Models\Company::firstOrCreate(['code' => 'NHAI'], [
+            'name'       => 'National Highways Authority of India',
+            'legal_name' => 'National Highways Authority of India',
+            'country'    => 'India',
+            'party_type' => 'external_authority',
+            'is_active'  => true,
+        ]);
 
         // LOST now means "written off as lost" (asset_loss approval) — rename only if untouched.
         \App\Models\AssetStatus::where('code', 'LOST')->where('name', 'Lost')->update(['name' => 'Lost (Written Off)']);

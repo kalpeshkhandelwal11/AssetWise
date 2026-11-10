@@ -192,6 +192,18 @@ class DisposalService
             ]);
         }
 
+        if ($asset->isExternallyOwned()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" belongs to {$asset->company?->name} — it is returned through a plaza handover, never disposed.",
+            ]);
+        }
+
+        if ($asset->hasPendingHandover()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" is in a plaza handover awaiting approval.",
+            ]);
+        }
+
         if ($asset->hasPendingLoss()) {
             throw ValidationException::withMessages([
                 'asset' => "\"{$asset->name}\" has a loss write-off pending approval.",

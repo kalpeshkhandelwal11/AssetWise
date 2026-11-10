@@ -147,6 +147,55 @@
             </div>
         @endforeach
 
+        {{-- Toll-plaza takeover / handover --}}
+        @if($request->approvable instanceof \App\Models\PlazaTakeover)
+            @php $tk = $request->approvable->loadMissing('lines.category', 'location', 'fromCompany', 'company'); @endphp
+            <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ \App\Models\PlazaTakeover::KINDS[$tk->kind] }} — {{ $tk->location?->name }}</h2>
+                    <a href="{{ route('nhai.takeovers.show', $tk) }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Open takeover</a>
+                </div>
+                <p class="px-6 py-3 text-sm text-gray-600 dark:text-gray-300">
+                    From {{ $tk->fromCompany?->name }} to {{ $tk->company?->name }} · {{ $tk->lines->count() }} line(s) → {{ $tk->totalUnits() }} asset(s)
+                    @unless($tk->isNhai()) · purchase value ₹ {{ number_format($tk->totalValue(), 2) }} @else · NHAI property, no value @endunless
+                </p>
+                <ul class="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
+                    @foreach($tk->lines->take(40) as $line)
+                        <li class="px-6 py-2 flex justify-between gap-3">
+                            <span class="text-gray-800 dark:text-gray-200">{{ $line->item_name }} {{ $line->position_label }} <span class="text-xs text-gray-400">{{ $line->category?->name }}</span></span>
+                            <span class="text-xs text-gray-500">× {{ $line->quantity }}{{ $line->unit_price !== null ? ' @ ₹'.number_format((float) $line->unit_price, 2) : '' }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @elseif($request->approvable instanceof \App\Models\PlazaHandover)
+            @php $ho = $request->approvable->loadMissing('lines.asset', 'lines.buyer', 'lines.toLocation', 'location'); @endphp
+            <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Plaza handover — {{ $ho->location?->name }}</h2>
+                    <a href="{{ route('nhai.handovers.show', $ho) }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Open handover</a>
+                </div>
+                @foreach(\App\Models\PlazaHandover::ACTIONS as $action => $label)
+                    @php $group = $ho->lines->where('action', $action); @endphp
+                    @continue($group->isEmpty())
+                    <p class="px-6 pt-3 text-xs font-semibold uppercase text-gray-500">{{ $label }} ({{ $group->count() }})
+                        @if($action === 'sell') · ₹ {{ number_format($group->sum(fn ($l) => (float) $l->sale_price), 2) }} @endif
+                        @if(in_array($action, ['sell', 'give_to_nhai'], true)) · book value ₹ {{ number_format($group->sum(fn ($l) => (float) $l->nbv_snapshot), 2) }} @endif
+                    </p>
+                    <ul class="text-sm pb-2">
+                        @foreach($group->take(25) as $line)
+                            <li class="px-6 py-1 text-gray-700 dark:text-gray-300">{{ \App\Models\Asset::labelFor($line->asset) }}
+                                <span class="text-xs text-gray-400">
+                                    @if($action === 'sell') ₹ {{ number_format((float) $line->sale_price, 2) }} to {{ $line->buyer?->name ?? $line->buyer_name }} @endif
+                                    @if($action === 'move') → {{ $line->toLocation?->name }} @endif
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endforeach
+            </div>
+        @endif
+
         {{-- Bulk import awaiting creation approval --}}
         @if($request->approvable instanceof \App\Models\ImportBatch && $importAssets)
             <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">

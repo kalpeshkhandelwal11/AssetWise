@@ -17,8 +17,35 @@ class Company extends Model
         'gstin', 'pan', 'cin',
         'registered_address', 'registered_city', 'registered_state',
         'registered_pincode', 'registered_country',
-        'contact_name', 'contact_email', 'contact_phone', 'is_active',
+        'contact_name', 'contact_email', 'contact_phone', 'is_active', 'party_type',
     ];
+
+    public const PARTY_TYPES = [
+        'internal'           => 'Our company',
+        'external_authority' => 'Authority (e.g. NHAI)',
+        'external_agency'    => 'External party (agency / buyer / seller)',
+    ];
+
+    /** Not one of our own companies — NHAI, a previous toll agency, a buyer. */
+    public function isExternal(): bool
+    {
+        return ($this->party_type ?? 'internal') !== 'internal';
+    }
+
+    public function isAuthority(): bool
+    {
+        return $this->party_type === 'external_authority';
+    }
+
+    public function scopeInternal(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $query->where('party_type', 'internal');
+    }
+
+    public function scopeExternal(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $query->where('party_type', '!=', 'internal');
+    }
 
     protected function casts(): array
     {

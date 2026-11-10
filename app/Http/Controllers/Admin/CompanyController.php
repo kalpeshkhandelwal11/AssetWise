@@ -104,6 +104,7 @@ class CompanyController extends Controller
             'code'               => "required|string|max:50|alpha_dash|$codeUnique",
             'parent_company_id'  => $parentRule,
             'is_head_office'     => 'boolean',
+            'party_type'         => 'sometimes|in:'.implode(',', array_keys(\App\Models\Company::PARTY_TYPES)),
             'address'            => 'nullable|string|max:500',
             'city'               => 'nullable|string|max:100',
             'country'            => 'nullable|string|max:100',

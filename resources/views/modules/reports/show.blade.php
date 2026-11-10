@@ -55,6 +55,10 @@
                 </select>
                 <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search asset name or tag…"
                        class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
+                <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 px-2">
+                    <input type="checkbox" name="include_external" value="1" @checked(! empty($filters['include_external'])) class="rounded border-gray-300 text-indigo-600">
+                    Include NHAI / external-owned
+                </label>
                 @break
 
             @case('movement')
@@ -197,6 +201,10 @@
                         <option value="{{ $status->id }}" @selected(($filters['status_id'] ?? null) == $status->id)>{{ $status->name }}</option>
                     @endforeach
                 </select>
+                <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 px-2">
+                    <input type="checkbox" name="include_external" value="1" @checked(! empty($filters['include_external'])) class="rounded border-gray-300 text-indigo-600">
+                    Include NHAI / external-owned
+                </label>
                 @break
 
             @case('depreciation_register')
@@ -227,6 +235,10 @@
                         <option value="{{ $company->id }}" @selected(($filters['company_id'] ?? null) == $company->id)>{{ $company->name }}</option>
                     @endforeach
                 </select>
+                <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 px-2">
+                    <input type="checkbox" name="include_external" value="1" @checked(! empty($filters['include_external'])) class="rounded border-gray-300 text-indigo-600">
+                    Include NHAI / external-owned
+                </label>
                 @break
 
             @case('audit_compliance')

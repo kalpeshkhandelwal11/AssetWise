@@ -85,6 +85,7 @@ class ReportService
         ]);
 
         $this->scopeByCompany($query, $this->intOrNull($filters, 'company_id'));
+        $this->excludeExternalOwners($query, $filters);
 
         if (! empty($filters['search'])) {
             $s = $filters['search'];
@@ -294,6 +295,7 @@ class ReportService
         $query = Asset::query()->with(['company', 'category', 'status'])->whereNotNull('purchase_date');
 
         $this->scopeByCompany($query, $this->intOrNull($filters, 'company_id'));
+        $this->excludeExternalOwners($query, $filters);
 
         foreach (['category_id', 'status_id'] as $filter) {
             if (! empty($filters[$filter])) {
@@ -341,6 +343,7 @@ class ReportService
 
         return Company::query()->visible()
             ->when($companyId, fn ($q) => $q->where('id', $companyId))
+            ->when(! $companyId && empty($filters['include_external']), fn ($q) => $q->internal())
             ->orderBy('name')
             ->get()
             ->map(function (Company $company) use ($raw) {

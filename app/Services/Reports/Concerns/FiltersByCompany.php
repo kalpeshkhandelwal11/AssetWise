@@ -21,6 +21,27 @@ trait FiltersByCompany
     }
 
     /**
+     * NHAI-owned (external) assets are not ours: keep them out of asset registers, aging,
+     * utilization and the dashboard unless the report explicitly asks (include_external) or the
+     * user picked that external company as the filter.
+     */
+    protected function excludeExternalOwners(Builder $query, array $filters = [], ?string $assetRelation = null): Builder
+    {
+        if (! empty($filters['include_external'])) {
+            return $query;
+        }
+
+        $companyId = $filters['company_id'] ?? null;
+        if ($companyId && \App\Models\Company::find($companyId)?->isExternal()) {
+            return $query;
+        }
+
+        $relation = $assetRelation ? "{$assetRelation}.company" : 'company';
+
+        return $query->whereHas($relation, fn (Builder $q) => $q->where('party_type', 'internal'));
+    }
+
+    /**
      * For tables with no company_id of their own that hang off Asset (Disposal Report,
      * Audit/Compliance via AssetStatusHistory).
      */

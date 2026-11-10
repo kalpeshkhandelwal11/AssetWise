@@ -70,6 +70,17 @@
                         </label>
                         <x-input-error :messages="$errors->get('is_head_office')" class="mt-1" />
                     </div>
+                    <div>
+                        <x-input-label for="party_type" value="Party type" />
+                        <select id="party_type" name="party_type"
+                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                            @foreach(\App\Models\Company::PARTY_TYPES as $value => $label)
+                                <option value="{{ $value }}" @selected(old('party_type', $company->party_type ?? 'internal') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-gray-400">External parties (NHAI, previous toll agencies, buyers) never own our assets and are kept out of our reports.</p>
+                        <x-input-error :messages="$errors->get('party_type')" class="mt-1" />
+                    </div>
                 </div>
             </div>
 

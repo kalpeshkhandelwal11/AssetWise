@@ -96,6 +96,12 @@ class DepreciationService
             ]);
         }
 
+        if ($asset->isExternallyOwned()) {
+            throw ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" is owned by {$asset->company?->name} and is not depreciated.",
+            ]);
+        }
+
         // Salvage is mandatory (a fixed amount or a percent; an explicit 0 is allowed).
         if (($data['salvage_value'] ?? null) === null && ($data['salvage_percent'] ?? null) === null) {
             throw ValidationException::withMessages([
@@ -178,6 +184,11 @@ class DepreciationService
 
         // Schedule II classes like Land are never depreciated.
         if ($asset->category?->effectiveDepreciationClass()?->is_depreciable === false) {
+            return null;
+        }
+
+        // NHAI-owned (external) assets are not ours to depreciate.
+        if ($asset->isExternallyOwned()) {
             return null;
         }
 

@@ -111,6 +111,15 @@ return [
             'link'     => 'url',
         ],
 
+        'handover.apply_failed' => [
+            'label'    => 'Plaza handover could not be applied',
+            'icon'     => 'exclamation-triangle',
+            'title'    => 'Handover :reference failed to apply',
+            'body'     => 'It was approved, but applying it stopped: :error. Fix the cause and use Retry.',
+            'channels' => ['database', 'mail'],
+            'link'     => 'url',
+        ],
+
         'audit.campaign_activated' => [
             'label'    => 'Audit campaign assigned',
             'icon'     => 'clipboard-check',

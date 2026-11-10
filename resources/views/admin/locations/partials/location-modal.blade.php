@@ -1,12 +1,12 @@
 <div x-data="{
         showModal: false,
         editId: null,
-        form: { name: '', code: '', address: '', manager_employee_id: '' },
+        form: { name: '', code: '', address: '', manager_employee_id: '', is_toll_plaza: false, chainage: '' },
         open(data = null) {
             this.editId = data ? data.id : null;
             this.form = data
-                ? { name: data.name, code: data.code, address: data.address ?? '', manager_employee_id: data.manager_employee_id ? String(data.manager_employee_id) : '' }
-                : { name: '', code: '', address: '', manager_employee_id: '' };
+                ? { name: data.name, code: data.code, address: data.address ?? '', manager_employee_id: data.manager_employee_id ? String(data.manager_employee_id) : '', is_toll_plaza: !! data.is_toll_plaza, chainage: data.chainage ?? '' }
+                : { name: '', code: '', address: '', manager_employee_id: '', is_toll_plaza: false, chainage: '' };
             this.showModal = true;
         }
      }"
@@ -46,6 +46,12 @@
                     </select>
                     <p class="mt-1 text-xs text-gray-400">Scans in assets transferred to this location (needs a linked login).</p>
                 </div>
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        <input type="checkbox" name="is_toll_plaza" value="1" x-model="form.is_toll_plaza" class="rounded border-gray-300 text-indigo-600"> Toll plaza
+                    </label>
+                    <x-text-input name="chainage" class="block w-full" x-model="form.chainage" placeholder="Chainage, e.g. 3+445" />
+                </div>
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" @click="showModal = false" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
                     <x-primary-button>Create</x-primary-button>
@@ -79,6 +85,12 @@
                         @endforeach
                     </select>
                     <p class="mt-1 text-xs text-gray-400">Scans in assets transferred to this location (needs a linked login).</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        <input type="checkbox" name="is_toll_plaza" value="1" x-model="form.is_toll_plaza" class="rounded border-gray-300 text-indigo-600"> Toll plaza
+                    </label>
+                    <x-text-input name="chainage" class="block w-full" x-model="form.chainage" placeholder="Chainage, e.g. 3+445" />
                 </div>
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" @click="showModal = false" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>

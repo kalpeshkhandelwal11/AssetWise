@@ -26,6 +26,7 @@ class Asset extends Model
         'purchase_date', 'purchase_cost', 'vendor', 'vendor_invoice_no', 'warranty_expiry', 'amc_expiry',
         'is_eol', 'eol_projected_date', 'useful_life_years',
         'notes', 'is_active', 'created_by', 'updated_by',
+        'condition', 'condition_remarks', 'takeover_line_id',
     ];
 
     protected function casts(): array
@@ -223,6 +224,26 @@ class Asset extends Model
     public function isRetired(): bool
     {
         return in_array($this->status?->code, AssetStatus::TERMINAL, true);
+    }
+
+    /** Owned by an external party (NHAI) — never priced, depreciated, sold or disposed by us. */
+    public function isExternallyOwned(): bool
+    {
+        return (bool) $this->company?->isExternal();
+    }
+
+    /** Line of an NHAI/purchase takeover this asset was created from. */
+    public function takeoverLine(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(PlazaTakeoverLine::class);
+    }
+
+    /** In a handover still awaiting approval — locked like a pending movement. */
+    public function hasPendingHandover(): bool
+    {
+        return PlazaHandoverLine::where('asset_id', $this->id)
+            ->whereHas('handover', fn ($q) => $q->where('status', 'pending_approval'))
+            ->exists();
     }
 
     /** Approved for a physical move but not yet received at the destination. */

@@ -33,6 +33,16 @@
                 @endcan
             </div>
         @endif
+        @if($asset->isExternallyOwned())
+            <div class="mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
+                <strong>{{ $asset->company?->name }} property</strong>
+                @if($asset->operatingCompany) — operated by {{ $asset->operatingCompany->name }} @endif.
+                Not depreciated; returned to {{ $asset->company?->name }} through a plaza handover.
+                @if($asset->condition)
+                    Condition at takeover: {{ \App\Models\PlazaTakeoverLine::CONDITIONS[$asset->condition] ?? $asset->condition }}@if($asset->condition_remarks) ({{ $asset->condition_remarks }})@endif.
+                @endif
+            </div>
+        @endif
         @php $openTransit = $asset->openTransitMovement(); @endphp
         @if($openTransit)
             @php $openTransit->loadMissing('toLocation.manager', 'toCompany', 'movementType'); @endphp

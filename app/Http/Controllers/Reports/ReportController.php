@@ -30,14 +30,14 @@ class ReportController extends Controller
 
     /** Filters accepted per report type — whitelisted from the request, same shape ReportService expects. */
     private const FILTER_KEYS = [
-        'asset_register'        => ['company_id', 'category_id', 'asset_type_id', 'status_id', 'location_id', 'department_id', 'branch_id', 'search'],
+        'asset_register'        => ['company_id', 'category_id', 'asset_type_id', 'status_id', 'location_id', 'department_id', 'branch_id', 'search', 'include_external'],
         'movement'               => ['company_id', 'movement_type_id', 'status', 'receipt_status', 'date_from', 'date_to', 'search'],
         'intercompany_transfer'  => ['from_company_id', 'to_company_id', 'date_from', 'date_to', 'search'],
         'disposal'               => ['company_id', 'disposal_type_id', 'status', 'date_from', 'date_to', 'search'],
         'maintenance'            => ['company_id', 'maintenance_type_id', 'status', 'is_capitalized', 'date_from', 'date_to', 'search'],
         'amc_warranty'           => ['company_id', 'kind', 'expiry_status', 'date_from', 'date_to', 'search'],
-        'aging'                  => ['company_id', 'category_id', 'status_id'],
-        'utilization'            => ['company_id'],
+        'aging'                  => ['company_id', 'category_id', 'status_id', 'include_external'],
+        'utilization'            => ['company_id', 'include_external'],
         'audit_compliance'       => ['company_id', 'status', 'changed_by', 'date_from', 'date_to'],
         'audit_campaign'          => ['campaign_id', 'company_id', 'status', 'search', 'date_from', 'date_to'],
         'depreciation_schedule'  => ['company_id', 'category_id', 'department_id', 'status', 'search'],

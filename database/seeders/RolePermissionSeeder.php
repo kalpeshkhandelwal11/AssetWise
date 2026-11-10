@@ -69,6 +69,9 @@ class RolePermissionSeeder extends Seeder
 
             // Imports
             'imports.manage',
+
+            // NHAI / toll plaza (Phase 3) — ReferenceDataSeeder grants these on live installs
+            'nhai.view', 'takeover.manage', 'handover.manage',
         ];
 
         foreach ($permissions as $perm) {
@@ -105,6 +108,7 @@ class RolePermissionSeeder extends Seeder
             'masters.view', 'masters.manage', 'companies.manage',
             'departments.manage', 'branches.manage', 'designations.manage',
             'employees.view', 'employees.manage',
+            'nhai.view', 'takeover.manage', 'handover.manage',
         ]);
 
         // Department User
@@ -147,6 +151,7 @@ class RolePermissionSeeder extends Seeder
             'depreciation.view',
             'kits.view',
             'reports.view',
+            'nhai.view',
         ]);
 
         // Viewer

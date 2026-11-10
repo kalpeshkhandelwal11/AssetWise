@@ -34,7 +34,10 @@ class LocationController extends Controller
             'code'    => 'required|string|max:50|alpha_dash|unique:locations,code',
             'address' => 'nullable|string|max:500',
             'manager_employee_id' => 'nullable|exists:employees,id',
+            'chainage'            => 'nullable|string|max:50',
         ]);
+
+        $data['is_toll_plaza'] = $request->boolean('is_toll_plaza');
 
         $data['code'] = strtoupper($data['code']);
         Location::create($data);
@@ -52,7 +55,10 @@ class LocationController extends Controller
             'code'    => 'required|string|max:50|alpha_dash|unique:locations,code,' . $location->id,
             'address' => 'nullable|string|max:500',
             'manager_employee_id' => 'nullable|exists:employees,id',
+            'chainage'            => 'nullable|string|max:50',
         ]);
+
+        $data['is_toll_plaza'] = $request->boolean('is_toll_plaza');
 
         $data['code'] = strtoupper($data['code']);
         $location->update($data);
