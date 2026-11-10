@@ -70,13 +70,23 @@ export default function registerSearchableSelect(Alpine) {
             optionObserver.observe(el, { childList: true });
 
             // (3b) `:disabled` toggled by Alpine -> reflect on the control.
-            const attrObserver = new MutationObserver(() => {
+            // ts.disable()/enable() themselves write `disabled` back onto this <select>, and a
+            // reflected-attribute write queues a mutation even when the value is unchanged — so
+            // without the state check + disconnect this observer re-fires itself forever and the
+            // tab freezes (seen on the kit-assignment form, whose kit picker starts disabled).
+            const attrFilter = { attributes: true, attributeFilter: ['disabled'] };
+            const syncDisabled = () => {
+                if (el.disabled === ts.isDisabled) {
+                    return;
+                }
+                attrObserver.disconnect();
                 el.disabled ? ts.disable() : ts.enable();
-            });
-            attrObserver.observe(el, { attributes: true, attributeFilter: ['disabled'] });
-            if (el.disabled) {
-                ts.disable();
-            }
+                attrObserver.takeRecords();
+                attrObserver.observe(el, attrFilter);
+            };
+            const attrObserver = new MutationObserver(syncDisabled);
+            attrObserver.observe(el, attrFilter);
+            syncDisabled();
 
             cleanup(() => {
                 optionObserver.disconnect();
