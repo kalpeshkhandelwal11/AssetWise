@@ -18,6 +18,7 @@ use App\Models\ApprovalWorkflow;
 use App\Services\AssetNamingService;
 use App\Rules\ImageUnderSize;
 use App\Services\AssetService;
+use App\Services\DepreciationService;
 use App\Services\DynamicFieldService;
 use App\Services\TagService;
 use App\Services\WorkflowService;
@@ -319,28 +320,20 @@ class AssetController extends Controller
             'resolvedFields'    => $this->fields->resolveForCategory($categoryId),
             'fieldValues'       => $fieldValues,
             'canChangeCategory' => $canChangeCategory,
+            'movementLocks'     => $this->movementLocks($asset),
+            'purchaseMode'      => $this->depreciation->purchaseEditMode($asset),
         ] + $this->formLookups($asset));
     }
 
     public function update(Request $request, Asset $asset): RedirectResponse
     {
-        // While in transit the destination is decided by the movement — custody, location and
-        // ownership can't be edited by hand until it is received.
-        if ($asset->isInTransit()) {
-            foreach (['custodian_id', 'location_id', 'company_id'] as $locked) {
-                if ($request->has($locked) && (string) $request->input($locked) !== (string) $asset->{$locked}) {
-                    throw ValidationException::withMessages([
-                        $locked => 'This asset is in transit — its custodian, location and company change only when it is received.',
-                    ]);
-                }
-            }
-        }
-
         $this->authorize('update', $asset);
 
-        $canChangeCompany = $request->user()->can('companies.manage');
+        $this->assertMovementFieldsUnchanged($request, $asset);
 
-        $data = $this->validateAsset($request, companyRequired: false, companyEditable: $canChangeCompany, asset: $asset);
+        // assertMovementFieldsUnchanged() has already refused a changed company on a live asset, so
+        // what reaches validation is either the unchanged value or a draft's legitimate edit.
+        $data = $this->validateAsset($request, companyRequired: false, companyEditable: true, asset: $asset);
         $resolved = $data['_resolved_fields'];
         $fieldInput = $data['fields'];
         unset($data['fields'], $data['_resolved_fields']);
@@ -349,10 +342,120 @@ class AssetController extends Controller
         // alone can never turn is_eol back off — read it explicitly, same as WorkflowController.
         $data['is_eol'] = $request->boolean('is_eol');
 
-        $this->assets->update($asset, $data, $request->user());
-        $this->fields->saveValues($asset, $fieldInput, $resolved);
+        // Purchase cost / date feed the depreciation schedule, so they may not drift from it.
+        $purchaseMode = $this->depreciation->purchaseEditMode($asset);
+        [$newCost, $newDate, $changed] = $this->purchaseChange($asset, $data);
+        $holdForApproval = $changed && $this->assertPurchaseEditable($purchaseMode, $newCost, $newDate);
 
-        return redirect()->route('assets.show', $asset)->with('success', 'Asset updated.');
+        $correction = DB::transaction(function () use ($asset, $data, $fieldInput, $resolved, $request, $holdForApproval, $newCost, $newDate) {
+            $correction = null;
+            if ($holdForApproval) {
+                // Held back: the asset keeps its current figures until the correction is approved.
+                $correction = $this->depreciation->submitPurchaseCorrection($asset, (float) $newCost, $newDate, $request->user());
+                unset($data['purchase_cost'], $data['purchase_date']);
+            }
+
+            $this->assets->update($asset, $data, $request->user());
+            $this->fields->saveValues($asset, $fieldInput, $resolved);
+
+            return $correction;
+        });
+
+        // A cost added to an asset with no depreciation yet starts the category default, exactly
+        // as on creation (no approval — it applies already-approved category policy). Drafts get
+        // theirs on promotion (ApplyAssetCreation).
+        if ($purchaseMode === DepreciationService::PURCHASE_FREE && ! $asset->fresh()->isDraft()) {
+            $this->depreciation->applyCategoryDefault($asset->fresh());
+        }
+
+        $message = $correction
+            ? 'Asset updated. The purchase cost/date change was sent for depreciation approval and applies once approved.'
+            : 'Asset updated.';
+
+        return redirect()->route('assets.show', $asset)->with('success', $message);
+    }
+
+    /**
+     * Fields a movement changes on a live asset (MovementService applies exactly these), and the
+     * movement that does it. Editing them by hand would skip the approval, the movement history,
+     * In Transit / receipt and — for company — the depreciation reset of an inter-company transfer.
+     */
+    private const MOVEMENT_FIELDS = [
+        'company_id'    => 'an Inter-Company Transfer',
+        'custodian_id'  => 'an Assignment or Custodian Change',
+        'location_id'   => 'a Transfer',
+        'department_id' => 'a Transfer',
+    ];
+
+    /**
+     * Which movement-owned fields the asset form must not change. Drafts are still being set up
+     * (and can't be moved yet), so they stay editable; a location or department that was never
+     * set can be filled in, since nothing physically moves.
+     *
+     * @return array<string, bool>
+     */
+    private function movementLocks(Asset $asset): array
+    {
+        $live = $asset->exists && ! $asset->isDraft();
+
+        // In transit the destination is decided by the movement — nothing is filled in by hand.
+        if ($live && $asset->isInTransit()) {
+            return array_fill_keys(array_keys(self::MOVEMENT_FIELDS), true);
+        }
+
+        return [
+            'company_id'    => $live,
+            'custodian_id'  => $live,
+            'location_id'   => $live && $asset->location_id !== null,
+            'department_id' => $live && $asset->department_id !== null,
+        ];
+    }
+
+    private function assertMovementFieldsUnchanged(Request $request, Asset $asset): void
+    {
+        $errors = [];
+        foreach ($this->movementLocks($asset) as $field => $locked) {
+            if ($locked && $request->has($field) && (string) $request->input($field) !== (string) $asset->{$field}) {
+                $errors[$field] = $asset->isInTransit()
+                    ? 'This asset is in transit — its custodian, location and company change only when it is received.'
+                    : 'This changes through ' . self::MOVEMENT_FIELDS[$field] . ' (Move this asset), so it is approved and recorded in the movement history.';
+            }
+        }
+
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /** @return array{0: float|null, 1: string|null, 2: bool} new cost, new date, whether either changed */
+    private function purchaseChange(Asset $asset, array $data): array
+    {
+        $money = fn ($v) => $v === null || $v === '' ? null : round((float) $v, 2);
+        $day = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->toDateString() : null;
+
+        $newCost = array_key_exists('purchase_cost', $data) ? $money($data['purchase_cost']) : $money($asset->purchase_cost);
+        $newDate = array_key_exists('purchase_date', $data) ? $day($data['purchase_date']) : $day($asset->purchase_date);
+
+        $changed = $newCost !== $money($asset->purchase_cost) || $newDate !== $day($asset->purchase_date);
+
+        return [$newCost, $newDate, $changed];
+    }
+
+    /** Throws when a changed purchase cost/date may not be saved; true when it must go for approval. */
+    private function assertPurchaseEditable(string $mode, ?float $newCost, ?string $newDate): bool
+    {
+        $refuse = fn (string $message) => throw ValidationException::withMessages(['purchase_cost' => $message]);
+
+        return match ($mode) {
+            DepreciationService::PURCHASE_FREE => false,
+            DepreciationService::PURCHASE_LOCKED_ENDED => $refuse(
+                'Depreciation for this asset has ended (written off or sold), so its purchase cost and date are history and cannot change.'),
+            DepreciationService::PURCHASE_LOCKED_BASIS => $refuse(
+                'Depreciation now runs on a different basis (after a transfer or a capitalized repair) — change cost or start date on the Depreciation page.'),
+            default => ($newCost === null || $newCost <= 0 || $newDate === null)
+                ? $refuse('Purchase cost and date are required while this asset is being depreciated.')
+                : true,
+        };
     }
 
     public function destroy(Asset $asset): RedirectResponse

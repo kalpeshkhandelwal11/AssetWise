@@ -227,14 +227,17 @@ class AssetTest extends TestCase
         $this->assertSame('New Name', $asset->refresh()->name);
     }
 
-    public function test_update_allows_company_change_with_companies_manage(): void
+    public function test_update_refuses_company_change_even_with_companies_manage(): void
     {
+        // A live asset changes company only through an approved inter-company transfer, which
+        // also resets depreciation for the receiving company — never by editing the field.
         $this->seedRolesAndPermissions();
         $user = User::factory()->create();
         $user->givePermissionTo(['assets.view', 'assets.edit', 'companies.manage']);
 
         $otherCompany = Company::factory()->create();
         $asset = Asset::factory()->create();
+        $originalCompanyId = $asset->company_id;
 
         $this->actingAs($user)
              ->put(route('assets.update', $asset), [
@@ -243,9 +246,10 @@ class AssetTest extends TestCase
                  'category_id' => $asset->category_id,
                  'asset_type_id' => $asset->asset_type_id,
                  'status_id' => $asset->status_id,
-             ]);
+             ])
+             ->assertSessionHasErrors('company_id');
 
-        $this->assertSame($otherCompany->id, $asset->refresh()->company_id);
+        $this->assertSame($originalCompanyId, $asset->refresh()->company_id);
     }
 
     public function test_destroy_soft_deletes_asset(): void

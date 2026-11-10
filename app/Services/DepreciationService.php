@@ -74,6 +74,60 @@ class DepreciationService
         return round($costBasis * $percent / 100, 2);
     }
 
+    // ------------------------------------------------------------------ purchase fields on the asset form
+
+    /** No depreciation yet — purchase cost / date save directly (a cost then starts the category default). */
+    public const PURCHASE_FREE = 'free';
+
+    /** Running on the purchase cost — an edit becomes a purchase_correction request for approval. */
+    public const PURCHASE_CORRECTION = 'correction';
+
+    /** Running on another basis (net book value after a transfer, or a capitalized repair) — edit on the Depreciation page. */
+    public const PURCHASE_LOCKED_BASIS = 'locked_basis';
+
+    /** Depreciation has ended (written off / sold) — purchase figures are history. */
+    public const PURCHASE_LOCKED_ENDED = 'locked_ended';
+
+    /**
+     * How the asset form may treat purchase cost / date, so they can never drift from the
+     * depreciation schedule that was built from them.
+     */
+    public function purchaseEditMode(Asset $asset): string
+    {
+        if (! $asset->exists || ! $asset->depreciationSettings()->exists()) {
+            return self::PURCHASE_FREE;
+        }
+
+        $active = $asset->activeDepreciationSetting();
+        if (! $active) {
+            return self::PURCHASE_LOCKED_ENDED;
+        }
+
+        return round((float) $active->cost_basis, 2) === round((float) $asset->purchase_cost, 2)
+            ? self::PURCHASE_CORRECTION
+            : self::PURCHASE_LOCKED_BASIS;
+    }
+
+    /**
+     * Send an edited purchase cost / date for depreciation approval. Everything else about the
+     * schedule (method, life, salvage) is carried over from the active setting; the asset's own
+     * fields change only when this is approved (applySettingChange()).
+     */
+    public function submitPurchaseCorrection(Asset $asset, float $cost, string $date, User $actor): DepreciationSettingRequest
+    {
+        $active = $asset->activeDepreciationSetting();
+
+        return $this->submitSettingChange($asset, [
+            'depreciation_method_id' => $active->depreciation_method_id,
+            'useful_life_months'     => $active->useful_life_months,
+            // A percentage salvage follows the new cost; a fixed salvage amount stays fixed.
+            'salvage_value'          => $active->salvage_percent === null ? (float) $active->salvage_value : null,
+            'salvage_percent'        => $active->salvage_percent !== null ? (float) $active->salvage_percent : null,
+            'start_date'             => $date,
+            'cost_basis'             => $cost,
+        ], $actor, 'purchase_correction');
+    }
+
     // ------------------------------------------------------------------ approval flow
 
     /**
@@ -162,6 +216,15 @@ class DepreciationService
             $this->supersedePrevious($request->asset_id, $setting);
             $this->generateSchedule($setting);
             $this->postSetting($setting, now());
+
+            // A purchase correction moves the asset's own purchase fields in the same step, so the
+            // asset and its schedule never disagree (they were held back at edit time).
+            if ($request->change_type === 'purchase_correction') {
+                Asset::withoutGlobalScopes()->find($request->asset_id)?->update([
+                    'purchase_cost' => $costBasis,
+                    'purchase_date' => $request->start_date,
+                ]);
+            }
 
             $request->update(['status' => 'applied']);
 

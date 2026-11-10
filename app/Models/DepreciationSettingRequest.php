@@ -60,7 +60,19 @@ class DepreciationSettingRequest extends Model
     /** Consumed by ApprovalRequest::getApprovableLabelAttribute() for the approver inbox. */
     public function getApprovalLabel(): string
     {
-        return 'Depreciation — ' . (\App\Models\Asset::labelFor($this->asset));
+        $label = \App\Models\Asset::labelFor($this->asset);
+
+        // A purchase correction is approved on what it changes, so spell out old -> new. The
+        // asset's own purchase fields are untouched until approval, so they are the "old" side.
+        if ($this->change_type === 'purchase_correction' && $this->asset) {
+            $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
+            $date = fn ($d) => $d ? \Illuminate\Support\Carbon::parse($d)->format('d M Y') : '—';
+
+            return "Purchase correction — {$label}: cost {$money($this->asset->purchase_cost)} → {$money($this->cost_basis)}, "
+                . "date {$date($this->asset->purchase_date)} → {$date($this->start_date)}";
+        }
+
+        return 'Depreciation — ' . $label;
     }
 
     public function getActivitylogOptions(): LogOptions

@@ -1,5 +1,13 @@
 @php
-    $canChangeCompany = ! $asset->exists || auth()->user()->can('companies.manage');
+    // On a live asset, company / custodian / location / department belong to the Movement module
+    // (AssetController::movementLocks) — shown here, changed through "Move this asset".
+    $locks = $movementLocks ?? ['company_id' => false, 'custodian_id' => false, 'location_id' => false, 'department_id' => false];
+    $canChangeCompany = ! $locks['company_id'];
+    $canMove = $asset->exists && auth()->user()->canAny(['movement.assign', 'movement.transfer']);
+    $moveUrl = $asset->exists ? route('movements.create', ['asset_id' => $asset->id]) : null;
+    // Purchase cost / date vs the depreciation schedule (DepreciationService::purchaseEditMode).
+    $purchaseMode = $purchaseMode ?? 'free';
+    $purchaseLocked = in_array($purchaseMode, ['locked_basis', 'locked_ended'], true);
 @endphp
 <x-app-layout>
     @section('page-title', $asset->exists ? 'Edit Asset' : 'New Asset')
@@ -107,6 +115,23 @@
             @csrf
             @if($asset->exists) @method('PUT') @endif
 
+            {{-- A purchase correction submits to the depreciation workflow, which reports config
+                 problems under "workflow" and a pending request under "asset" — neither is a field. --}}
+            @foreach(['workflow', 'asset'] as $formError)
+                @error($formError)
+                    <div class="rounded-lg border border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-400">{{ $message }}</div>
+                @enderror
+            @endforeach
+
+            @if($asset->exists && in_array(true, $locks, true))
+                <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-indigo-200 bg-indigo-50 dark:border-indigo-800/50 dark:bg-indigo-900/20 p-3 text-sm text-indigo-800 dark:text-indigo-300">
+                    <span>Company, custodian, location and department change through a movement, so each change is approved and kept in the movement history.</span>
+                    @if($canMove)
+                        <a href="{{ $moveUrl }}" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Move this asset</a>
+                    @endif
+                </div>
+            @endif
+
             {{-- Identity --}}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -126,7 +151,7 @@
                     @else
                         <input type="text" disabled value="{{ $asset->company?->name }}"
                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-400 shadow-sm text-sm" />
-                        <p class="mt-1 text-xs text-gray-400">Company can only change via an approved inter-company transfer.</p>
+                        <p class="mt-1 text-xs text-gray-400">Changes only through an approved inter-company transfer.</p>
                     @endif
                     <x-input-error :messages="$errors->get('company_id')" class="mt-1" />
                 </div>
@@ -253,23 +278,35 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                         <x-input-label for="custodian_id" value="Custodian" />
-                        <x-searchable-select id="custodian_id" name="custodian_id" x-model="custodianId" @change="applyCustodian()">
-                            <option value="">— None —</option>
-                            @foreach($custodians as $user)
-                                <option value="{{ $user->id }}">{{ $user->name }}</option>
-                            @endforeach
-                        </x-searchable-select>
-                        <p class="mt-1 text-xs text-gray-400">Department &amp; branch auto-fill from the selected employee.</p>
+                        @if($locks['custodian_id'])
+                            <input id="custodian_id" type="text" disabled value="{{ $asset->custodian?->name ?? '— None —' }}"
+                                   class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-400 shadow-sm text-sm" />
+                            <p class="mt-1 text-xs text-gray-400">Changes through an Assignment or Custodian Change.</p>
+                        @else
+                            <x-searchable-select id="custodian_id" name="custodian_id" x-model="custodianId" @change="applyCustodian()">
+                                <option value="">— None —</option>
+                                @foreach($custodians as $user)
+                                    <option value="{{ $user->id }}">{{ $user->name }}</option>
+                                @endforeach
+                            </x-searchable-select>
+                            <p class="mt-1 text-xs text-gray-400">Department &amp; branch auto-fill from the selected employee.</p>
+                        @endif
                         <x-input-error :messages="$errors->get('custodian_id')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="department_id" value="Department" />
-                        <x-searchable-select id="department_id" name="department_id" x-model="departmentId">
-                            <option value="">— None —</option>
-                            @foreach($departments as $department)
-                                <option value="{{ $department->id }}">{{ $department->name }}</option>
-                            @endforeach
-                        </x-searchable-select>
+                        @if($locks['department_id'])
+                            <input id="department_id" type="text" disabled value="{{ $asset->department?->name }}"
+                                   class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-400 shadow-sm text-sm" />
+                            <p class="mt-1 text-xs text-gray-400">Changes through a Transfer.</p>
+                        @else
+                            <x-searchable-select id="department_id" name="department_id" x-model="departmentId">
+                                <option value="">— None —</option>
+                                @foreach($departments as $department)
+                                    <option value="{{ $department->id }}">{{ $department->name }}</option>
+                                @endforeach
+                            </x-searchable-select>
+                        @endif
                         <x-input-error :messages="$errors->get('department_id')" class="mt-1" />
                     </div>
                     <div>
@@ -291,12 +328,19 @@
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
                     <div>
                         <x-input-label for="location_id" value="Location" />
-                        <x-searchable-select id="location_id" name="location_id" x-model="locationId" @change="loadBuildings()">
-                            <option value="">— None —</option>
-                            @foreach($locations as $location)
-                                <option value="{{ $location->id }}">{{ $location->name }}</option>
-                            @endforeach
-                        </x-searchable-select>
+                        @if($locks['location_id'])
+                            {{-- Shown, not posted; locationId in x-data still drives the building / floor / room lists. --}}
+                            <input id="location_id" type="text" disabled value="{{ $asset->location?->name }}"
+                                   class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-400 shadow-sm text-sm" />
+                            <p class="mt-1 text-xs text-gray-400">Changes through a Transfer. Building, floor and room can still be set.</p>
+                        @else
+                            <x-searchable-select id="location_id" name="location_id" x-model="locationId" @change="loadBuildings()">
+                                <option value="">— None —</option>
+                                @foreach($locations as $location)
+                                    <option value="{{ $location->id }}">{{ $location->name }}</option>
+                                @endforeach
+                            </x-searchable-select>
+                        @endif
                         <x-input-error :messages="$errors->get('location_id')" class="mt-1" />
                     </div>
                     <div>
@@ -344,13 +388,30 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                         <x-input-label for="purchase_date" value="Purchase Date" />
-                        <input id="purchase_date" type="date" name="purchase_date" x-model="purchaseDate" @change="computeEol()"
-                               class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                        @if($purchaseLocked)
+                            <input id="purchase_date" type="date" disabled x-model="purchaseDate"
+                                   class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-400 shadow-sm text-sm" />
+                        @else
+                            <input id="purchase_date" type="date" name="purchase_date" x-model="purchaseDate" @change="computeEol()"
+                                   class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                        @endif
                         <x-input-error :messages="$errors->get('purchase_date')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="purchase_cost" value="Purchase Cost" />
-                        <x-text-input id="purchase_cost" type="number" step="0.01" name="purchase_cost" class="mt-1 block w-full" :value="old('purchase_cost', $asset->purchase_cost)" />
+                        @if($purchaseLocked)
+                            <x-text-input id="purchase_cost" type="number" class="mt-1 block w-full bg-gray-50 dark:bg-gray-900/50" :value="$asset->purchase_cost" disabled />
+                            <p class="mt-1 text-xs text-gray-400">
+                                {{ $purchaseMode === 'locked_ended'
+                                    ? 'Depreciation has ended (written off or sold), so cost and date are history.'
+                                    : 'Depreciation now runs on a different basis — change it on the Depreciation page.' }}
+                            </p>
+                        @else
+                            <x-text-input id="purchase_cost" type="number" step="0.01" name="purchase_cost" class="mt-1 block w-full" :value="old('purchase_cost', $asset->purchase_cost)" />
+                            @if($purchaseMode === 'correction')
+                                <p class="mt-1 text-xs text-gray-400">Depreciation runs on this cost and date — a change is sent for approval first.</p>
+                            @endif
+                        @endif
                         <x-input-error :messages="$errors->get('purchase_cost')" class="mt-1" />
                     </div>
                     <div>
@@ -377,12 +438,25 @@
                     </div>
                     <div>
                         <x-input-label for="warranty_expiry" value="Warranty Expiry" />
-                        <x-text-input id="warranty_expiry" type="date" name="warranty_expiry" class="mt-1 block w-full" :value="old('warranty_expiry', optional($asset->warranty_expiry)->format('Y-m-d'))" />
+                        {{-- Once warranty records exist the date is derived from them (latest end date), so it is shown, not edited. --}}
+                        @if($asset->exists && $asset->warrantyRecords()->exists())
+                            <x-text-input id="warranty_expiry" type="date" class="mt-1 block w-full bg-gray-50 dark:bg-gray-900/50" :value="optional($asset->warranty_expiry)->format('Y-m-d')" disabled />
+                            <p class="mt-1 text-xs text-gray-400">From this asset's warranty records — change them on the asset page.</p>
+                        @else
+                            <x-text-input id="warranty_expiry" type="date" name="warranty_expiry" class="mt-1 block w-full" :value="old('warranty_expiry', optional($asset->warranty_expiry)->format('Y-m-d'))" />
+                            <p class="mt-1 text-xs text-gray-400">Saved as the asset's first warranty record.</p>
+                        @endif
                         <x-input-error :messages="$errors->get('warranty_expiry')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="amc_expiry" value="AMC Expiry" />
-                        <x-text-input id="amc_expiry" type="date" name="amc_expiry" class="mt-1 block w-full" :value="old('amc_expiry', optional($asset->amc_expiry)->format('Y-m-d'))" />
+                        @if($asset->exists && $asset->amcContracts()->exists())
+                            <x-text-input id="amc_expiry" type="date" class="mt-1 block w-full bg-gray-50 dark:bg-gray-900/50" :value="optional($asset->amc_expiry)->format('Y-m-d')" disabled />
+                            <p class="mt-1 text-xs text-gray-400">From this asset's AMC contracts — change them on the asset page.</p>
+                        @else
+                            <x-text-input id="amc_expiry" type="date" name="amc_expiry" class="mt-1 block w-full" :value="old('amc_expiry', optional($asset->amc_expiry)->format('Y-m-d'))" />
+                            <p class="mt-1 text-xs text-gray-400">Saved as the asset's first AMC contract.</p>
+                        @endif
                         <x-input-error :messages="$errors->get('amc_expiry')" class="mt-1" />
                     </div>
                     <div>
