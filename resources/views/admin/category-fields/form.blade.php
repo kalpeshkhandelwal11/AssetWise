@@ -52,6 +52,15 @@
                             <option value="{{ $value }}" @selected(old('field_type', $field->field_type) === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
+                    {{-- Say what each type becomes on the asset form, so picking one visibly does something. --}}
+                    <p class="mt-1 text-xs text-indigo-600 dark:text-indigo-400" x-text="({
+                        text: 'A single-line text box.',
+                        textarea: 'A multi-line text box.',
+                        number: 'A number box. Set min, max and decimals below.',
+                        date: 'A date picker.',
+                        boolean: 'A Yes / No tick box. Unticked is saved as No. Nothing more to set up.',
+                        dropdown: 'A pick-list. Add its options below.',
+                    })[fieldType]"></p>
                     @if($field->exists)
                         <p class="mt-1 text-xs text-gray-400">Cannot change once assets have saved values for this field.</p>
                     @endif
@@ -67,7 +76,7 @@
             <div class="flex items-center gap-6">
                 <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="checkbox" name="is_required" value="1" @checked(old('is_required', $field->is_required)) class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                    Required
+                    <span x-text="fieldType === 'boolean' ? 'Required (must be ticked)' : 'Required'">Required</span>
                 </label>
                 <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="checkbox" name="is_searchable" value="1" @checked(old('is_searchable', $field->is_searchable)) class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
@@ -100,7 +109,7 @@
             </div>
 
             {{-- Validation rules --}}
-            <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+            <div x-show="['text', 'textarea', 'number'].includes(fieldType)" class="pt-2 border-t border-gray-100 dark:border-gray-700">
                 <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Validation</p>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div x-show="fieldType === 'number'">

@@ -151,4 +151,41 @@ class AssetDynamicFieldsTest extends TestCase
         $unrelatedFields = app(\App\Services\DynamicFieldService::class)->resolveForCategory($unrelated->id);
         $this->assertCount(0, $unrelatedFields);
     }
+
+    public function test_an_unticked_boolean_field_does_not_lock_the_category(): void
+    {
+        $category = AssetCategory::factory()->create();
+        CategoryField::create(['category_id' => $category->id, 'field_key' => 'is_insured', 'label' => 'Insured', 'field_type' => 'boolean', 'is_active' => true]);
+        $company = Company::factory()->create();
+
+        // The form always posts 0 for an unticked box.
+        $this->actingAs($this->admin())
+            ->post(route('assets.store'), $this->coreAssetPayload($category, $company) + ['fields' => ['is_insured' => '0']])
+            ->assertSessionHasNoErrors();
+
+        $asset = Asset::latest('id')->firstOrFail();
+        $this->assertFalse($asset->hasCustomFieldData(), 'a bare No locked the category');
+
+        // Ticking it is real data and does lock it.
+        $asset->fieldValues()->update(['value_boolean' => true]);
+        $this->assertTrue($asset->hasCustomFieldData());
+    }
+
+    public function test_a_required_boolean_field_must_be_ticked(): void
+    {
+        $category = AssetCategory::factory()->create();
+        CategoryField::create(['category_id' => $category->id, 'field_key' => 'checked_ok', 'label' => 'Checked OK', 'field_type' => 'boolean', 'is_required' => true, 'is_active' => true]);
+        $company = Company::factory()->create();
+
+        $payload = $this->coreAssetPayload($category, $company);
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->post(route('assets.store'), $payload + ['fields' => ['checked_ok' => '0']])
+            ->assertSessionHasErrors('fields.checked_ok');
+
+        $this->actingAs($admin)
+            ->post(route('assets.store'), $payload + ['fields' => ['checked_ok' => '1']])
+            ->assertSessionHasNoErrors();
+    }
 }

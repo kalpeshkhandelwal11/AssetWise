@@ -139,7 +139,15 @@ class Asset extends Model
 
     public function hasCustomFieldData(): bool
     {
-        return $this->fieldValues()->exists();
+        // An unticked Yes/No field is posted as 0 on every save, so a bare "No" is not data
+        // someone entered — counting it would lock the category of every asset in a category
+        // that merely has a boolean field.
+        return $this->fieldValues()
+            ->where(fn ($q) => $q->whereNotNull('value_text')
+                ->orWhereNotNull('value_number')
+                ->orWhereNotNull('value_date')
+                ->orWhere('value_boolean', true))
+            ->exists();
     }
 
     public function tagAssignments(): HasMany

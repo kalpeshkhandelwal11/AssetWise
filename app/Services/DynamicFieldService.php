@@ -125,6 +125,11 @@ class DynamicFieldService
                 $rules[] = 'date';
                 break;
             case 'boolean':
+                // The form always posts 0 or 1, so plain "required" could never fail. A required
+                // Yes/No field therefore means "must be ticked" (a confirmation).
+                if ($field->isRequired) {
+                    $rules[0] = 'accepted';
+                }
                 $rules[] = 'boolean';
                 break;
             case 'dropdown':
