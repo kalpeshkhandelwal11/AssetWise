@@ -91,6 +91,7 @@
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Verified By</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Verified At</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notes</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Follow-up</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -112,9 +113,35 @@
                         <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $item->verifiedBy?->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ optional($item->verified_at)->format('d M Y H:i') ?? '—' }}</td>
                         <td class="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-xs truncate">{{ $item->notes ?? '—' }}</td>
+                        {{-- A finding never changes the asset by itself; these hand it to the module that does. --}}
+                        <td class="px-4 py-3 whitespace-nowrap text-xs">
+                            @if($item->status === 'missing' && $item->asset)
+                                @if($item->asset->status?->code === 'LOST')
+                                    <span class="text-gray-500">Written off as lost</span>
+                                @elseif($item->asset->hasPendingLoss())
+                                    <span class="text-amber-600 dark:text-amber-400">Loss pending approval</span>
+                                @elseif($item->asset->isRetired())
+                                    <span class="text-gray-400">{{ $item->asset->status?->name }}</span>
+                                @else
+                                    @can('audit.manage')
+                                        <form method="POST" action="{{ route('audits.items.report-loss', $item) }}"
+                                              onsubmit="return confirm('Send this asset for a loss write-off approval?')">
+                                            @csrf
+                                            <button type="submit" class="px-2.5 py-1 font-medium rounded-md bg-red-600 text-white hover:bg-red-700">Report as lost</button>
+                                        </form>
+                                    @endcan
+                                @endif
+                            @elseif($item->status === 'damaged' && $item->asset && ! $item->asset->isRetired())
+                                @can('maintenance.manage')
+                                    <a href="{{ route('assets.maintenance.create', $item->asset) }}" class="px-2.5 py-1 font-medium rounded-md border border-amber-400 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20">Log maintenance</a>
+                                @endcan
+                            @else
+                                <span class="text-gray-300">—</span>
+                            @endif
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="px-4 py-12 text-center text-sm text-gray-400">No audit items yet — activate the campaign to generate them.</td></tr>
+                    <tr><td colspan="6" class="px-4 py-12 text-center text-sm text-gray-400">No audit items yet — activate the campaign to generate them.</td></tr>
                 @endforelse
             </tbody>
         </table>

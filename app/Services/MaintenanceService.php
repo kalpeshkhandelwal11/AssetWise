@@ -36,6 +36,7 @@ class MaintenanceService
                 $this->startMaintenance($asset, $record, $actor);
             } elseif ($record->status === 'completed') {
                 $this->capitalizeIfFlagged($record, $actor);
+                $this->scheduleNext($record, $actor);
             }
 
             return $record;
@@ -57,10 +58,36 @@ class MaintenanceService
 
             if ($previousStatus !== 'completed' && $newStatus === 'completed') {
                 $this->capitalizeIfFlagged($record, $actor);
+                $this->scheduleNext($record, $actor);
             }
 
             return $record;
         });
+    }
+
+    /**
+     * Recurring maintenance: completing a record that repeats schedules the next occurrence,
+     * counted from when the work was actually done (so a late service does not bunch up the
+     * following one). Runs once, on the transition into `completed`.
+     */
+    private function scheduleNext(MaintenanceRecord $record, User $actor): ?MaintenanceRecord
+    {
+        if (! $record->repeat_every_months || $record->asset?->isRetired()) {
+            return null;
+        }
+
+        $from = $record->performed_date ?? $record->scheduled_date ?? now();
+
+        return MaintenanceRecord::create([
+            'asset_id'            => $record->asset_id,
+            'maintenance_type_id' => $record->maintenance_type_id,
+            'status'              => 'scheduled',
+            'scheduled_date'      => $from->copy()->addMonthsNoOverflow((int) $record->repeat_every_months)->toDateString(),
+            'repeat_every_months' => $record->repeat_every_months,
+            'vendor'              => $record->vendor,
+            'description'         => $record->description,
+            'logged_by'           => $actor->id,
+        ]);
     }
 
     public function delete(MaintenanceRecord $record): void

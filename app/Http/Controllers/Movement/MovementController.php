@@ -206,6 +206,16 @@ class MovementController extends Controller
         return Excel::download($export, $fileName);
     }
 
+    /** POST /movements/{movement}/acknowledge — the recipient confirms they hold the asset. */
+    public function acknowledge(Request $request, AssetMovement $movement): RedirectResponse
+    {
+        abort_unless($this->movements->canAcknowledge($request->user(), $movement), 403);
+
+        $this->movements->acknowledge($movement, $request->user());
+
+        return back()->with('success', 'Receipt acknowledged.');
+    }
+
     private function rules(): array
     {
         return [

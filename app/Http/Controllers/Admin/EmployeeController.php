@@ -88,7 +88,8 @@ class EmployeeController extends Controller
         $this->authorize('employees.manage');
 
         if ($employee->is_active && ($count = $this->activeCustodyCount($employee)) > 0) {
-            return back()->with('error', "Cannot deactivate: {$count} active asset(s) are still in this employee's custody.");
+            return redirect()->route('admin.employees.clearance', $employee)
+                ->with('error', "Cannot deactivate yet: {$count} asset(s) are still in this employee's custody. Return them here first.");
         }
 
         $employee->update(['is_active' => ! $employee->is_active]);
@@ -96,12 +97,88 @@ class EmployeeController extends Controller
         return back()->with('success', $employee->is_active ? 'Employee activated.' : 'Employee deactivated.');
     }
 
+    /**
+     * Exit clearance: what a leaving employee still holds, and one action to raise the return
+     * for all of it. Deactivation stays blocked until custody is empty; this is the way through.
+     */
+    public function clearance(Employee $employee): \Illuminate\View\View
+    {
+        $this->authorize('employees.manage');
+
+        $assets = $this->custody($employee);
+        $states = [];
+        $returnable = 0;
+
+        foreach ($assets as $asset) {
+            $states[$asset->id] = match (true) {
+                $asset->isInTransit()        => ['label' => 'In transit — awaiting receipt', 'color' => 'indigo'],
+                $asset->hasPendingMovement() => ['label' => 'Movement pending approval', 'color' => 'amber'],
+                $asset->isDraft()            => ['label' => 'Draft — not yet approved', 'color' => 'gray'],
+                default                      => ['label' => 'With employee', 'color' => 'red'],
+            };
+            if ($states[$asset->id]['label'] === 'With employee') {
+                $returnable++;
+            }
+        }
+
+        return view('admin.employees.clearance', [
+            'employee'   => $employee,
+            'assets'     => $assets,
+            'states'     => $states,
+            'returnable' => $returnable,
+            'locations'  => \App\Models\Location::where('is_active', true)->orderBy('name')->get(),
+        ]);
+    }
+
+    public function clearanceReturn(Request $request, Employee $employee, \App\Services\MovementService $movements): RedirectResponse
+    {
+        $this->authorize('employees.manage');
+        $this->authorize('movement.assign');
+
+        $data = $request->validate([
+            'to_location_id' => 'nullable|exists:locations,id',
+            'notes'          => 'nullable|string|max:1000',
+        ]);
+
+        $type = \App\Models\MovementType::where('code', 'RETURN')->where('is_active', true)->first();
+        if (! $type) {
+            return back()->with('error', 'The Return movement type is not set up.');
+        }
+
+        $assets = $this->custody($employee)
+            ->filter(fn ($a) => ! $a->isInTransit() && ! $a->hasPendingMovement() && ! $a->isDraft())
+            ->values();
+
+        if ($assets->isEmpty()) {
+            return back()->with('error', 'Nothing left to return — every asset already has a movement in progress.');
+        }
+
+        // One batch = one approval for the whole clearance (ValidationException from the
+        // workflow or a guard surfaces through the error blocks on the page).
+        $movements->submitBatch($assets, [
+            'movement_type_id' => $type->id,
+            'to_location_id'   => $data['to_location_id'] ?? null,
+            'notes'            => $data['notes'] ?? 'Exit clearance',
+        ], $request->user());
+
+        return redirect()->route('admin.employees.clearance', $employee)
+            ->with('success', "Return raised for {$assets->count()} asset(s) — awaiting approval.");
+    }
+
+    /** Live assets in the employee's custody (retired ones no longer count — see DisposalService::finalize). */
+    private function custody(Employee $employee): \Illuminate\Support\Collection
+    {
+        return $employee->custodiedAssets()->where('is_active', true)->with(['status', 'location'])->orderBy('name')->get()
+            ->reject(fn ($a) => $a->isRetired())->values();
+    }
+
     public function destroy(Employee $employee): RedirectResponse
     {
         $this->authorize('employees.manage');
 
         if (($count = $this->activeCustodyCount($employee)) > 0) {
-            return back()->with('error', "Cannot deactivate: {$count} active asset(s) are still in this employee's custody.");
+            return redirect()->route('admin.employees.clearance', $employee)
+                ->with('error', "Cannot deactivate yet: {$count} asset(s) are still in this employee's custody. Return them here first.");
         }
 
         // Never hard-delete; always deactivate (custodian history FKs nullOnDelete).
@@ -113,7 +190,7 @@ class EmployeeController extends Controller
 
     private function activeCustodyCount(Employee $employee): int
     {
-        return $employee->custodiedAssets()->where('is_active', true)->count();
+        return $this->custody($employee)->count();
     }
 
     /**

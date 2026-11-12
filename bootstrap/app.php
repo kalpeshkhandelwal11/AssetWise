@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Hourly so the one-time 24h reminder lands close to the 24h mark.
         $schedule->command('approvals:remind')->hourly();
         $schedule->command('alerts:expiry')->daily();
+        $schedule->command('maintenance:remind')->daily();
         $schedule->command('depreciation:post-monthly')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {

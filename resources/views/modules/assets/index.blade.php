@@ -40,6 +40,10 @@
                     <button type="button" @click="$refs.bulkForm.action='{{ route('assets.print-list') }}'; $refs.bulkForm.submit()"
                             class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Print</button>
                     @can('assets.delete')
+                    @if(request('show_deleted'))
+                    <button type="button" @click="$refs.bulkForm.action='{{ route('assets.bulk-restore') }}'; $refs.bulkForm.submit()"
+                            class="block w-full text-left px-4 py-2 text-sm text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 border-t border-gray-100 dark:border-gray-700">Restore selected</button>
+                    @endif
                     {{-- Set the form action directly (not via the reactive :action) — the confirm()
                          blocks before Alpine flushes the :action binding, which would otherwise
                          post to an empty action. --}}
@@ -148,8 +152,9 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     @forelse($assets as $asset)
-                        <tr @click="window.location='{{ route('assets.show', $asset) }}'"
-                            class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {{ $asset->trashed() ? 'opacity-60' : '' }}">
+                        {{-- A deleted asset has no detail page (404) — its row is not a link; restore it first. --}}
+                        <tr @if(! $asset->trashed()) @click="window.location='{{ route('assets.show', $asset) }}'" @endif
+                            class="{{ $asset->trashed() ? '' : 'cursor-pointer' }} hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {{ $asset->trashed() ? 'opacity-60' : '' }}">
                             @if($canBulkActions)
                             <td class="px-4 py-3" @click.stop>
                                 <input type="checkbox" value="{{ $asset->id }}" x-model.number="selected" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">

@@ -165,6 +165,15 @@ return [
             'link'     => 'url',
         ],
 
+        'maintenance_due' => [
+            'label'    => 'Scheduled maintenance due / overdue',
+            'icon'     => 'exclamation-triangle',
+            'title'    => ':asset — :work :when',
+            'body'     => 'Scheduled for :scheduled_on.',
+            'channels' => ['database', 'mail'],
+            'link'     => 'url',
+        ],
+
         'export_ready' => [
             'label'    => 'Export ready',
             'icon'     => 'download',

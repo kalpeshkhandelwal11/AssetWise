@@ -168,6 +168,14 @@ class DisposalService
                 $asset->update(['status_id' => $status->id]);
             }
 
+            // The asset has left the register: nobody holds it any more and it fills no kit
+            // slot. (Its tag stays assigned on purpose — tag numbers are never reused, and a
+            // scan of the old label should still show this record and why it is gone.)
+            if ($asset->custodian_id !== null) {
+                $asset->update(['custodian_id' => null]);
+            }
+            \App\Models\KitAsset::where('asset_id', $asset->id)->delete();
+
             $disposalRequest->update([
                 'scrapped_at' => now(),
                 'scrapped_by' => $actor->id,

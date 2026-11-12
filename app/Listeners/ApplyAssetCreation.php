@@ -48,6 +48,7 @@ class ApplyAssetCreation
             // default (no-op if no default / no cost). Runs after promotion so the schedule
             // reflects the live asset, not a draft that could have been rejected.
             $this->depreciation->applyCategoryDefault($asset->fresh());
+            app(\App\Services\OpeningAssignmentService::class)->record($asset->fresh());
         }
     }
 
@@ -72,6 +73,7 @@ class ApplyAssetCreation
 
                         $asset->update(['status_id' => $row->intended_status_id ?? $availableId]);
                         $this->depreciation->applyCategoryDefault($asset->fresh());
+                        app(\App\Services\OpeningAssignmentService::class)->record($asset->fresh());
                     });
 
                 $batch->update(['approval_status' => 'approved']);

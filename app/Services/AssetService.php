@@ -72,6 +72,30 @@ class AssetService
         };
     }
 
+    /**
+     * Bring a deleted asset back. Serial numbers are unique among live assets only, so a serial
+     * reused while this one was deleted blocks the restore until one of the two is changed.
+     */
+    public function restore(Asset $asset): void
+    {
+        $serial = trim((string) $asset->serial_number);
+
+        if ($serial !== '') {
+            $clash = Asset::withoutGlobalScopes()->whereNull('deleted_at')
+                ->where('id', '!=', $asset->id)
+                ->whereRaw('LOWER(TRIM(serial_number)) = ?', [mb_strtolower($serial)])
+                ->first(['asset_tag', 'name']);
+
+            if ($clash) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'asset' => "\"{$asset->name}\" cannot be restored: serial number {$serial} is now used by " . ($clash->asset_tag ?: $clash->name) . '.',
+                ]);
+            }
+        }
+
+        $asset->restore();
+    }
+
     public function delete(Asset $asset): void
     {
         if ($reason = $this->deletionBlocker($asset)) {

@@ -871,6 +871,31 @@ class MovementService
         }
     }
 
+    /**
+     * The recipient confirms they hold the asset. Only arises when the custodian has a login
+     * (AssetMovement::awaitsAcknowledgement()). Allowed for that login, or — e.g. against a
+     * signed paper receipt — anyone who can assign assets.
+     */
+    public function canAcknowledge(User $user, AssetMovement $movement): bool
+    {
+        if (! $movement->awaitsAcknowledgement()) {
+            return false;
+        }
+
+        return (int) $movement->toCustodian?->user_id === (int) $user->id || $user->can('movement.assign');
+    }
+
+    public function acknowledge(AssetMovement $movement, User $user): AssetMovement
+    {
+        if (! $this->canAcknowledge($user, $movement)) {
+            throw ValidationException::withMessages(['movement' => 'This assignment is not awaiting your acknowledgement.']);
+        }
+
+        $movement->update(['acknowledged_at' => now(), 'acknowledged_by' => $user->id]);
+
+        return $movement;
+    }
+
     private function notifyCustodian(AssetMovement $movement): void
     {
         // The custodian is an Employee that may have no login account — only notify when

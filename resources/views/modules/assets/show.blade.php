@@ -66,6 +66,23 @@
                 @endif
             </div>
         @endif
+        @php $pendingAck = $asset->pendingAcknowledgement(); @endphp
+        @if($pendingAck)
+            <div class="mb-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex items-center justify-between gap-3">
+                <p class="text-sm text-amber-800 dark:text-amber-300">
+                    <strong>Awaiting acknowledgement</strong> — {{ $asset->custodian?->name }} has not yet confirmed receiving this asset
+                    (assigned {{ $pendingAck->created_at?->format('d M Y') }}).
+                </p>
+                @if(app(\App\Services\MovementService::class)->canAcknowledge(auth()->user(), $pendingAck))
+                    <form method="POST" action="{{ route('movements.acknowledge', $pendingAck) }}" class="flex-shrink-0">
+                        @csrf
+                        <button type="submit" class="px-3 py-1.5 text-xs font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700">
+                            {{ (int) $asset->custodian?->user_id === (int) auth()->id() ? 'I have received this' : 'Record acknowledgement' }}
+                        </button>
+                    </form>
+                @endif
+            </div>
+        @endif
         <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-3">
                 <a href="{{ route('assets.index') }}" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">

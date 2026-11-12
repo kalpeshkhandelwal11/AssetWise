@@ -59,6 +59,31 @@ class VerificationController extends Controller
         ]);
     }
 
+    /**
+     * POST /audits/items/{item}/report-loss — turn a "missing" finding into a loss write-off
+     * request. The finding itself never changes the asset; this hands it to the asset_loss
+     * approval, the only route to LOST.
+     */
+    public function reportLoss(Request $request, AuditItem $item): RedirectResponse
+    {
+        $this->authorize('audit.manage');
+
+        abort_unless($item->status === 'missing' && $item->asset, 422, 'Only a missing finding can be reported as a loss.');
+
+        try {
+            app(\App\Services\LossService::class)->request(
+                $item->asset,
+                'lost',
+                trim("Found missing in audit \"{$item->campaign?->name}\". " . ($item->notes ?? '')),
+                $request->user(),
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->with('error', collect($e->errors())->flatten()->first());
+        }
+
+        return back()->with('success', 'Loss write-off sent for approval.');
+    }
+
     /** POST /audits/items/{item}/verify */
     public function store(Request $request, AuditItem $item): RedirectResponse
     {

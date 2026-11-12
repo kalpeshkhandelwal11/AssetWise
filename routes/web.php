@@ -101,6 +101,7 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::post('assets/bulk/submit-approval', [AssetController::class, 'bulkSubmitForApproval'])->name('assets.bulk-submit-approval');
     Route::post('assets/bulk/print-list', [AssetController::class, 'printList'])->name('assets.print-list');
     Route::post('assets/bulk/delete', [AssetController::class, 'bulkDestroy'])->name('assets.bulk-delete');
+    Route::post('assets/bulk/restore', [AssetController::class, 'bulkRestore'])->name('assets.bulk-restore');
     Route::post('assets/{asset}/submit-approval', [AssetController::class, 'submitForApproval'])->name('assets.submit-approval');
     Route::post('assets/{asset}/photos', [PhotoController::class, 'store'])->name('assets.photos.store');
     Route::delete('assets/{asset}/photos/{photo}', [PhotoController::class, 'destroy'])->name('assets.photos.destroy');
@@ -138,6 +139,7 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
 
     // Depreciation (M16) — per-asset override request + schedule view
     Route::prefix('assets/{asset}/depreciation')->name('assets.depreciation.')->group(function () {
+        Route::post('revalue', [\App\Http\Controllers\Assets\AssetDepreciationController::class, 'revalue'])->name('revalue');
         Route::get('/', [AssetDepreciationController::class, 'edit'])->name('edit');
         Route::put('/', [AssetDepreciationController::class, 'update'])->name('update');
         Route::get('schedule', [AssetDepreciationController::class, 'schedule'])->name('schedule');
@@ -171,12 +173,14 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::get('{movement}/verify', [MovementController::class, 'verifyForm'])->name('verify.form');
         Route::post('{movement}/verify', [MovementController::class, 'verify'])->name('verify');
         Route::post('{movement}/cancel', [MovementController::class, 'cancel'])->name('cancel');
+        Route::post('{movement}/acknowledge', [MovementController::class, 'acknowledge'])->name('acknowledge');
     });
 
     // Audit & Verification (M10) — "verify" and "items/{item}/verify" register before the
     // campaigns resource-style routes so they aren't swallowed by "campaigns/{campaign}".
     Route::get('audits/verify', [VerificationController::class, 'index'])->name('audits.verify');
     Route::post('audits/items/{item}/verify', [VerificationController::class, 'store'])->name('audits.items.verify');
+    Route::post('audits/items/{item}/report-loss', [VerificationController::class, 'reportLoss'])->name('audits.items.report-loss');
     Route::prefix('audits/campaigns')->name('audits.campaigns.')->group(function () {
         Route::get('/', [AuditCampaignController::class, 'index'])->name('index');
         Route::get('create', [AuditCampaignController::class, 'create'])->name('create');
@@ -332,6 +336,8 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         // Employees — the canonical custodian/assignee master (people who need not be users)
         Route::resource('employees', EmployeeController::class)->except(['show']);
         Route::patch('employees/{employee}/toggle', [EmployeeController::class, 'toggleActive'])->name('employees.toggle');
+        Route::get('employees/{employee}/clearance', [EmployeeController::class, 'clearance'])->name('employees.clearance');
+        Route::post('employees/{employee}/clearance/return', [EmployeeController::class, 'clearanceReturn'])->name('employees.clearance.return');
 
         // Generic shared masters (statuses, asset-types, priorities, movement-types, etc.)
         Route::get('masters', [MasterController::class, 'landing'])->name('masters.landing');

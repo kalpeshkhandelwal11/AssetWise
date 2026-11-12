@@ -120,5 +120,35 @@
                 </form>
             @endif
         </div>
+
+        {{-- Revaluation / impairment: only while a schedule is running and nothing is pending. --}}
+        @if($setting && ! $pending)
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+                <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Revalue or impair</p>
+                <p class="text-xs text-gray-400 mt-1 mb-4">
+                    Restate the book value from a date — higher is a revaluation, lower an impairment. The new value is
+                    depreciated straight-line over the remaining life. The purchase cost stays as the historical cost.
+                </p>
+                <form method="POST" action="{{ route('assets.depreciation.revalue', $asset) }}" class="space-y-4">
+                    @csrf
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <x-input-label for="new_value" value="New book value *" />
+                            <x-text-input id="new_value" type="number" step="0.01" min="0" name="new_value" class="mt-1 block w-full" :value="old('new_value')" required />
+                            <p class="mt-1 text-xs text-gray-400">Current book value: {{ number_format($setting->current_book_value, 2) }}</p>
+                            <x-input-error :messages="$errors->get('new_value')" class="mt-1" />
+                        </div>
+                        <div>
+                            <x-input-label for="effective_date" value="Effective date *" />
+                            <x-text-input id="effective_date" type="date" name="effective_date" class="mt-1 block w-full" :value="old('effective_date', now()->toDateString())" max="{{ now()->toDateString() }}" required />
+                            <x-input-error :messages="$errors->get('effective_date')" class="mt-1" />
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <x-primary-button>Submit for Approval</x-primary-button>
+                    </div>
+                </form>
+            </div>
+        @endif
     </div>
 </x-app-layout>

@@ -152,6 +152,7 @@ class TakeoverService
                     if (! $takeover->isNhai()) {
                         $this->depreciation->applyCategoryDefault($asset->fresh());
                     }
+                    app(\App\Services\OpeningAssignmentService::class)->record($asset->fresh(), $approver->id);
                 }
 
                 $takeover->update(['status' => 'approved', 'approved_at' => now()]);

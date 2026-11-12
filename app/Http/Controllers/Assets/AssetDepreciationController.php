@@ -55,6 +55,28 @@ class AssetDepreciationController extends Controller
             ->with('success', 'Depreciation change submitted for approval.');
     }
 
+    /** Restate the book value (revaluation up / impairment down) — goes for depreciation approval. */
+    public function revalue(Request $request, Asset $asset): RedirectResponse
+    {
+        $this->authorize('depreciation.manage');
+
+        $data = $request->validate([
+            'new_value'      => ['required', 'numeric', 'min:0'],
+            'effective_date' => ['required', 'date', 'before_or_equal:today'],
+        ]);
+
+        $this->depreciation->submitRevaluation(
+            $asset,
+            (float) $data['new_value'],
+            \Illuminate\Support\Carbon::parse($data['effective_date']),
+            $request->user(),
+        );
+
+        return redirect()
+            ->route('assets.show', $asset)
+            ->with('success', 'Book value change submitted for approval.');
+    }
+
     public function schedule(Request $request, Asset $asset): View
     {
         $this->authorize('depreciation.view');

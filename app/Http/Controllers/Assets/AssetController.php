@@ -180,6 +180,7 @@ class AssetController extends Controller
         // promotion (ApplyAssetCreation). No-op when there's no category default or no cost.
         if (! $asset->fresh()->isDraft()) {
             $this->depreciation->applyCategoryDefault($asset->fresh());
+            app(\App\Services\OpeningAssignmentService::class)->record($asset->fresh(), $request->user()->id);
         }
 
         $message = $asset->fresh()->isDraft()
@@ -532,6 +533,33 @@ class AssetController extends Controller
         return $skipped
             ? $redirect->with('error', count($skipped) . ' not deleted because something is still open on them: ' . implode(', ', array_slice($skipped, 0, 10)) . (count($skipped) > 10 ? '…' : '') . '.')
             : $redirect;
+    }
+
+    /** Bulk: restore selected deleted assets (the counterpart of bulkDestroy). */
+    public function bulkRestore(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->can('assets.delete'), 403);
+
+        $data = $request->validate([
+            'asset_ids'   => 'required|array|min:1',
+            'asset_ids.*' => 'integer',
+        ]);
+
+        $count = 0;
+        $errors = [];
+        // onlyTrashed keeps the company-visibility scope, so a user restores only their own.
+        foreach (Asset::onlyTrashed()->whereIn('id', $data['asset_ids'])->get() as $asset) {
+            try {
+                $this->assets->restore($asset);
+                $count++;
+            } catch (ValidationException $e) {
+                $errors[] = collect($e->errors())->flatten()->first();
+            }
+        }
+
+        $redirect = redirect()->route('assets.index')->with('success', "{$count} asset(s) restored.");
+
+        return $errors ? $redirect->with('error', implode(' ', $errors)) : $redirect;
     }
 
     /**

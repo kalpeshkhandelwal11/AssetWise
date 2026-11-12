@@ -26,6 +26,7 @@ class AssetMovement extends Model
         'approval_request_id', 'requested_by',
         // Phase 2 — receipt
         'receipt_status', 'dispatched_at', 'previous_status_id',
+        'acknowledged_at', 'acknowledged_by',
         'received_at', 'received_by', 'receipt_method',
         'short_type', 'short_reported_at', 'short_reported_by',
         'resolution', 'resolution_notes', 'resolved_at', 'resolved_by',
@@ -41,6 +42,7 @@ class AssetMovement extends Model
             'received_at'         => 'datetime',
             'short_reported_at'   => 'datetime',
             'resolved_at'         => 'datetime',
+            'acknowledged_at'     => 'datetime',
         ];
     }
 
@@ -54,6 +56,28 @@ class AssetMovement extends Model
         'returned_to_sender' => 'Return to sender',
         'accepted_as_is'     => 'Accept as-is (incomplete)',
     ];
+
+    /**
+     * A movement that has put the asset in someone's hands (applied assignment / custodian
+     * change, or a received physical move naming a recipient) and that person has not yet
+     * confirmed they hold it. Opening assignments count too.
+     *
+     * Optional by design: it applies only when the recipient employee has a login account.
+     * Most custodians are employees without one — for them nothing is ever awaited.
+     */
+    public function awaitsAcknowledgement(): bool
+    {
+        return $this->to_custodian_id !== null
+            && $this->status === 'completed'
+            && $this->acknowledged_at === null
+            && in_array($this->receipt_status, [null, 'received'], true)
+            && $this->toCustodian?->user_id !== null;
+    }
+
+    public function acknowledgedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'acknowledged_by');
+    }
 
     public function isInTransit(): bool
     {

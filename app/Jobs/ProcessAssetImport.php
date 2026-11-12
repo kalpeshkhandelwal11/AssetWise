@@ -107,6 +107,7 @@ class ProcessAssetImport implements ShouldQueue
                 ->each(function (int $assetId) use ($depreciation) {
                     if ($asset = Asset::find($assetId)) {
                         $depreciation->applyCategoryDefault($asset);
+                        app(\App\Services\OpeningAssignmentService::class)->record($asset->fresh());
                     }
                 });
         }

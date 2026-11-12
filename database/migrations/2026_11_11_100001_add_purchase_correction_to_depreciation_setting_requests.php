@@ -8,13 +8,16 @@ use Illuminate\Support\Facades\Schema;
  * purchase_correction — a purchase cost / date edited on the asset form while depreciation is
  * running. Held for the depreciation approval; on approval both the schedule and the asset's
  * purchase fields change together (DepreciationService::applySettingChange()).
+ *
+ * revaluation — the carrying amount restated to a new value (up = revaluation, down =
+ * impairment) from a given date, over the remaining life (DepreciationService::submitRevaluation()).
  */
 return new class extends Migration
 {
     public function up(): void
     {
         Schema::table('depreciation_setting_requests', function (Blueprint $table) {
-            $table->enum('change_type', ['initial', 'revision', 'capitalization', 'purchase_correction'])
+            $table->enum('change_type', ['initial', 'revision', 'capitalization', 'purchase_correction', 'revaluation'])
                 ->default('revision')->change();
         });
     }

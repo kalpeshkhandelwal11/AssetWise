@@ -72,6 +72,15 @@ class DepreciationSettingRequest extends Model
                 . "date {$date($this->asset->purchase_date)} → {$date($this->start_date)}";
         }
 
+        if ($this->change_type === 'revaluation' && $this->asset) {
+            $from = $this->asset->activeDepreciationSetting()?->current_book_value;
+            $word = $from !== null && (float) $this->cost_basis < (float) $from ? 'Impairment' : 'Revaluation';
+
+            return "{$word} — {$label}: book value " . ($from !== null ? number_format((float) $from, 2) : '—')
+                . ' → ' . number_format((float) $this->cost_basis, 2)
+                . ' from ' . \Illuminate\Support\Carbon::parse($this->start_date)->format('d M Y');
+        }
+
         return 'Depreciation — ' . $label;
     }
 

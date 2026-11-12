@@ -311,6 +311,21 @@ class Asset extends Model
         return $this->status?->code === 'MAINTENANCE';
     }
 
+    /**
+     * The movement that handed this asset to its current custodian, if that person has not
+     * acknowledged it yet. Null once acknowledged, or when custody has since moved on.
+     */
+    public function pendingAcknowledgement(): ?AssetMovement
+    {
+        if (! $this->custodian_id) {
+            return null;
+        }
+
+        $latest = $this->movements()->where('to_custodian_id', $this->custodian_id)->where('status', 'completed')->first();
+
+        return $latest && $latest->awaitsAcknowledgement() ? $latest : null;
+    }
+
     public function hasPendingMovement(): bool
     {
         return $this->movements()->where('status', 'pending_approval')->exists();

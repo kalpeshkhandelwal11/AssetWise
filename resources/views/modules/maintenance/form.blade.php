@@ -43,6 +43,12 @@
                         <x-input-error :messages="$errors->get('scheduled_date')" class="mt-1" />
                     </div>
                     <div>
+                        <x-input-label for="repeat_every_months" value="Repeat every (months)" />
+                        <x-text-input id="repeat_every_months" type="number" min="1" max="120" name="repeat_every_months" class="mt-1 block w-full" :value="old('repeat_every_months', $record->repeat_every_months)" placeholder="Leave blank for one-off work" />
+                        <p class="mt-1 text-xs text-gray-400">When this is completed, the next one is scheduled automatically.</p>
+                        <x-input-error :messages="$errors->get('repeat_every_months')" class="mt-1" />
+                    </div>
+                    <div>
                         <x-input-label for="performed_date" value="Performed Date" />
                         <x-text-input id="performed_date" type="date" name="performed_date" class="mt-1 block w-full" :value="old('performed_date', optional($record->performed_date)->format('Y-m-d'))" />
                         <x-input-error :messages="$errors->get('performed_date')" class="mt-1" />

@@ -526,6 +526,46 @@ class DepreciationService
         );
     }
 
+    /**
+     * Revaluation / impairment: restate the asset's carrying amount to $newValue from $asOf and
+     * depreciate that (straight-line) over the remaining life. Routed through the depreciation
+     * approval like every other schedule change; the purchase cost on the asset is untouched —
+     * it stays the historical cost. Throws when the asset is not being depreciated.
+     */
+    public function submitRevaluation(Asset $asset, float $newValue, CarbonInterface $asOf, User $actor): DepreciationSettingRequest
+    {
+        $current = $asset->activeDepreciationSetting();
+
+        if (! $current) {
+            throw ValidationException::withMessages([
+                'new_value' => "\"{$asset->name}\" is not being depreciated, so there is no book value to restate.",
+            ]);
+        }
+
+        if ($asOf->lt(Carbon::parse($current->start_date))) {
+            throw ValidationException::withMessages([
+                'effective_date' => 'The effective date cannot be before the current schedule started (' . Carbon::parse($current->start_date)->format('d M Y') . ').',
+            ]);
+        }
+
+        // Salvage stays the same amount, but can never exceed the restated value.
+        $salvage = min((float) $current->salvage_value, $newValue);
+
+        return $this->submitSettingChange(
+            $asset,
+            [
+                'depreciation_method_id' => $current->depreciation_method_id,
+                'useful_life_months'     => $this->remainingLifeMonths($current, $asOf),
+                'salvage_value'          => $salvage,
+                'salvage_percent'        => null,
+                'start_date'             => $asOf->toDateString(),
+                'cost_basis'             => round($newValue, 2),
+            ],
+            $actor,
+            'revaluation',
+        );
+    }
+
     private function remainingLifeMonths(AssetDepreciationSetting $setting, CarbonInterface $asOf): int
     {
         $elapsed = (int) Carbon::parse($setting->start_date)->diffInMonths($asOf);

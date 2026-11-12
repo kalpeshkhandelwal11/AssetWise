@@ -15,7 +15,7 @@ class MaintenanceRecord extends Model
 
     protected $fillable = [
         'asset_id', 'maintenance_type_id', 'status',
-        'scheduled_date', 'performed_date', 'vendor', 'cost', 'description',
+        'scheduled_date', 'repeat_every_months', 'performed_date', 'vendor', 'cost', 'description',
         'is_capitalized', 'capitalized_amount', 'additional_useful_life_months',
         'previous_status_id', 'logged_by',
     ];
