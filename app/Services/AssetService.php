@@ -53,8 +53,33 @@ class AssetService
         return $asset;
     }
 
+    /**
+     * Why this asset may not be deleted right now, or null when it may. Deleting an asset with
+     * something open would orphan it: a pending request left in approvers' inboxes, a movement
+     * that can never be received, a disposal that can never be completed.
+     */
+    public function deletionBlocker(Asset $asset): ?string
+    {
+        return match (true) {
+            $asset->hasPendingCreationApproval()     => 'its creation approval is still pending — reject it first',
+            $asset->hasPendingMovement()             => 'it has a movement pending approval',
+            $asset->isInTransit() || $asset->openTransitMovement() !== null => 'it is in transit — receive it or resolve the short receipt first',
+            $asset->hasPendingDisposal()             => 'it has a disposal in progress',
+            $asset->hasPendingLoss()                 => 'it has a loss write-off pending approval',
+            $asset->hasPendingHandover()             => 'it is on a plaza handover pending approval',
+            $asset->hasPendingDepreciationRequest()  => 'it has a depreciation change pending approval',
+            default                                  => null,
+        };
+    }
+
     public function delete(Asset $asset): void
     {
+        if ($reason = $this->deletionBlocker($asset)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'asset' => "\"{$asset->name}\" cannot be deleted: {$reason}.",
+            ]);
+        }
+
         $asset->delete();
     }
 }

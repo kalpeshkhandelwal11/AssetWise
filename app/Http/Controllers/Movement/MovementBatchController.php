@@ -69,7 +69,6 @@ class MovementBatchController extends Controller
             'to_location_id'   => 'nullable|exists:locations,id',
             'to_custodian_id'  => 'nullable|exists:employees,id',
             'to_department_id' => 'nullable|exists:departments,id',
-            'to_status_id'     => 'nullable|exists:asset_statuses,id',
             'notes'            => 'nullable|string|max:1000',
             // Optional supporting documents for the approver (images compressed client-side).
             'documents'        => 'nullable|array|max:5',

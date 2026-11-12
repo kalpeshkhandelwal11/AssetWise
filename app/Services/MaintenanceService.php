@@ -104,6 +104,14 @@ class MaintenanceService
             ]);
         }
 
+        // Retired (scrapped, sold, returned, lost) and draft assets are not serviceable — and
+        // flipping them to Maintenance would take them out of that state.
+        if ($asset->isRetired() || $asset->isDraft()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'status' => "\"{$asset->name}\" is {$asset->status?->name} — maintenance cannot be started on it.",
+            ]);
+        }
+
         $maintenanceStatus = AssetStatus::where('code', 'MAINTENANCE')->first();
 
         if (! $maintenanceStatus || $maintenanceStatus->id === $asset->status_id) {
@@ -127,6 +135,13 @@ class MaintenanceService
     private function restoreAssetStatus(Asset $asset, MaintenanceRecord $record, User $actor): void
     {
         if (! $record->previous_status_id || $record->previous_status_id === $asset->status_id) {
+            return;
+        }
+
+        // Only hand the status back if the asset is still in Maintenance. If something else
+        // moved it on meanwhile (scrapped, lost, dispatched), that newer state wins — restoring
+        // the old status would resurrect a retired asset.
+        if ($asset->status?->code !== 'MAINTENANCE') {
             return;
         }
 

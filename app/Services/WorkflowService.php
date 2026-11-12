@@ -295,6 +295,14 @@ class WorkflowService
             return false;
         }
 
+        // Separation of duties: nobody approves their own request while someone else could.
+        // Only when the submitter is the sole eligible approver of the step may they act, so a
+        // small install (one admin holding every role) can never deadlock.
+        if ((int) $request->submitted_by === (int) $user->id
+            && $this->approversForStep($step)->contains(fn (User $u) => (int) $u->id !== (int) $user->id)) {
+            return false;
+        }
+
         if ($this->matchesStep($user, $step)) {
             return true;
         }

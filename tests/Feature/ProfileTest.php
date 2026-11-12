@@ -61,40 +61,18 @@ class ProfileTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account(): void
+    public function test_users_cannot_delete_their_own_account(): void
     {
+        // Accounts are deactivated by an admin, never hard-deleted from the profile page — a
+        // delete would remove the person behind audit history and approvals.
         $user = User::factory()->create();
 
-        $response = $this
-            ->actingAs($user)
-            ->delete('/profile', [
-                'password' => 'Admin@1234',
-            ]);
-
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect('/');
-
-        $this->assertGuest();
-        $this->assertNull($user->fresh());
-    }
-
-    public function test_correct_password_must_be_provided_to_delete_account(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this
-            ->actingAs($user)
-            ->from('/profile')
-            ->delete('/profile', [
-                'password' => 'WrongPass@1',
-            ]);
-
-        $response
-            ->assertSessionHasErrorsIn('userDeletion', 'password')
-            ->assertRedirect('/profile');
+        $this->actingAs($user)
+            ->delete('/profile', ['password' => 'Admin@1234'])
+            ->assertStatus(405);
 
         $this->assertNotNull($user->fresh());
+        $this->actingAs($user)->get('/profile')->assertOk()->assertDontSee('Delete Account');
     }
 
     // ── Validation ──────────────────────────────────────────────────────────────
@@ -122,12 +100,6 @@ class ProfileTest extends TestCase
     public function test_profile_patch_requires_auth(): void
     {
         $this->patch('/profile', ['name' => 'x', 'email' => 'x@x.com'])
-            ->assertRedirect('/login');
-    }
-
-    public function test_profile_delete_requires_auth(): void
-    {
-        $this->delete('/profile', ['password' => 'Admin@1234'])
             ->assertRedirect('/login');
     }
 }

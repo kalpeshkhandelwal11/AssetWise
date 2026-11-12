@@ -200,6 +200,12 @@
                 </div>
                 <div>
                     <x-input-label for="status_id" value="Status *" />
+                    @if($asset->exists && in_array($asset->status?->code, \App\Models\AssetStatus::WORKFLOW_ONLY, true))
+                        {{-- Workflow-owned (Draft, In Transit, Scrapped, Sold…): shown, never hand-edited. --}}
+                        <input id="status_id" type="text" disabled value="{{ $asset->status->name }}"
+                               class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-400 shadow-sm text-sm" />
+                        <p class="mt-1 text-xs text-gray-400">Changes only through its own workflow (approval, receipt, disposal).</p>
+                    @else
                     <x-searchable-select id="status_id" name="status_id" required>
                         <option value="">— Select —</option>
                         @foreach($statuses as $status)
@@ -209,6 +215,7 @@
                             @endif
                         @endforeach
                     </x-searchable-select>
+                    @endif
                     <x-input-error :messages="$errors->get('status_id')" class="mt-1" />
                 </div>
             </div>

@@ -103,6 +103,7 @@
                            class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
                     <span class="text-sm text-gray-700 dark:text-gray-300">Active</span>
                 </label>
+                <x-input-error :messages="$errors->get('is_active')" class="mt-1" />
             </div>
 
             {{-- Actions --}}

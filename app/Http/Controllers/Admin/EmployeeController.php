@@ -69,6 +69,14 @@ class EmployeeController extends Controller
 
         $data = $request->validate($this->rules($employee));
         $data['is_active'] = $request->boolean('is_active', true);
+
+        // Same guard as the Deactivate button: the Active checkbox must not be a way around it.
+        if ($employee->is_active && ! $data['is_active'] && ($count = $this->activeCustodyCount($employee)) > 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'is_active' => "Cannot deactivate: {$count} active asset(s) are still in this employee's custody.",
+            ]);
+        }
+
         $employee->update($data);
 
         return redirect()->route('admin.employees.index')

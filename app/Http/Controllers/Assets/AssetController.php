@@ -330,6 +330,8 @@ class AssetController extends Controller
         $this->authorize('update', $asset);
 
         $this->assertMovementFieldsUnchanged($request, $asset);
+        $this->assertStatusEditable($request, $asset);
+        $statusBefore = $asset->status_id;
 
         // assertMovementFieldsUnchanged() has already refused a changed company on a live asset, so
         // what reaches validation is either the unchanged value or a draft's legitimate edit.
@@ -347,7 +349,7 @@ class AssetController extends Controller
         [$newCost, $newDate, $changed] = $this->purchaseChange($asset, $data);
         $holdForApproval = $changed && $this->assertPurchaseEditable($purchaseMode, $newCost, $newDate);
 
-        $correction = DB::transaction(function () use ($asset, $data, $fieldInput, $resolved, $request, $holdForApproval, $newCost, $newDate) {
+        $correction = DB::transaction(function () use ($asset, $data, $fieldInput, $resolved, $request, $holdForApproval, $newCost, $newDate, $statusBefore) {
             $correction = null;
             if ($holdForApproval) {
                 // Held back: the asset keeps its current figures until the correction is approved.
@@ -357,6 +359,18 @@ class AssetController extends Controller
 
             $this->assets->update($asset, $data, $request->user());
             $this->fields->saveValues($asset, $fieldInput, $resolved);
+
+            // A status changed by hand still belongs in the status ledger.
+            if ((int) $asset->status_id !== (int) $statusBefore) {
+                \App\Models\AssetStatusHistory::create([
+                    'asset_id'       => $asset->id,
+                    'from_status_id' => $statusBefore,
+                    'to_status_id'   => $asset->status_id,
+                    'changed_by'     => $request->user()->id,
+                    'reason'         => 'Changed on the asset edit form',
+                    'created_at'     => now(),
+                ]);
+            }
 
             return $correction;
         });
@@ -411,6 +425,26 @@ class AssetController extends Controller
         ];
     }
 
+    /**
+     * A workflow-owned status (Draft, In Transit, Scrapped, Sold, Returned…) is left only by
+     * its own workflow — creation approval, receipt, and so on — never by picking another
+     * status on the edit form. The current value is pinned so the rest of the edit still saves.
+     */
+    private function assertStatusEditable(Request $request, Asset $asset): void
+    {
+        if (! in_array($asset->status?->code, AssetStatus::WORKFLOW_ONLY, true)) {
+            return;
+        }
+
+        if ($request->filled('status_id') && (int) $request->input('status_id') !== (int) $asset->status_id) {
+            throw ValidationException::withMessages([
+                'status_id' => "This asset is \"{$asset->status->name}\" — that status changes only through its own workflow, not by editing.",
+            ]);
+        }
+
+        $request->merge(['status_id' => $asset->status_id]);
+    }
+
     private function assertMovementFieldsUnchanged(Request $request, Asset $asset): void
     {
         $errors = [];
@@ -462,7 +496,11 @@ class AssetController extends Controller
     {
         $this->authorize('delete', $asset);
 
-        $this->assets->delete($asset);
+        try {
+            $this->assets->delete($asset);
+        } catch (ValidationException $e) {
+            return back()->with('error', collect($e->errors())->flatten()->first());
+        }
 
         return redirect()->route('assets.index')->with('success', 'Asset deleted.');
     }
@@ -478,12 +516,22 @@ class AssetController extends Controller
         ]);
 
         $count = 0;
+        $skipped = [];
         foreach (Asset::whereIn('id', $data['asset_ids'])->get() as $asset) {
+            // Assets with something open (pending approval, in transit, disposal…) are skipped.
+            if ($this->assets->deletionBlocker($asset)) {
+                $skipped[] = $asset->asset_tag ?: $asset->name;
+                continue;
+            }
             $this->assets->delete($asset);
             $count++;
         }
 
-        return redirect()->route('assets.index')->with('success', "{$count} asset(s) deleted.");
+        $redirect = redirect()->route('assets.index')->with('success', "{$count} asset(s) deleted.");
+
+        return $skipped
+            ? $redirect->with('error', count($skipped) . ' not deleted because something is still open on them: ' . implode(', ', array_slice($skipped, 0, 10)) . (count($skipped) > 10 ? '…' : '') . '.')
+            : $redirect;
     }
 
     /**
@@ -552,10 +600,11 @@ class AssetController extends Controller
             'company_id'       => $companyRule,
             'category_id'      => $categoryLocked ? 'sometimes|exists:asset_categories,id' : 'required|exists:asset_categories,id',
             'asset_type_id'    => 'required|exists:asset_types,id',
-            // Workflow-only statuses (Draft, In Transit, Scrapped, Sold…) can't be picked by hand;
-            // an edit may keep the asset's current one.
+            // Workflow-only statuses (Draft, In Transit, Scrapped, Sold…) and Lost can't be picked
+            // by hand; an edit may keep the asset's current one. Leaving a workflow-owned status
+            // is refused separately (assertStatusEditable).
             'status_id'        => ['required', 'exists:asset_statuses,id',
-                \Illuminate\Validation\Rule::notIn(array_values(array_diff(AssetStatus::workflowOnlyIds(), [(int) $asset?->status_id])))],
+                \Illuminate\Validation\Rule::notIn(array_values(array_diff(AssetStatus::notHandPickableIds(), [(int) $asset?->status_id])))],
             'location_id'      => 'nullable|exists:locations,id',
             'building_id'      => 'nullable|exists:buildings,id',
             'floor_id'         => 'nullable|exists:floors,id',

@@ -752,6 +752,16 @@ class MovementService
 
     private function assertMovable(Asset $asset, MovementType $movementType, array $data): void
     {
+        // A movement may not smuggle in a status that has its own workflow (Scrapped, Sold,
+        // Lost, Draft, In Transit…) — the HTTP layer no longer accepts to_status_id at all; this
+        // guards internal callers too.
+        if (! empty($data['to_status_id'])
+            && in_array(AssetStatus::whereKey($data['to_status_id'])->value('code'), AssetStatus::NOT_HAND_PICKABLE, true)) {
+            throw ValidationException::withMessages([
+                'to_status_id' => 'A movement cannot set that status — it is reached only through its own workflow.',
+            ]);
+        }
+
         if ($asset->isDisposed()) {
             throw ValidationException::withMessages([
                 'asset' => "\"{$asset->name}\" is disposed and cannot be moved.",

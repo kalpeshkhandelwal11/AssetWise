@@ -77,7 +77,8 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // No self-service account deletion: a hard delete would remove the person behind audit
+    // history and approvals. Accounts are deactivated by an admin (UserController).
     Route::patch('/profile/notifications', [ProfileController::class, 'updateNotifications'])->name('profile.notifications.update');
 
     // Notifications (M12) — per-user resource, scoped by ownership not RBAC permission.

@@ -89,6 +89,16 @@ class CategoryController extends Controller
     {
         $this->authorize('assets.delete');
 
+        // A category in use must stay: its assets (every company's, deleted ones included — they
+        // can be restored) and its sub-categories would be left pointing at nothing.
+        $assets = \App\Models\Asset::withoutGlobalScopes()->where('category_id', $category->id)->count();
+        if ($assets > 0) {
+            return back()->with('error', "Cannot delete: {$assets} asset(s) use this category.");
+        }
+        if ($category->children()->exists()) {
+            return back()->with('error', 'Cannot delete: this category has sub-categories. Delete or move them first.');
+        }
+
         $category->delete();
 
         return redirect()->route('admin.categories.index')->with('success', 'Category deleted.');

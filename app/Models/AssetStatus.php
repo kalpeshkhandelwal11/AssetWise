@@ -21,10 +21,17 @@ class AssetStatus extends Model
 
     protected $fillable = ['name', 'code', 'color', 'is_system', 'is_active'];
 
+    /**
+     * Statuses nobody may pick by hand (asset form, import): the workflow-only ones plus LOST,
+     * which is reached only through the asset_loss approval (write-off). An asset already LOST
+     * can still be edited back to a live status if it turns up.
+     */
+    public const NOT_HAND_PICKABLE = [...self::WORKFLOW_ONLY, 'LOST'];
+
     /** Statuses a person may pick on the asset form; keeps $currentId so an edit still shows it. */
     public function scopeManuallySelectable(\Illuminate\Database\Eloquent\Builder $query, ?int $currentId = null): void
     {
-        $query->where(fn ($q) => $q->whereNotIn('code', self::WORKFLOW_ONLY)
+        $query->where(fn ($q) => $q->whereNotIn('code', self::NOT_HAND_PICKABLE)
             ->when($currentId, fn ($w) => $w->orWhere('id', $currentId)));
     }
 
@@ -32,6 +39,12 @@ class AssetStatus extends Model
     public static function workflowOnlyIds(): array
     {
         return static::whereIn('code', self::WORKFLOW_ONLY)->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    /** @return int[] */
+    public static function notHandPickableIds(): array
+    {
+        return static::whereIn('code', self::NOT_HAND_PICKABLE)->pluck('id')->map(fn ($id) => (int) $id)->all();
     }
 
     protected function casts(): array

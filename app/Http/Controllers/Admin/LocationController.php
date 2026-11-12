@@ -71,10 +71,37 @@ class LocationController extends Controller
     {
         $this->authorize('masters.manage');
 
+        if ($reason = $this->inUse('location_id', $location->id, movements: true)) {
+            return back()->with('error', "Cannot delete this location: {$reason}. Deactivate it instead.");
+        }
+
         $location->delete(); // cascades to buildings/floors/rooms via FK
 
         return redirect()->route('admin.locations.index')
             ->with('success', 'Location deleted.');
+    }
+
+    /**
+     * Assets reference these with nullOnDelete, so a delete would silently blank the place on
+     * every asset there (and on movement history). Counts every company's assets, deleted ones
+     * included, since those can be restored.
+     */
+    private function inUse(string $column, int $id, bool $movements = false): ?string
+    {
+        $assets = \Illuminate\Support\Facades\DB::table('assets')->where($column, $id)->count();
+        if ($assets > 0) {
+            return "{$assets} asset(s) are recorded here";
+        }
+
+        if ($movements) {
+            $moves = \Illuminate\Support\Facades\DB::table('asset_movements')
+                ->where(fn ($q) => $q->where('from_location_id', $id)->orWhere('to_location_id', $id))->count();
+            if ($moves > 0) {
+                return "{$moves} movement record(s) refer to it";
+            }
+        }
+
+        return null;
     }
 
     // ── Buildings ────────────────────────────────────────────────────────────
@@ -116,6 +143,10 @@ class LocationController extends Controller
     public function destroyBuilding(Building $building): RedirectResponse
     {
         $this->authorize('masters.manage');
+
+        if ($reason = $this->inUse('building_id', $building->id)) {
+            return back()->with('error', "Cannot delete this building: {$reason}.");
+        }
 
         $building->delete();
 
@@ -163,6 +194,10 @@ class LocationController extends Controller
     {
         $this->authorize('masters.manage');
 
+        if ($reason = $this->inUse('floor_id', $floor->id)) {
+            return back()->with('error', "Cannot delete this floor: {$reason}.");
+        }
+
         $floor->delete();
 
         return redirect()->route('admin.locations.index')
@@ -208,6 +243,10 @@ class LocationController extends Controller
     public function destroyRoom(Room $room): RedirectResponse
     {
         $this->authorize('masters.manage');
+
+        if ($reason = $this->inUse('room_id', $room->id)) {
+            return back()->with('error', "Cannot delete this room: {$reason}.");
+        }
 
         $room->delete();
 

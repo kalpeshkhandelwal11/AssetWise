@@ -45,7 +45,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 class AssetImport implements OnEachRow, WithHeadingRow, WithMultipleSheets, SkipsUnknownSheets
 {
     /** Statuses a spreadsheet may not set directly — they are reached only through workflows. */
-    private const NON_IMPORTABLE_STATUSES = ['DRAFT', 'IN_TRANSIT', 'DISPOSED', 'RETURNED', 'HANDED_OVER', 'SOLD_EXT', 'ICT'];
+    private const NON_IMPORTABLE_STATUSES = AssetStatus::NOT_HAND_PICKABLE;
 
     private const BLANK_SERIALS = ['', 'na', 'n/a', '-', '--', 'nil', 'none', 'null'];
 
