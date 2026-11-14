@@ -125,12 +125,22 @@
             <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                     <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-                        Already assigned to {{ $holding['holder'] }} in {{ $holding['category']?->name ?? 'this category' }}
+                        @if(($holding['kind'] ?? 'person') === 'location')
+                            Already at {{ $holding['holder'] }} in {{ $holding['category']?->name ?? 'this category' }}
+                        @else
+                            Already assigned to {{ $holding['holder'] }} in {{ $holding['category']?->name ?? 'this category' }}
+                        @endif
                     </h2>
                     <span class="text-xs {{ $holding['total'] ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-gray-400' }}">{{ $holding['total'] }} asset(s)</span>
                 </div>
                 @if($holding['total'] === 0)
-                    <p class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">None — this will be their first {{ $holding['category']?->name ?? 'asset in this category' }}.</p>
+                    <p class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        @if(($holding['kind'] ?? 'person') === 'location')
+                            None at this location yet.
+                        @else
+                            None — this will be their first {{ $holding['category']?->name ?? 'asset in this category' }}.
+                        @endif
+                    </p>
                 @else
                     <ul class="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
                         @foreach($holding['assets'] as $held)

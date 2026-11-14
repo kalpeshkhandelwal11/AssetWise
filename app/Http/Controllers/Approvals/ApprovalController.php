@@ -56,6 +56,10 @@ class ApprovalController extends Controller
                 'fromCustodian', 'toCustodian', 'fromDepartment', 'toDepartment', 'toStatus',
             ]);
             $holdings = app(\App\Services\MovementService::class)->existingHoldingsFor($approvable);
+        } elseif ($approvable instanceof \App\Models\KitAssignment) {
+            // Kit assigned under one approval ("single" mode): same view of what the
+            // destination already holds, across every category in the kit.
+            $holdings = app(\App\Services\MovementService::class)->existingHoldingsFor($approvable);
         } elseif ($approvable instanceof \App\Models\ImportBatch) {
             $approvable->load('category', 'user');
         }

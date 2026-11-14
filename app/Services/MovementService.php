@@ -181,53 +181,71 @@ class MovementService
     }
 
     /**
-     * For an approver: what does the destination already hold in the same category(ies)?
-     * Matches the destination custodian, or the destination location when no custodian is
-     * named. Excludes the assets being moved and drafts/retired assets.
+     * For an approver: what the destination already holds in the same category(ies) as the
+     * assets being moved — for the named PERSON and for the named LOCATION, each when the
+     * movement names one (a person first). Works for a single movement, a bulk batch, or a
+     * kit assignment (its batch in "single" mode, its own movements in "per asset" mode).
+     * Excludes the assets being moved and drafts/retired assets.
      *
-     * @return Collection<int, array{category: ?\App\Models\AssetCategory, holder: string, total: int, assets: Collection}>
+     * @return Collection<int, array{category: ?\App\Models\AssetCategory, kind: string, holder: string, total: int, assets: Collection}>
      */
-    public function existingHoldingsFor(AssetMovement|AssetMovementBatch $subject): \Illuminate\Support\Collection
+    public function existingHoldingsFor(AssetMovement|AssetMovementBatch|\App\Models\KitAssignment $subject): \Illuminate\Support\Collection
     {
-        $movements = $subject instanceof AssetMovementBatch
-            ? $subject->movements()->with('asset')->get()
-            : collect([$subject->loadMissing('asset')]);
+        $movements = match (true) {
+            $subject instanceof AssetMovementBatch => $subject->movements()->with('asset')->get(),
+            $subject instanceof \App\Models\KitAssignment => $subject->batch
+                ? $subject->batch->movements()->with('asset')->get()
+                : $subject->movements()->with('asset')->get(),
+            default => collect([$subject->loadMissing('asset')]),
+        };
 
         $first = $movements->first();
         if (! $first) {
             return collect();
         }
 
-        $custodianId = $first->to_custodian_id;
-        $locationId = $custodianId ? null : $first->to_location_id;
+        // Who/where the assets are going: the person and/or the place, both when both are named.
+        $targets = collect();
+        if ($first->to_custodian_id) {
+            $targets->push([
+                'kind'   => 'person',
+                'column' => 'custodian_id',
+                'id'     => $first->to_custodian_id,
+                'holder' => \App\Models\Employee::find($first->to_custodian_id)?->name ?? 'the custodian',
+            ]);
+        }
+        if ($first->to_location_id) {
+            $targets->push([
+                'kind'   => 'location',
+                'column' => 'location_id',
+                'id'     => $first->to_location_id,
+                'holder' => \App\Models\Location::find($first->to_location_id)?->name ?? 'the location',
+            ]);
+        }
 
-        if (! $custodianId && ! $locationId) {
+        if ($targets->isEmpty()) {
             return collect();
         }
 
-        $holder = $custodianId
-            ? (\App\Models\Employee::find($custodianId)?->name ?? 'the custodian')
-            : (\App\Models\Location::find($locationId)?->name ?? 'the location');
-
         $movingIds = $movements->pluck('asset_id')->all();
         $excludedStatusIds = \App\Models\AssetStatus::whereIn('code', ['DRAFT', ...\App\Models\AssetStatus::TERMINAL])->pluck('id');
+        $categoryIds = $movements->pluck('asset.category_id')->filter()->unique()->values();
 
-        return $movements->pluck('asset.category_id')->filter()->unique()->values()
-            ->map(function (int $categoryId) use ($custodianId, $locationId, $movingIds, $excludedStatusIds, $holder) {
-                $query = Asset::query()
-                    ->where('category_id', $categoryId)
-                    ->whereNotIn('id', $movingIds)
-                    ->whereNotIn('status_id', $excludedStatusIds)
-                    ->when($custodianId, fn ($q) => $q->where('custodian_id', $custodianId))
-                    ->when($locationId, fn ($q) => $q->where('location_id', $locationId));
+        return $targets->flatMap(fn (array $target) => $categoryIds->map(function (int $categoryId) use ($target, $movingIds, $excludedStatusIds) {
+            $query = Asset::query()
+                ->where('category_id', $categoryId)
+                ->where($target['column'], $target['id'])
+                ->whereNotIn('id', $movingIds)
+                ->whereNotIn('status_id', $excludedStatusIds);
 
-                return [
-                    'category' => \App\Models\AssetCategory::find($categoryId),
-                    'holder'   => $holder,
-                    'total'    => (clone $query)->count(),
-                    'assets'   => $query->with('status')->orderBy('name')->limit(25)->get(),
-                ];
-            });
+            return [
+                'category' => \App\Models\AssetCategory::find($categoryId),
+                'kind'     => $target['kind'],
+                'holder'   => $target['holder'],
+                'total'    => (clone $query)->count(),
+                'assets'   => $query->with('status')->orderBy('name')->limit(25)->get(),
+            ];
+        }))->values();
     }
 
     /** Called by ApplyAssetMovement (the ApprovalRequestApproved listener) for a standalone movement. */
