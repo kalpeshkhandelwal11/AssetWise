@@ -47,7 +47,6 @@ class AssetImport implements OnEachRow, WithHeadingRow, WithMultipleSheets, Skip
     /** Statuses a spreadsheet may not set directly — they are reached only through workflows. */
     private const NON_IMPORTABLE_STATUSES = AssetStatus::NOT_HAND_PICKABLE;
 
-    private const BLANK_SERIALS = ['', 'na', 'n/a', '-', '--', 'nil', 'none', 'null'];
 
     private MasterLookup $lookup;
 
@@ -245,7 +244,7 @@ class AssetImport implements OnEachRow, WithHeadingRow, WithMultipleSheets, Skip
             'asset_tag'          => filled($data['asset_tag'] ?? null) ? trim((string) $data['asset_tag']) : null,
             'name'               => $data['name'] ?? null,
             'description'        => $data['description'] ?? null,
-            'serial_number'      => in_array(Str::lower($serial), self::BLANK_SERIALS, true) ? null : $serial,
+            'serial_number'      => \App\Support\SerialNumber::normalize($serial),
             'model'              => $data['model'] ?? null,
             'manufacturer'       => $data['manufacturer'] ?? null,
             'purchase_date'      => $this->date($data['purchase_date'] ?? null),

@@ -21,13 +21,11 @@ class SerialDuplicates extends Command
 
     protected $description = 'Report duplicate serial numbers and optionally enforce uniqueness in the database';
 
-    private const PLACEHOLDERS = ['na', 'n/a', '-', '--', 'nil', 'none', 'null', '0'];
-
     public function handle(): int
     {
         if ($this->option('clean-placeholders')) {
             $count = Asset::withoutGlobalScopes()->withTrashed()
-                ->where(fn ($q) => $q->whereIn(DB::raw('LOWER(TRIM(serial_number))'), self::PLACEHOLDERS)
+                ->where(fn ($q) => $q->whereIn(DB::raw('LOWER(TRIM(serial_number))'), \App\Support\SerialNumber::PLACEHOLDERS)
                     ->orWhereRaw("TRIM(serial_number) = ''"))
                 ->update(['serial_number' => null]);
             $this->info("Blanked {$count} placeholder serial(s).");

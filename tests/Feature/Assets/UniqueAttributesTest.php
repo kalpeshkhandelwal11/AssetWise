@@ -64,6 +64,39 @@ class UniqueAttributesTest extends TestCase
             ->assertSessionHasErrors('serial_number');
     }
 
+    public function test_placeholder_serials_never_clash_and_are_stored_blank(): void
+    {
+        // Legacy rows that still hold "n/a" (as on the live install before the cleanup).
+        $legacy = Asset::factory()->create(['serial_number' => 'n/a', 'category_id' => $this->child->id]);
+        Asset::factory()->create(['serial_number' => 'N/A']);
+
+        // Editing one of them is not refused as a duplicate…
+        $this->actingAs($this->admin)->put(route('assets.update', $legacy), $this->payload([
+            'serial_number' => 'n/a', 'name' => 'Renamed', 'company_id' => $legacy->company_id, 'status_id' => $legacy->status_id,
+        ]))->assertSessionDoesntHaveErrors('serial_number');
+        // …and saving it stores no serial at all.
+        $this->assertNull($legacy->fresh()->serial_number);
+
+        // A new asset typed with a placeholder is accepted and stored blank too.
+        $this->actingAs($this->admin)->post(route('assets.store'), $this->payload(['name' => 'No-serial chair', 'serial_number' => ' NA ']))
+            ->assertSessionDoesntHaveErrors('serial_number');
+        $this->assertNull(Asset::where('name', 'No-serial chair')->value('serial_number'));
+    }
+
+    public function test_cleanup_command_blanks_placeholders_and_keeps_real_duplicates_reported(): void
+    {
+        Asset::factory()->count(3)->create(['serial_number' => 'n/a']);
+        Asset::factory()->create(['serial_number' => '-']);
+        Asset::factory()->count(2)->create(['serial_number' => 'REAL-DUP']);
+
+        $this->artisan('assets:serial-duplicates', ['--clean-placeholders' => true])
+            ->expectsOutputToContain('Blanked 4 placeholder serial(s).')
+            ->expectsOutputToContain('real-dup');
+
+        $this->assertSame(0, Asset::whereIn('serial_number', ['n/a', '-'])->count());
+        $this->assertSame(2, Asset::where('serial_number', 'REAL-DUP')->count());
+    }
+
     public function test_soft_deleted_assets_do_not_block_a_serial(): void
     {
         Asset::factory()->create(['serial_number' => 'SN-200'])->delete();

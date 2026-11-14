@@ -22,7 +22,9 @@ class UniqueSerialNumber implements ValidationRule
     {
         $serial = trim((string) $value);
 
-        if ($serial === '') {
+        // Blank and placeholders ("N/A", "-") mean "no serial" — they are stored as NULL and
+        // never clash (App\Support\SerialNumber).
+        if (\App\Support\SerialNumber::isPlaceholder($serial)) {
             return;
         }
 

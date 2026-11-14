@@ -17,6 +17,7 @@ class AssetService
     public function create(array $data, User $actor): Asset
     {
         $data['created_by'] = $actor->id;
+        $data = $this->normalizeSerial($data);
 
         // Auto-number the asset code from the category-wise naming series unless one was supplied.
         if (empty($data['asset_tag']) && $this->naming->enabled()) {
@@ -35,6 +36,7 @@ class AssetService
     public function update(Asset $asset, array $data, User $actor): Asset
     {
         $data['updated_by'] = $actor->id;
+        $data = $this->normalizeSerial($data);
 
         // Once coverage records exist the expiry column is derived from them (WarrantyService /
         // AmcService keep it at the latest end date) — a date posted from the asset form must
@@ -51,6 +53,16 @@ class AssetService
         $this->coverage->recordFromAsset($asset, $actor);
 
         return $asset;
+    }
+
+    /** "N/A", "-" and the like mean no serial: store NULL, never a shared placeholder. */
+    private function normalizeSerial(array $data): array
+    {
+        if (array_key_exists('serial_number', $data)) {
+            $data['serial_number'] = \App\Support\SerialNumber::normalize($data['serial_number']);
+        }
+
+        return $data;
     }
 
     /**
