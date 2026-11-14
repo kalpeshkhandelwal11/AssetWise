@@ -27,6 +27,19 @@ echo "== Using PHP: $($PHP -v | head -n1)"
 echo "== [1/7] Back up .env =="
 cp -a .env ".env.bak.$(date +%Y%m%d%H%M%S)"
 
+echo "== [1b] Back up the database (migrations below change live data) =="
+envval() { grep -E "^$1=" .env | tail -n1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' | tr -d '\r'; }
+DB_NAME=$(envval DB_DATABASE); DB_USER=$(envval DB_USERNAME); DB_PASS=$(envval DB_PASSWORD); DB_HOST=$(envval DB_HOST)
+DB_BACKUP="$HOME/assetwise-db-$(date +%Y%m%d%H%M%S).sql.gz"
+if MYSQL_PWD="$DB_PASS" mysqldump --single-transaction --no-tablespaces -h "${DB_HOST:-localhost}" -u "$DB_USER" "$DB_NAME" | gzip > "$DB_BACKUP" \
+   && [ -s "$DB_BACKUP" ]; then
+  echo "   DB backup: $DB_BACKUP ($(du -h "$DB_BACKUP" | cut -f1))"
+else
+  rm -f "$DB_BACKUP"
+  echo "FATAL: database backup failed — nothing has been changed; fix this before updating"
+  exit 1
+fi
+
 echo "== [2/7] Maintenance mode ON =="
 $PHP artisan down --render=errors::503 || $PHP artisan down || true
 
