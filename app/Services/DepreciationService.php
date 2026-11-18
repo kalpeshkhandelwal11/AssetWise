@@ -52,14 +52,45 @@ class DepreciationService
             ? ($asset->purchase_date ?? now())
             : ($asset->purchase_date ?? now());
 
+        // The asset form shows life and salvage (prefilled from this same default) and the
+        // first schedule uses exactly what was saved there — so the EOL date and depreciation
+        // can never disagree. Blank on the asset = take the category's value.
+        $assetLife = $asset->useful_life_years !== null ? (float) $asset->useful_life_years : null;
+        $assetSalvage = $asset->salvage_percent !== null ? (float) $asset->salvage_percent : null;
+
         return [
             'depreciation_method_id' => $default->depreciation_method_id,
-            'useful_life_months'     => $default->useful_life_months,
-            'salvage_value'          => $default->salvage_value !== null ? (float) $default->salvage_value : null,
-            'salvage_percent'        => $default->salvage_percent !== null ? (float) $default->salvage_percent : null,
+            'useful_life_months'     => $assetLife ? max(1, (int) round($assetLife * 12)) : $default->useful_life_months,
+            'salvage_value'          => $assetSalvage !== null ? null : ($default->salvage_value !== null ? (float) $default->salvage_value : null),
+            'salvage_percent'        => $assetSalvage ?? ($default->salvage_percent !== null ? (float) $default->salvage_percent : null),
             'start_date'             => Carbon::parse($startDate)->toDateString(),
             'cost_basis'             => $costBasis,
         ];
+    }
+
+    /**
+     * What the asset create form prefills for each category: useful life in years and salvage %
+     * (a fixed salvage amount is passed separately, since it is not a percentage). Categories
+     * with no depreciation default are left out — the form then says depreciation is not set up.
+     *
+     * @return array<int, array{life_years: float, salvage_percent: ?float, salvage_fixed: ?float}>
+     */
+    public function categoryDefaultsForForm(): array
+    {
+        $globalPercent = (float) Setting::get('depreciation_default_salvage_percent', '5');
+
+        return \App\Models\CategoryDepreciationDefault::query()->get()
+            ->mapWithKeys(function ($default) use ($globalPercent) {
+                $fixed = $default->salvage_value !== null ? (float) $default->salvage_value : null;
+
+                return [$default->category_id => [
+                    'life_years'      => round($default->useful_life_months / 12, 2),
+                    'salvage_percent' => $default->salvage_percent !== null
+                        ? (float) $default->salvage_percent
+                        : ($fixed === null ? $globalPercent : null),
+                    'salvage_fixed'   => $fixed,
+                ]];
+            })->all();
     }
 
     /** Resolve fixed-or-percent salvage to an absolute amount, defaulting to the 5% setting. */

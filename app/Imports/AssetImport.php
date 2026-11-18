@@ -35,8 +35,9 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
  * (company_code / company / company_name). Legacy *_id columns are still accepted when the
  * name column is absent, so pre-existing templates keep working.
  *
- * A file produced by AssetExport re-imports as-is: its extra columns are ignored, "End of
- * Life" Yes/No maps to is_eol, and custom-field columns match by label as well as key.
+ * A file produced by AssetExport re-imports as-is: its extra columns are ignored (including
+ * "End of Life", which is derived from the EOL date), and custom-field columns match by label
+ * as well as key.
  *
  * Draft mode ($draftStatusId set, i.e. an active asset_creation workflow): every asset is
  * created as DRAFT and the status the row asked for is parked on its import_batch_rows
@@ -256,9 +257,10 @@ class AssetImport implements OnEachRow, WithHeadingRow, WithMultipleSheets, Skip
             'notes'              => $data['notes'] ?? null,
         ];
 
-        $eol = $data['is_eol'] ?? $data['end_of_life'] ?? null;
-        if (filled($eol)) {
-            $input['is_eol'] = in_array(Str::lower(trim((string) $eol)), ['1', 'yes', 'y', 'true'], true);
+        // End of Life is derived from the EOL date (Asset::isPastEol()); an "End of Life"
+        // Yes/No column, as in AssetExport, is ignored.
+        if (filled($data['eol_projected_date'] ?? null)) {
+            $input['eol_projected_date'] = $this->date($data['eol_projected_date']);
         }
 
         return $input;
@@ -285,7 +287,7 @@ class AssetImport implements OnEachRow, WithHeadingRow, WithMultipleSheets, Skip
             'vendor_invoice_no' => 'nullable|string|max:255',
             'warranty_expiry'   => 'nullable|date',
             'amc_expiry'        => 'nullable|date',
-            'is_eol'            => 'sometimes|boolean',
+            'eol_projected_date' => 'nullable|date',
             'notes'             => 'nullable|string',
         ];
     }

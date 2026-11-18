@@ -24,7 +24,7 @@ class Asset extends Model
         'location_id', 'building_id', 'floor_id', 'room_id',
         'custodian_id', 'department_id', 'branch_id',
         'purchase_date', 'purchase_cost', 'vendor', 'vendor_invoice_no', 'warranty_expiry', 'amc_expiry',
-        'is_eol', 'eol_projected_date', 'useful_life_years',
+        'is_eol', 'eol_projected_date', 'useful_life_years', 'salvage_percent',
         'notes', 'is_active', 'created_by', 'updated_by',
         'condition', 'condition_remarks', 'takeover_line_id',
     ];
@@ -39,7 +39,24 @@ class Asset extends Model
             'purchase_cost'       => 'decimal:2',
             'is_active'           => 'boolean',
             'is_eol'              => 'boolean',
+            'useful_life_years'   => 'decimal:2',
+            'salvage_percent'     => 'decimal:2',
         ];
+    }
+
+    /**
+     * End of life is a fact, not a choice: the projected EOL date has arrived. `is_eol` is a
+     * stored copy kept in step on every save and by the daily `assets:sync-eol` run, so lists,
+     * exports and reports can filter on it.
+     */
+    public function isPastEol(): bool
+    {
+        return $this->eol_projected_date !== null && $this->eol_projected_date->lte(today());
+    }
+
+    public function scopePastEol(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $query->whereNotNull('eol_projected_date')->whereDate('eol_projected_date', '<=', today());
     }
 
     /**

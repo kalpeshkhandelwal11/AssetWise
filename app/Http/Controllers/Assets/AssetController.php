@@ -72,6 +72,10 @@ class AssetController extends Controller
             }
         }
 
+        if ($request->boolean('past_eol')) {
+            $query->pastEol();
+        }
+
         if ($request->filled('date_from')) {
             $query->whereDate('purchase_date', '>=', $request->date_from);
         }
@@ -341,12 +345,15 @@ class AssetController extends Controller
         $fieldInput = $data['fields'];
         unset($data['fields'], $data['_resolved_fields']);
 
-        // Checkboxes omit themselves from the request when unchecked, so 'sometimes|boolean'
-        // alone can never turn is_eol back off — read it explicitly, same as WorkflowController.
-        $data['is_eol'] = $request->boolean('is_eol');
-
         // Purchase cost / date feed the depreciation schedule, so they may not drift from it.
         $purchaseMode = $this->depreciation->purchaseEditMode($asset);
+
+        // Life and salvage feed only the asset's FIRST schedule. Once one exists they change on
+        // the Depreciation page (approval-gated), so the form shows them read-only and a posted
+        // value is ignored — the same "one place" rule as purchase cost.
+        if ($purchaseMode !== DepreciationService::PURCHASE_FREE) {
+            unset($data['useful_life_years'], $data['salvage_percent']);
+        }
         [$newCost, $newDate, $changed] = $this->purchaseChange($asset, $data);
         $holdForApproval = $changed && $this->assertPurchaseEditable($purchaseMode, $newCost, $newDate);
 
@@ -648,9 +655,10 @@ class AssetController extends Controller
             // is given — the comparison field must exist for after_or_equal to be meaningful).
             'warranty_expiry'  => 'nullable|date' . $afterPurchase,
             'amc_expiry'       => 'nullable|date' . $afterPurchase,
-            'is_eol'           => 'sometimes|boolean',
             'eol_projected_date' => 'nullable|date' . $afterPurchase,
-            'useful_life_years' => 'nullable|integer|min:1|max:100',
+            // Halves allowed: category lives such as 18 months or 7.5 years must fit.
+            'useful_life_years' => 'nullable|numeric|min:0.5|max:100|multiple_of:0.5',
+            'salvage_percent'   => 'nullable|numeric|min:0|max:100',
             'notes'            => 'nullable|string',
         ];
     }
@@ -667,6 +675,9 @@ class AssetController extends Controller
             'branches'    => Branch::where('is_active', true)->orderBy('name')->get(),
             'custodians'  => Employee::visible()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'department_id', 'branch_id']),
             'availableTags' => Tag::where('status', 'available')->orderBy('tag_number')->get(),
+            // Category -> {life_years, salvage_percent, salvage_fixed}: prefills the form.
+            'depreciationDefaults' => $this->depreciation->categoryDefaultsForForm(),
+            'purchaseMode' => $asset?->exists ? $this->depreciation->purchaseEditMode($asset) : DepreciationService::PURCHASE_FREE,
             'assetNamingEnabled' => $this->naming->enabled(),
             'assetNamingPreview' => $this->naming->enabled() ? $this->naming->preview() : null,
             // Per-category next-code previews so the form hint updates as the category changes.

@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('approvals:remind')->hourly();
         $schedule->command('alerts:expiry')->daily();
         $schedule->command('maintenance:remind')->daily();
+        $schedule->command('assets:sync-eol')->daily();
         $schedule->command('depreciation:post-monthly')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {

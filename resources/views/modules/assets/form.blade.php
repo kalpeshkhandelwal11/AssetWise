@@ -33,8 +33,21 @@
             custodianMap: {{ Illuminate\Support\Js::from($custodians->keyBy('id')->map(fn ($e) => ['department_id' => $e->department_id, 'branch_id' => $e->branch_id])) }},
             // Purchase: asset life (years) -> EOL projected date.
             purchaseDate: '{{ old('purchase_date', optional($asset->purchase_date)->format('Y-m-d')) }}',
-            usefulLife: '{{ old('useful_life_years', $asset->useful_life_years) }}',
+            usefulLife: '{{ old('useful_life_years', $asset->useful_life_years !== null ? (float) $asset->useful_life_years : '') }}',
+            salvagePercent: '{{ old('salvage_percent', $asset->salvage_percent !== null ? (float) $asset->salvage_percent : '') }}',
             eolDate: '{{ old('eol_projected_date', optional($asset->eol_projected_date)->format('Y-m-d')) }}',
+            {{-- Category depreciation defaults (life in years, salvage percent) that prefill the
+                 two fields below until the user types their own value. --}}
+            depDefaults: @js($depreciationDefaults ?? []),
+            lifeTouched: {{ old('useful_life_years') !== null || $asset->useful_life_years !== null ? 'true' : 'false' }},
+            salvageTouched: {{ old('salvage_percent') !== null || $asset->salvage_percent !== null ? 'true' : 'false' }},
+            get depDefault() { return this.depDefaults[this.categoryId] || null; },
+            applyDepreciationDefaults() {
+                const d = this.depDefaults[this.categoryId];
+                if (! d) return;
+                if (! this.lifeTouched) { this.usefulLife = String(d.life_years); this.computeEol(); }
+                if (! this.salvageTouched) { this.salvagePercent = d.salvage_percent === null ? '' : String(d.salvage_percent); }
+            },
             // Media at creation (repeatable rows of file + label).
             mediaRows: [{}],
             applyCustodian() {
@@ -42,9 +55,9 @@
                 if (e) { this.departmentId = e.department_id ?? ''; this.branchId = e.branch_id ?? ''; }
             },
             computeEol() {
-                if (this.purchaseDate && this.usefulLife) {
+                if (this.purchaseDate && parseFloat(this.usefulLife) > 0) {
                     const d = new Date(this.purchaseDate);
-                    d.setFullYear(d.getFullYear() + parseInt(this.usefulLife));
+                    d.setMonth(d.getMonth() + Math.round(parseFloat(this.usefulLife) * 12));
                     this.eolDate = d.toISOString().slice(0, 10);
                 }
             },
@@ -175,7 +188,7 @@
                 <div>
                     <x-input-label for="category_id" value="Category *" />
                     @if($canChangeCategory)
-                        <x-searchable-select id="category_id" name="category_id" x-model="categoryId" @change="loadDynamicFields()" required>
+                        <x-searchable-select id="category_id" name="category_id" x-model="categoryId" @change="loadDynamicFields(); applyDepreciationDefaults()" required>
                             <option value="">— Select —</option>
                             @foreach($categories as $category)
                                 <option value="{{ $category->id }}" @selected(old('category_id', $asset->category_id) == $category->id)>{{ $category->name }}</option>
@@ -431,17 +444,45 @@
                         <x-text-input id="vendor_invoice_no" name="vendor_invoice_no" class="mt-1 block w-full" :value="old('vendor_invoice_no', $asset->vendor_invoice_no)" />
                         <x-input-error :messages="$errors->get('vendor_invoice_no')" class="mt-1" />
                     </div>
+                    @php
+                        // Once a depreciation schedule exists, life and salvage change only on the
+                        // Depreciation page (approval-gated); show what the schedule actually uses.
+                        $depLocked = ($purchaseMode ?? 'free') !== 'free';
+                        $activeDep = $depLocked ? $asset->activeDepreciationSetting() : null;
+                    @endphp
                     <div>
                         <x-input-label for="useful_life_years" value="Asset Life (years)" />
-                        <select id="useful_life_years" name="useful_life_years" x-model="usefulLife" @change="computeEol()"
-                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
-                            <option value="">—</option>
-                            @for($y = 1; $y <= 20; $y++)
-                                <option value="{{ $y }}">{{ $y }}</option>
-                            @endfor
-                        </select>
-                        <p class="mt-1 text-xs text-gray-400">Auto-fills EOL date from purchase date.</p>
+                        @if($depLocked)
+                            <x-text-input id="useful_life_years" type="text" class="mt-1 block w-full bg-gray-50 dark:bg-gray-900/50" disabled
+                                :value="$activeDep ? rtrim(rtrim(number_format($activeDep->useful_life_months / 12, 2), '0'), '.') : ($asset->useful_life_years !== null ? (float) $asset->useful_life_years : '—')" />
+                            <p class="mt-1 text-xs text-gray-400">From this asset's depreciation schedule — change it on the Depreciation page.</p>
+                        @else
+                            <input id="useful_life_years" type="number" name="useful_life_years" min="0.5" max="100" step="0.5"
+                                   x-model="usefulLife" @input="lifeTouched = true; computeEol()"
+                                   class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                            <p class="mt-1 text-xs text-gray-400">Sets the EOL date and is the life depreciation uses. Prefilled from the category; halves allowed.</p>
+                        @endif
                         <x-input-error :messages="$errors->get('useful_life_years')" class="mt-1" />
+                    </div>
+                    <div>
+                        <x-input-label for="salvage_percent" value="Salvage Value (% of cost)" />
+                        @if($depLocked)
+                            <x-text-input id="salvage_percent" type="text" class="mt-1 block w-full bg-gray-50 dark:bg-gray-900/50" disabled
+                                :value="$activeDep ? ($activeDep->salvage_percent !== null ? rtrim(rtrim(number_format($activeDep->salvage_percent, 2), '0'), '.') . '%' : '₹ ' . number_format($activeDep->salvage_value, 2) . ' (fixed)') : '—'" />
+                            <p class="mt-1 text-xs text-gray-400">From this asset's depreciation schedule — change it on the Depreciation page.</p>
+                        @else
+                            <input id="salvage_percent" type="number" name="salvage_percent" min="0" max="100" step="0.01"
+                                   x-model="salvagePercent" @input="salvageTouched = true"
+                                   class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                            <p class="mt-1 text-xs text-gray-400" x-show="depDefault && depDefault.salvage_fixed === null">Residual value kept at the end of life. Prefilled from the category.</p>
+                            <p class="mt-1 text-xs text-gray-400" x-show="depDefault && depDefault.salvage_fixed !== null" x-cloak>
+                                The category uses a fixed salvage of ₹ <span x-text="depDefault ? depDefault.salvage_fixed : ''"></span>. Leave blank to keep it, or enter a percentage instead.
+                            </p>
+                            <p class="mt-1 text-xs text-amber-600 dark:text-amber-400" x-show="categoryId && ! depDefault" x-cloak>
+                                This category has no depreciation set up, so the asset will not be depreciated.
+                            </p>
+                        @endif
+                        <x-input-error :messages="$errors->get('salvage_percent')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="warranty_expiry" value="Warranty Expiry" />
@@ -470,12 +511,8 @@
                         <x-input-label for="eol_projected_date" value="EOL Projected Date" />
                         <input id="eol_projected_date" type="date" name="eol_projected_date" x-model="eolDate"
                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                        <p class="mt-1 text-xs text-gray-400">The asset is marked End of Life automatically once this date arrives.</p>
                         <x-input-error :messages="$errors->get('eol_projected_date')" class="mt-1" />
-                    </div>
-                    <div class="flex items-center gap-2 pt-6">
-                        <input type="checkbox" id="is_eol" name="is_eol" value="1" @checked(old('is_eol', $asset->is_eol)) class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                        <x-input-label for="is_eol" value="End of Life" />
-                        <x-input-error :messages="$errors->get('is_eol')" class="mt-1" />
                     </div>
                 </div>
             </div>

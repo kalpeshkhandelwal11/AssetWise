@@ -56,6 +56,7 @@ echo "== [5/7] Migrate (no seed) =="
 $PHP artisan migrate --force
 $PHP artisan assetwise:sync-reference-data
 $PHP artisan assets:backfill-coverage   # idempotent: onboarding expiry dates -> warranty/AMC records
+$PHP artisan assets:sync-eol            # idempotent: End of Life = EOL date has arrived
 
 echo "== [6/7] Refresh caches (NEVER config:cache — closures in config/notifications.php) =="
 $PHP artisan config:clear

@@ -78,6 +78,11 @@ class DashboardService
             Asset::whereBetween('amc_expiry', [now(), now()->addDays(30)]), $companyId
         )->count();
 
+        // Live assets whose projected end-of-life date has arrived (retired ones are gone already).
+        $pastEol = $this->scopeByCompany(
+            Asset::pastEol()->whereHas('status', fn ($q) => $q->whereNotIn('code', \App\Models\AssetStatus::TERMINAL)), $companyId
+        )->count();
+
         $recentMovements = $this->scopeByMovementCompany(
             AssetMovement::with(['asset', 'movementType', 'requestedBy']), $companyId
         )->latest()->limit(8)->get();
@@ -94,7 +99,7 @@ class DashboardService
 
         return compact(
             'totalAssets', 'assignedAssets', 'inMaintenance', 'pendingCount',
-            'availableTags', 'disposedYear', 'warrantyExpiring', 'amcExpiring',
+            'availableTags', 'disposedYear', 'warrantyExpiring', 'amcExpiring', 'pastEol',
             'recentMovements', 'pendingApprovals', 'expiryAlerts',
         );
     }

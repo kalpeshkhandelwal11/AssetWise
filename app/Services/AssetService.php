@@ -29,6 +29,7 @@ class AssetService
 
         // A warranty / AMC date typed at onboarding becomes the asset's first coverage record.
         $this->coverage->recordFromAsset($asset, $actor);
+        $this->syncEol($asset);
 
         return $asset;
     }
@@ -51,8 +52,17 @@ class AssetService
         $asset->update($data);
 
         $this->coverage->recordFromAsset($asset, $actor);
+        $this->syncEol($asset);
 
         return $asset;
+    }
+
+    /** Keep the stored End of Life flag equal to "its EOL date has arrived" (Asset::isPastEol()). */
+    public function syncEol(Asset $asset): void
+    {
+        if ((bool) $asset->is_eol !== $asset->isPastEol()) {
+            $asset->update(['is_eol' => $asset->isPastEol()]);
+        }
     }
 
     /** "N/A", "-" and the like mean no serial: store NULL, never a shared placeholder. */

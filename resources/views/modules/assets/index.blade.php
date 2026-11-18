@@ -123,6 +123,11 @@
             @endforeach
         </select>
 
+        <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 px-2">
+            <input type="checkbox" name="past_eol" value="1" @checked(request('past_eol')) class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+            Past end of life
+        </label>
+
         @can('assets.delete')
         <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 px-2">
             <input type="checkbox" name="show_deleted" value="1" @checked(request('show_deleted')) class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
