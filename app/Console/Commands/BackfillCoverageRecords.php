@@ -25,7 +25,9 @@ class BackfillCoverageRecords extends Command
         $created = 0;
 
         // System-level catch-up: every company's assets, whoever runs it.
-        Asset::withoutGlobalScopes()
+        // Every company's assets — but NOT deleted ones: withoutGlobalScopes() would also drop
+        // the soft-delete scope and create coverage for assets that no longer exist.
+        Asset::withoutGlobalScope(\App\Models\Scopes\CompanyVisibilityScope::class)
             ->where(fn ($q) => $q->whereNotNull('warranty_expiry')->orWhereNotNull('amc_expiry'))
             ->orderBy('id')
             ->chunkById(200, function ($assets) use ($coverage, $dryRun, &$created) {

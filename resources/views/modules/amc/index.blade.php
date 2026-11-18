@@ -26,9 +26,13 @@
                 @forelse($contracts as $contract)
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                         <td class="px-4 py-3">
+                            @if($contract->asset)
                             <a href="{{ route('assets.show', $contract->asset) }}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
                                 {{ \App\Models\Asset::labelFor($contract->asset) }}
                             </a>
+                            @else
+                                <span class="text-gray-400">{{ \App\Models\Asset::labelFor(null) }}</span>
+                            @endif
                             <div class="text-xs text-gray-400">{{ $contract->asset?->company?->name }}</div>
                         </td>
                         <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $contract->vendor }}</td>

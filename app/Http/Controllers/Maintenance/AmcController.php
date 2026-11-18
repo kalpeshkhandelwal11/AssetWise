@@ -21,7 +21,9 @@ class AmcController extends Controller
     {
         $this->authorize('maintenance.manage');
 
-        $query = AmcContract::query()->with(['asset.company', 'createdBy']);
+        // Only coverage whose asset still exists: a deleted asset's records stay (they return if
+        // it is restored) but are not listed — there is no asset page to link them to.
+        $query = AmcContract::query()->whereHas('asset')->with(['asset.company', 'createdBy']);
 
         if ($request->filled('search')) {
             $search = $request->input('search');

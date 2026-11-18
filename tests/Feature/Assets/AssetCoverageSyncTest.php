@@ -177,4 +177,38 @@ class AssetCoverageSyncTest extends TestCase
             ->assertSuccessful();
         $this->assertSame(1, WarrantyRecord::count());
     }
+
+    public function test_coverage_of_a_deleted_asset_does_not_break_the_lists_or_report(): void
+    {
+        // Production 500 (2026-11-18): /warranty and /amc built a link to a deleted asset.
+        $manager = $this->createUserWithRole('Super Admin');
+        $live = Asset::factory()->create(['name' => 'LIVE-ROUTER']);
+        $gone = Asset::factory()->create(['name' => 'GONE-ROUTER']);
+        WarrantyRecord::factory()->create(['asset_id' => $live->id, 'end_date' => now()->addYear()]);
+        WarrantyRecord::factory()->create(['asset_id' => $gone->id, 'end_date' => now()->addYear()]);
+        AmcContract::factory()->create(['asset_id' => $gone->id, 'end_date' => now()->addYear()]);
+        $gone->delete();
+
+        $this->actingAs($manager)->get(route('warranty.index'))
+            ->assertOk()->assertSee('LIVE-ROUTER')->assertDontSee('GONE-ROUTER');
+        $this->actingAs($manager)->get(route('amc.index'))
+            ->assertOk()->assertDontSee('GONE-ROUTER');
+        $this->actingAs($manager)->get(route('reports.show', ['type' => 'amc_warranty']))
+            ->assertOk()->assertSee('LIVE-ROUTER')->assertDontSee('GONE-ROUTER');
+
+        // Restoring the asset brings its coverage back.
+        $gone->restore();
+        $this->actingAs($manager)->get(route('warranty.index'))->assertOk()->assertSee('GONE-ROUTER');
+    }
+
+    public function test_backfill_skips_deleted_assets(): void
+    {
+        $owner = $this->createUserWithRole('Asset Manager');
+        $deleted = Asset::factory()->create(['warranty_expiry' => now()->addYear(), 'created_by' => $owner->id]);
+        $deleted->delete();
+
+        $this->artisan('assets:backfill-coverage')->assertSuccessful();
+
+        $this->assertSame(0, WarrantyRecord::where('asset_id', $deleted->id)->count());
+    }
 }

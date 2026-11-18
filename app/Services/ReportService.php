@@ -156,6 +156,7 @@ class ReportService
         ]);
 
         $this->scopeByRelatedAssetCompany($query, $this->intOrNull($filters, 'company_id'));
+        $query->whereHas('asset'); // a deleted asset's coverage is not reported (no asset to link)
 
         if (! empty($filters['disposal_type_id'])) {
             $query->where('disposal_type_id', $filters['disposal_type_id']);

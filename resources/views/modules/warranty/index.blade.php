@@ -25,9 +25,13 @@
                 @forelse($records as $record)
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                         <td class="px-4 py-3">
+                            @if($record->asset)
                             <a href="{{ route('assets.show', $record->asset) }}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
                                 {{ \App\Models\Asset::labelFor($record->asset) }}
                             </a>
+                            @else
+                                <span class="text-gray-400">{{ \App\Models\Asset::labelFor(null) }}</span>
+                            @endif
                             <div class="text-xs text-gray-400">{{ $record->asset?->company?->name }}</div>
                         </td>
                         <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $record->provider }}</td>
