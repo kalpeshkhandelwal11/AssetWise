@@ -95,6 +95,29 @@ class ApprovalRequest extends Model
      * Forward-compat hook: consumer models (M09 movements, M05 tag replacements, …) can
      * implement getApprovalLabel() for a nicer inbox display. Falls back to class + id.
      */
+    /**
+     * The one asset this request is about, so the approver can open its full detail page:
+     * the asset itself (creation approval), or the asset behind a movement, disposal, loss
+     * write-off, tag replacement or depreciation change. Null for multi-asset requests (bulk
+     * movements, imports, kits, plaza takeovers / handovers), which list their assets instead.
+     */
+    public function subjectAsset(): ?\App\Models\Asset
+    {
+        $model = $this->approvable;
+
+        if ($model instanceof \App\Models\Asset) {
+            return $model;
+        }
+
+        if ($model instanceof \App\Models\AssetMovementBatch
+            || $model instanceof \App\Models\ImportBatch
+            || $model instanceof \App\Models\KitAssignment) {
+            return null;
+        }
+
+        return $model && method_exists($model, 'asset') ? $model->asset : null;
+    }
+
     public function getApprovableLabelAttribute(): string
     {
         $model = $this->approvable;

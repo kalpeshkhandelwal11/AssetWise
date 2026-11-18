@@ -10,6 +10,15 @@
             </a>
             <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ $request->approvable_label }}</h1>
             <x-approval-status :status="$request->status" />
+            {{-- Single-asset requests: open the asset's full record (photos, attachments, history)
+                 in a new tab, so the approval page stays open for the decision. --}}
+            @if($subjectAsset = $request->subjectAsset())
+                <a href="{{ route('assets.show', $subjectAsset) }}" target="_blank" rel="noopener"
+                   class="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
+                    Open asset details
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                </a>
+            @endif
             @if($escalated && $request->isPending())
                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
                     Escalated
@@ -117,6 +126,28 @@
                         </div>
                     @endif
                 </dl>
+            </div>
+        @endif
+
+        {{-- Kit assigned under one approval: every asset in it, each linking to its record --}}
+        @if($request->approvable instanceof \App\Models\KitAssignment)
+            @php
+                $kitAssignment = $request->approvable;
+                $kitMoves = ($kitAssignment->batch?->movements() ?? $kitAssignment->movements())->with('asset.category')->get();
+            @endphp
+            <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Assets in this kit</h2>
+                    <span class="text-xs text-gray-400">{{ $kitMoves->count() }} asset(s)</span>
+                </div>
+                <ul class="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
+                    @foreach($kitMoves as $kitMove)
+                        <li class="px-6 py-2 flex items-center justify-between">
+                            <a href="{{ route('assets.show', $kitMove->asset_id) }}" target="_blank" rel="noopener" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ \App\Models\Asset::labelFor($kitMove->asset) }}</a>
+                            <span class="text-xs text-gray-400">{{ $kitMove->asset?->category?->name }}</span>
+                        </li>
+                    @endforeach
+                </ul>
             </div>
         @endif
 

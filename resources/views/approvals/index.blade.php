@@ -33,7 +33,12 @@
                                 <a href="{{ route('approvals.show', $request) }}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
                                     {{ $request->approvable_label }}
                                 </a>
-                                <p class="text-xs text-gray-400">{{ Str::headline($request->workflow->module) }}</p>
+                                <p class="text-xs text-gray-400">
+                                    {{ Str::headline($request->workflow->module) }}
+                                    @if($inboxAsset = $request->subjectAsset())
+                                        · <a href="{{ route('assets.show', $inboxAsset) }}" target="_blank" rel="noopener" class="text-indigo-500 hover:underline">view asset</a>
+                                    @endif
+                                </p>
                             </td>
                             <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $request->workflow->name }}</td>
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
