@@ -319,16 +319,25 @@ class DepreciationService
         });
     }
 
+    /**
+     * The replaced schedule ends the day before the new one starts, so no day is depreciated
+     * twice. A backdated change (capitalization or revaluation effective last month, a
+     * purchase correction restating from the purchase date) therefore also removes the old
+     * schedule's months — posted or not — that the new schedule now covers.
+     */
     private function supersedePrevious(int $assetId, AssetDepreciationSetting $new): void
     {
+        $lastDay = Carbon::parse($new->start_date)->subDay();
+
         AssetDepreciationSetting::where('asset_id', $assetId)
             ->where('is_active', true)
             ->where('id', '!=', $new->id)
             ->get()
-            ->each(function (AssetDepreciationSetting $old) use ($new) {
+            ->each(function (AssetDepreciationSetting $old) use ($new, $lastDay) {
+                $this->truncateSchedule($old, $lastDay);
                 $old->update([
                     'is_active'     => false,
-                    'stopped_at'    => now()->toDateString(),
+                    'stopped_at'    => $lastDay->toDateString(),
                     'superseded_by' => $new->id,
                 ]);
             });
@@ -461,24 +470,71 @@ class DepreciationService
         return round($accumulated, 2);
     }
 
-    /** Halt depreciation (disposal/transfer) and drop strictly-future unposted lines. */
+    /** Halt depreciation (disposal/transfer): depreciation runs through $date, inclusive. */
     public function stop(AssetDepreciationSetting $setting, CarbonInterface $date): void
     {
-        $setting->scheduleLines()
-            ->where('status', 'scheduled')
-            ->where(function ($q) use ($date) {
-                $q->where('period_year', '>', $date->year)
-                    ->orWhere(function ($q2) use ($date) {
-                        $q2->where('period_year', $date->year)
-                            ->where('period_month', '>', $date->month);
-                    });
-            })
-            ->delete();
+        $this->truncateSchedule($setting, $date);
 
         $setting->update([
             'is_active'  => false,
             'stopped_at' => $date->toDateString(),
         ]);
+    }
+
+    /**
+     * Cut a schedule so it covers days up to and including $lastDay only: later months are
+     * removed (posted ones too — they are replaced by whatever follows), and the month holding
+     * $lastDay is prorated by day. Without this, the change month was kept whole and overlapped
+     * the next schedule, depreciating the same days twice.
+     */
+    public function truncateSchedule(AssetDepreciationSetting $setting, CarbonInterface $lastDay): void
+    {
+        $lastDay = Carbon::parse($lastDay)->startOfDay();
+        $start = Carbon::parse($setting->start_date)->startOfDay();
+        $running = 0.0;
+
+        $lines = $setting->scheduleLines()->orderBy('period_year')->orderBy('period_month')->get();
+
+        foreach ($lines as $line) {
+            $year = (int) $line->period_year;
+            $month = (int) $line->period_month;
+
+            if ($year > $lastDay->year || ($year === $lastDay->year && $month > $lastDay->month)) {
+                $line->delete();
+                continue;
+            }
+
+            if ($year === $lastDay->year && $month === $lastDay->month) {
+                $firstDay = ($start->year === $year && $start->month === $month) ? $start->day : 1;
+                $keep = $lastDay->day - $firstDay + 1;
+
+                if ($keep <= 0) {
+                    $line->delete();
+                    continue;
+                }
+
+                if ($keep < (int) $line->days_in_period) {
+                    $amount = round((float) $line->depreciation_amount * $keep / (int) $line->days_in_period, 2);
+                    $line->update([
+                        'days_in_period'           => $keep,
+                        'depreciation_amount'      => $amount,
+                        'accumulated_depreciation' => round($running + $amount, 2),
+                        'closing_book_value'       => round((float) $line->opening_book_value - $amount, 2),
+                    ]);
+                }
+            }
+
+            $running = (float) $line->accumulated_depreciation;
+        }
+
+        $latest = $setting->scheduleLines()->where('status', 'posted')
+            ->orderByDesc('period_year')->orderByDesc('period_month')->first();
+
+        $setting->update([
+            'accumulated_depreciation' => $latest ? $latest->accumulated_depreciation : 0,
+            'current_book_value'       => $latest ? $latest->closing_book_value : (float) $setting->cost_basis,
+        ]);
+        $setting->unsetRelation('scheduleLines');
     }
 
     // ------------------------------------------------------------------ cross-module
@@ -497,10 +553,12 @@ class DepreciationService
         }
 
         return DB::transaction(function () use ($asset, $current, $transferDate) {
-            $nbv = $this->netBookValue($current, $transferDate);
+            // The seller depreciates up to the day before; the receiver from the transfer day.
+            $sellerLastDay = Carbon::parse($transferDate)->subDay();
+            $nbv = $this->netBookValue($current, $sellerLastDay);
             $remaining = $this->remainingLifeMonths($current, $transferDate);
 
-            $this->stop($current, $transferDate);
+            $this->stop($current, $sellerLastDay);
 
             $setting = AssetDepreciationSetting::create([
                 'asset_id'                 => $asset->id,
@@ -538,7 +596,8 @@ class DepreciationService
         }
 
         $asOf = $record->performed_date ? Carbon::parse($record->performed_date) : now();
-        $nbv = $this->netBookValue($current, $asOf);
+        // Book value at the end of the day before the work: the new schedule starts on $asOf.
+        $nbv = $this->netBookValue($current, $asOf->copy()->subDay());
         $remaining = $this->remainingLifeMonths($current, $asOf);
 
         return $this->submitSettingChange(

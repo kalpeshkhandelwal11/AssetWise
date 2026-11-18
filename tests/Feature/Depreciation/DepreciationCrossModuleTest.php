@@ -89,7 +89,10 @@ class DepreciationCrossModuleTest extends TestCase
         $asset = Asset::factory()->create();
         $old = $this->halfDepreciatedSetting($asset);
 
-        $nbv = app(DepreciationService::class)->netBookValue($old, now());
+        // The seller depreciates up to the day before the transfer and the receiver from the
+        // transfer day itself — so the receiver's basis is the book value at the end of the
+        // previous day (measuring it on the transfer day would depreciate that day twice).
+        $nbv = app(DepreciationService::class)->netBookValue($old, now()->subDay());
         $new = app(DepreciationService::class)->resetForTransfer($asset->fresh(), now());
 
         $this->assertNotNull($new);
