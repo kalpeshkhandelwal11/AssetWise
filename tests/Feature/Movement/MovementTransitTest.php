@@ -211,4 +211,78 @@ class MovementTransitTest extends TestCase
         $this->actingAs($this->manager)->put(route('assets.update', $asset), ['location_id' => $to->id, 'name' => $asset->name])
             ->assertSessionHasErrors('location_id');
     }
+
+    /** A transfer to a plaza managed by $managerUser, approved and in transit. */
+    private function inTransitTo(Asset $asset, User $managerUser): AssetMovement
+    {
+        $to = Location::create(['name' => 'Plaza S' . $asset->id, 'code' => 'PS' . $asset->id, 'is_active' => true]);
+        $to->update(['manager_employee_id' => Employee::factory()->create(['user_id' => $managerUser->id])->id]);
+
+        return $this->moveAndApprove($asset, ['movement_type_id' => $this->type('TRANSFER')->id, 'to_location_id' => $to->id]);
+    }
+
+    public function test_a_tagged_asset_is_received_only_by_its_tag_not_its_asset_id(): void
+    {
+        $managerUser = User::factory()->create();
+        $asset = $this->asset(['asset_tag' => 'AST-7001']);
+        $this->tag($asset, 'TAG-7001');
+        $movement = $this->inTransitTo($asset, $managerUser);
+
+        // Typing the Asset ID is not proof of having the item when it carries a tag.
+        $this->actingAs($managerUser)->post(route('movements.receive', $movement), [
+            'tag_number' => 'AST-7001', 'verification_condition' => 'ok',
+        ])->assertSessionHasErrors('tag_number');
+        $this->assertTrue($movement->fresh()->isInTransit());
+
+        $this->actingAs($managerUser)->post(route('movements.receive', $movement), [
+            'tag_number' => 'TAG-7001', 'verification_condition' => 'ok',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('received', $movement->fresh()->receipt_status);
+    }
+
+    public function test_an_untagged_asset_is_received_by_its_asset_id(): void
+    {
+        $managerUser = User::factory()->create();
+        $asset = $this->asset(['asset_tag' => 'AST-7002']);
+        $movement = $this->inTransitTo($asset, $managerUser);
+
+        $this->actingAs($managerUser)->post(route('movements.receive', $movement), [
+            'tag_number' => 'ast-7002', 'verification_condition' => 'ok',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('received', $movement->fresh()->receipt_status);
+    }
+
+    public function test_reporting_it_missing_at_receipt_needs_no_scan_only_a_note(): void
+    {
+        $managerUser = User::factory()->create();
+        $asset = $this->asset(['asset_tag' => 'AST-7003']);
+        $this->tag($asset, 'TAG-7003');
+        $movement = $this->inTransitTo($asset, $managerUser);
+
+        $this->actingAs($managerUser)->post(route('movements.receive', $movement), [
+            'verification_condition' => 'missing', 'verification_notes' => 'Never arrived on the truck',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue($movement->fresh()->isShort());
+    }
+
+    public function test_verify_also_needs_the_tag_for_a_tagged_asset(): void
+    {
+        $verifier = $this->createUserWithRole('Asset Manager'); // has movement.verify, not Super Admin
+        $verifier->givePermissionTo('movement.verify');
+        $asset = $this->asset(['asset_tag' => 'AST-7004']);
+        $this->tag($asset, 'TAG-7004');
+        $movement = $this->moveAndApprove($asset, [
+            'movement_type_id' => $this->type('CUSTODIAN_CHANGE')->id, 'to_custodian_id' => Employee::factory()->create()->id,
+        ]);
+
+        $this->actingAs($verifier)->post(route('movements.verify', $movement), [
+            'tag_number' => 'AST-7004', 'verification_condition' => 'ok',
+        ])->assertSessionHasErrors('tag_number');
+
+        $this->actingAs($verifier)->post(route('movements.verify', $movement), [
+            'tag_number' => 'TAG-7004', 'verification_condition' => 'ok',
+        ])->assertSessionHasNoErrors();
+        $this->assertNotNull($movement->fresh()->verified_at);
+    }
 }

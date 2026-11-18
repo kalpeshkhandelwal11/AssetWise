@@ -29,7 +29,8 @@ class AuditScanVerificationTest extends TestCase
 
         $this->actingAs($auditor)
             ->get(route('scan.resolve', $tag->fresh()->tag_number))
-            ->assertRedirect(route('audits.verify', ['campaign' => $campaign->id, 'item' => $item->id]));
+            // The scanned tag rides along so the item's confirmation is pre-filled.
+            ->assertRedirect(route('audits.verify', ['campaign' => $campaign->id, 'item' => $item->id, 'scanned' => $tag->fresh()->tag_number]));
     }
 
     public function test_scanning_the_same_tag_without_audit_verify_permission_goes_to_asset_detail(): void

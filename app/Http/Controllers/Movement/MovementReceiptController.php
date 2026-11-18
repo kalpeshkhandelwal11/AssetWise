@@ -72,11 +72,13 @@ class MovementReceiptController extends Controller
 
         // Possession is proven by scanning (or typing) the asset's barcode; only stores/admins
         // may confirm on someone's behalf without it.
-        if (! $onBehalf) {
+        // "Missing" (it never arrived) cannot be scanned — a note is required instead.
+        $missing = $request->input('verification_condition') === 'missing';
+        if (! $onBehalf && ! $missing) {
             $request->validate(['tag_number' => 'required|string']);
 
             if (! $this->movements->tagMatches($asset, $request->input('tag_number'))) {
-                return back()->withErrors(['tag_number' => 'The scanned tag does not match this asset.'])->withInput();
+                return back()->withErrors(['tag_number' => $this->movements->tagMismatchMessage($asset)])->withInput();
             }
         }
 
@@ -208,8 +210,9 @@ class MovementReceiptController extends Controller
     private function receiptData(Request $request, AssetMovement $movement): array
     {
         $data = $request->validate([
-            'verification_condition' => ['required', 'in:ok,damaged,incomplete'],
-            'verification_notes'     => ['nullable', 'required_if:verification_condition,incomplete', 'string', 'max:2000'],
+            // "missing" = it did not arrive: no scan possible, a note is required instead.
+            'verification_condition' => ['required', 'in:ok,damaged,incomplete,missing'],
+            'verification_notes'     => ['nullable', 'required_if:verification_condition,incomplete,missing', 'string', 'max:2000'],
             'photos'                 => ['nullable', 'array', 'max:8'],
             'photos.*'               => ['file', 'max:20480', new ImageUnderSize(2048)],
         ], ['verification_notes.required_if' => 'Describe what is missing or incomplete.']);

@@ -86,7 +86,8 @@ class ScanController extends Controller
                 : null;
 
             if ($item) {
-                return redirect()->route('audits.verify', ['campaign' => $item->campaign_id, 'item' => $item->id])
+                // Carry the scanned tag so the item's confirmation is pre-filled.
+                return redirect()->route('audits.verify', ['campaign' => $item->campaign_id, 'item' => $item->id, 'scanned' => $result->tag->tag_number])
                     ->with('success', 'Tag scanned: ' . $result->tag->tag_number);
             }
 

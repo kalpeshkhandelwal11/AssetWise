@@ -48,10 +48,12 @@
                 <form method="POST" action="{{ route('movements.verify', $movement) }}" enctype="multipart/form-data"
                       x-data="tagScanner(@js(['viewerId' => $verifyViewerId, 'inputId' => 'tag_number']))">
                     @csrf
-                    <x-input-label for="tag_number" value="Scan or type the asset's tag to confirm" />
+                    @php $confirmAsset = $movement->asset; @endphp
+                    <x-input-label for="tag_number" :value="$confirmAsset?->activeTag() ? 'Scan the tag on the asset to confirm' : 'Enter the Asset ID to confirm (this asset has no tag)'" />
+                    <p class="text-xs text-gray-400">Not needed when marking it Missing — add a note instead.</p>
                     <div class="mt-1 flex gap-2">
                         <input id="tag_number" name="tag_number" type="text" autocomplete="off" @keydown.enter.prevent
-                               value="{{ old('tag_number') }}" placeholder="Scan or type tag / Asset ID"
+                               value="{{ old('tag_number') }}" :placeholder="@js($confirmAsset?->activeTag() ? 'Scan the tag' : 'Asset ID')"
                                class="flex-1 min-w-0 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono" />
                         <button type="button" @click="toggle()" :disabled="starting"
                                 class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 transition-colors">

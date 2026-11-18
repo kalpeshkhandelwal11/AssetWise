@@ -64,23 +64,75 @@
                                 </p>
                             @endif
 
-                            <form method="POST" action="{{ route('audits.items.verify', $item) }}" enctype="multipart/form-data" class="space-y-3">
+                            @php
+                                $tagged = $item->asset?->activeTag() !== null;
+                                $scanViewer = 'audit-scan-' . $item->id;
+                                $scanInput = 'audit-tag-' . $item->id;
+                                $mine = (int) session('audit_item_error') === (int) $item->id;
+                                $prefill = $mine ? old('tag_number') : ((int) $focusItemId === (int) $item->id ? request('scanned') : null);
+                            @endphp
+                            <form method="POST" action="{{ route('audits.items.verify', $item) }}" enctype="multipart/form-data" class="space-y-3"
+                                  x-data="{ ...tagScanner(@js(['viewerId' => $scanViewer, 'inputId' => $scanInput])), status: @js($mine ? old('status', '') : '') }">
                                 @csrf
                                 <div class="flex flex-wrap gap-4">
                                     @foreach(['verified' => 'Verified', 'missing' => 'Missing', 'damaged' => 'Damaged'] as $value => $label)
                                         <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                            <input type="radio" name="status" value="{{ $value }}" required class="text-indigo-600 focus:ring-indigo-500">
+                                            <input type="radio" name="status" value="{{ $value }}" required x-model="status" class="text-indigo-600 focus:ring-indigo-500">
                                             {{ $label }}
                                         </label>
                                     @endforeach
                                 </div>
+
+                                {{-- In hand (verified / damaged): confirm it is this asset, then photograph it. --}}
+                                <div x-show="status !== 'missing'" class="space-y-3">
+                                    <div>
+                                        <label for="{{ $scanInput }}" class="block text-xs font-medium text-gray-600 dark:text-gray-400">
+                                            {{ $tagged ? 'Scan the tag on the asset *' : 'Asset ID * (this asset has no tag)' }}
+                                        </label>
+                                        <div class="mt-1 flex gap-2">
+                                            <input id="{{ $scanInput }}" name="tag_number" type="text" autocomplete="off" @keydown.enter.prevent
+                                                   value="{{ $prefill }}" placeholder="{{ $tagged ? 'Scan the tag' : 'Asset ID' }}"
+                                                   :required="status !== 'missing'"
+                                                   class="flex-1 min-w-0 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono" />
+                                            <button type="button" @click="toggle()" :disabled="starting"
+                                                    class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60">
+                                                <span x-text="active ? 'Stop' : (starting ? '…' : 'Scan')"></span>
+                                            </button>
+                                        </div>
+                                        <div x-show="active" x-cloak class="mt-2">
+                                            <div id="{{ $scanViewer }}" class="w-full max-w-sm overflow-hidden rounded-lg bg-black"></div>
+                                        </div>
+                                        <p x-show="error" x-cloak x-text="error" class="mt-1 text-xs text-red-600"></p>
+                                        @if($mine)
+                                            <x-input-error :messages="$errors->get('tag_number')" class="mt-1" />
+                                        @endif
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Photo of the asset *</label>
+                                        {{-- capture opens the phone camera directly; on a computer it is a file picker. --}}
+                                        <input type="file" name="photo" accept="image/*" capture="environment" data-compress :required="status !== 'missing'"
+                                               class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                        @if($mine)
+                                            <x-input-error :messages="$errors->get('photo')" class="mt-1" />
+                                        @endif
+                                    </div>
+                                </div>
+                                <p x-show="status === 'missing'" x-cloak class="text-xs text-gray-500 dark:text-gray-400">Missing: no scan or photo — describe where it should be in the note.</p>
+
                                 <div>
                                     <textarea name="notes" rows="2" placeholder="Notes (required for missing/damaged)"
-                                              class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"></textarea>
+                                              :required="status === 'missing' || status === 'damaged'"
+                                              class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">{{ $mine ? old('notes') : '' }}</textarea>
+                                    @if($mine)
+                                        <x-input-error :messages="$errors->get('notes')" class="mt-1" />
+                                    @endif
                                 </div>
-                                <div>
-                                    <input type="file" name="photo" accept="image/*" data-compress class="text-sm text-gray-600 dark:text-gray-400">
-                                </div>
+                                {{-- Anything refused for this item that is not a field above (e.g. not an assigned auditor). --}}
+                                @if($mine)
+                                    @foreach(collect($errors->getMessages())->except(['tag_number', 'photo', 'notes'])->flatten() as $itemError)
+                                        <p class="text-sm text-red-600 dark:text-red-400">{{ $itemError }}</p>
+                                    @endforeach
+                                @endif
                                 <x-primary-button type="submit">Submit Verification</x-primary-button>
                             </form>
                         </div>

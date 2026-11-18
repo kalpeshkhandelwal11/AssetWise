@@ -370,9 +370,25 @@ class MovementService
             $scanned = urldecode($m[1]);
         }
 
-        return collect([$asset?->activeTag()?->tag_number, $asset?->asset_tag])
-            ->filter()
-            ->contains(fn ($t) => strcasecmp($t, $scanned) === 0);
+        // A tagged asset is confirmed only by its physical tag — the Asset ID lives in the
+        // system, not on the item, so typing it proves nothing. Untagged: the Asset ID.
+        $expected = $asset?->activeTag()?->tag_number ?? $asset?->asset_tag;
+
+        // Nothing to check against (no tag and no Asset ID): any entry confirms it, rather than
+        // making the asset impossible to verify or receive.
+        if ($asset && blank($expected)) {
+            return $scanned !== '';
+        }
+
+        return $expected !== null && strcasecmp($expected, $scanned) === 0;
+    }
+
+    /** What to tell someone whose scan / entry did not match (without revealing the answer). */
+    public function tagMismatchMessage(?Asset $asset): string
+    {
+        return $asset?->activeTag()
+            ? 'That is not this asset\'s tag. Scan the tag attached to it — the Asset ID is not accepted for a tagged asset.'
+            : 'That does not match. This asset has no tag yet, so enter its Asset ID.';
     }
 
     /**

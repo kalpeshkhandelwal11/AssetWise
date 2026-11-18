@@ -116,16 +116,14 @@ class MovementController extends Controller
 
         // Non-admins must confirm physical possession by scanning/typing a tag that matches the
         // moved asset (its physical pool tag or its Asset ID). Super Admin bypasses.
-        if (! $request->user()->hasRole('Super Admin')) {
+        // Tagged asset: its tag; untagged: its Asset ID (MovementService::tagMatches). "Missing"
+        // cannot be scanned and needs a note instead.
+        $missing = $request->input('verification_condition') === 'missing';
+        if (! $request->user()->hasRole('Super Admin') && ! $missing) {
             $request->validate(['tag_number' => 'required|string']);
-            $scanned = $this->normaliseTag($request->input('tag_number'));
-            $asset = $movement->asset;
-            $valid = collect([$asset?->activeTag()?->tag_number, $asset?->asset_tag])
-                ->filter()
-                ->contains(fn ($t) => strcasecmp($t, $scanned) === 0);
 
-            if (! $valid) {
-                return back()->withErrors(['tag_number' => 'The scanned tag does not match this asset.'])->withInput();
+            if (! $this->movements->tagMatches($movement->asset, $request->input('tag_number'))) {
+                return back()->withErrors(['tag_number' => $this->movements->tagMismatchMessage($movement->asset)])->withInput();
             }
         }
 
