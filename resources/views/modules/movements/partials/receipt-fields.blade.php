@@ -21,6 +21,9 @@
                 </label>
             @endforeach
         </div>
+        @if(array_intersect(array_keys($conditions), ['missing', 'incomplete']))
+            <p class="mt-1 text-xs text-gray-400">Missing or incomplete sends it to an administrator to resolve (Movement → Short Received).</p>
+        @endif
         <x-input-error :messages="$errors->get('verification_condition')" class="mt-1" />
     </div>
 

@@ -84,6 +84,15 @@ class AssetMovement extends Model
         return $this->receipt_status === 'in_transit';
     }
 
+    /**
+     * Applied the moment it was approved (assignment / custodian change), rather than
+     * dispatched In Transit for a receipt scan. Such a movement is signed off by Verify.
+     */
+    public function wasAppliedOnApproval(): bool
+    {
+        return $this->dispatched_at === null;
+    }
+
     public function isShort(): bool
     {
         return $this->receipt_status === 'short';

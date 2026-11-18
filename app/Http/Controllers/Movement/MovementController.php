@@ -142,7 +142,7 @@ class MovementController extends Controller
             $photoPaths[] = $photo->store("movements/{$movement->id}/verification", 'public');
         }
 
-        $this->movements->verify(
+        $result = $this->movements->verify(
             $movement,
             $request->user(),
             $receipt['verification_condition'] ?? null,
@@ -150,7 +150,9 @@ class MovementController extends Controller
             $photoPaths,
         );
 
-        return redirect()->route('movements.index')->with('success', 'Movement verified.');
+        return redirect()->route('movements.index')->with('success', $result->isShort()
+            ? 'Reported as short — an administrator will resolve it under Movement → Short Received.'
+            : 'Movement verified.');
     }
 
     /** Reduce a scanned QR payload (url("/scan/{n}")) or a bare barcode to the tag number. */

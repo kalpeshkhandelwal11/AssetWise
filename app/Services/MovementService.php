@@ -311,6 +311,8 @@ class MovementService
         $asset = Asset::withoutGlobalScopes()->findOrFail($movement->asset_id);
 
         if (! $this->isTransit($movement)) {
+            // Remembered so a later "short" at verification can be returned to sender.
+            $movement->fill(['previous_status_id' => $asset->status_id]);
             $this->applyToAsset($asset, $movement);
             $movement->fill(['status' => 'completed'])->save();
 
@@ -411,8 +413,11 @@ class MovementService
      */
     public function reportShort(AssetMovement $movement, string $type, User $actor, ?string $notes, array $photos = []): AssetMovement
     {
-        if (! $movement->isInTransit()) {
-            throw ValidationException::withMessages(['movement' => 'Only an in-transit movement can be reported short.']);
+        // In transit (at receipt), or an assignment / custodian change that was applied on
+        // approval and is being verified — the same admin resolution handles both.
+        $verifiable = $movement->wasAppliedOnApproval() && $movement->status === 'completed' && $movement->receipt_status === null;
+        if (! $movement->isInTransit() && ! $verifiable) {
+            throw ValidationException::withMessages(['movement' => 'Only an in-transit or unverified completed movement can be reported short.']);
         }
 
         $movement->update([
@@ -481,20 +486,33 @@ class MovementService
         return CompanyVisibility::unrestricted(fn () => DB::transaction(function () use ($movement, $resolution, $admin, $notes) {
             $stamp = ['resolution' => $resolution, 'resolution_notes' => $notes, 'resolved_at' => now(), 'resolved_by' => $admin->id];
 
+            // A short found at verification is on a movement already applied on approval
+            // (assignment / custodian change): custody has moved, so closing it must not apply
+            // it again, and returning it must undo it.
+            $applied = $movement->wasAppliedOnApproval();
+
             switch ($resolution) {
                 case 'received_later':
                     $movement->fill($stamp);
-                    $this->finalizeReceipt($movement, $admin, 'ok', $notes, [], 'manual');
+                    $applied
+                        ? $this->closeAppliedShort($movement, $admin, 'ok', $notes)
+                        : $this->finalizeReceipt($movement, $admin, 'ok', $notes, [], 'manual');
                     break;
 
                 case 'accepted_as_is':
                     $movement->fill($stamp);
-                    $this->finalizeReceipt($movement, $admin, 'incomplete', $movement->verification_notes, $movement->verification_photos ?? [], 'manual');
+                    $applied
+                        ? $this->closeAppliedShort($movement, $admin, 'incomplete', $movement->verification_notes)
+                        : $this->finalizeReceipt($movement, $admin, 'incomplete', $movement->verification_notes, $movement->verification_photos ?? [], 'manual');
                     break;
 
                 case 'returned_to_sender':
                     $asset = Asset::withoutGlobalScopes()->findOrFail($movement->asset_id);
-                    $this->setStatus($asset, $movement->previous_status_id, $admin->id, 'Short received — returned to sender');
+                    if ($applied) {
+                        $this->undoAppliedMovement($asset, $movement, $admin);
+                    } else {
+                        $this->setStatus($asset, $movement->previous_status_id, $admin->id, 'Short received — returned to sender');
+                    }
                     $movement->update($stamp + ['receipt_status' => 'returned']);
                     $this->refreshBatchReceipt($movement->batch);
                     break;
@@ -523,6 +541,42 @@ class MovementService
     }
 
     /** The move actually lands: destination applied, status set, receipt stamped. */
+    /** Close a short on an applied-on-approval movement: custody already moved, just sign it off. */
+    private function closeAppliedShort(AssetMovement $movement, User $actor, string $condition, ?string $notes): void
+    {
+        $movement->fill([
+            'receipt_status'         => 'received',
+            'received_at'            => now(),
+            'received_by'            => $actor->id,
+            'receipt_method'         => 'manual',
+            'verified_at'            => now(),
+            'verified_by'            => $actor->id,
+            'verification_condition' => $condition,
+            'verification_notes'     => $notes,
+        ])->save();
+    }
+
+    /**
+     * "Return to sender" for an assignment / custodian change that was applied on approval:
+     * put the asset back with its previous custodian, location and department and restore its
+     * previous status (falling back to Assigned / Available when it was not recorded).
+     */
+    private function undoAppliedMovement(Asset $asset, AssetMovement $movement, User $actor): void
+    {
+        $revert = ['custodian_id' => $movement->from_custodian_id];
+        if ($movement->to_location_id !== null) {
+            $revert['location_id'] = $movement->from_location_id;
+        }
+        if ($movement->to_department_id !== null) {
+            $revert['department_id'] = $movement->from_department_id;
+        }
+        $asset->update($revert);
+
+        $previous = $movement->previous_status_id
+            ?? $this->statusId($movement->from_custodian_id ? 'ASSIGNED' : 'AVAILABLE');
+        $this->setStatus($asset, $previous, $actor->id, 'Short at verification — returned to sender');
+    }
+
     private function finalizeReceipt(AssetMovement $movement, User $actor, string $condition, ?string $notes, array $photos, string $method): AssetMovement
     {
         $asset = Asset::withoutGlobalScopes()->findOrFail($movement->asset_id);
@@ -677,6 +731,18 @@ class MovementService
             throw ValidationException::withMessages([
                 'movement' => 'Only completed movements can be verified.',
             ]);
+        }
+
+        // Missing / incomplete is not a sign-off: it goes to an administrator, exactly as
+        // at receipt (Movement -> Short Received).
+        if (in_array($condition, ['missing', 'incomplete'], true)) {
+            if (blank($notes)) {
+                throw ValidationException::withMessages([
+                    'verification_notes' => 'Describe what is missing or incomplete.',
+                ]);
+            }
+
+            return $this->reportShort($movement, $condition, $actor, $notes, $photoPaths);
         }
 
         $movement->update([
