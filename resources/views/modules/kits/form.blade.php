@@ -107,7 +107,7 @@
                                         <x-searchable-select name="asset_id" required data-placeholder="— Link an asset (type ID or name) —">
                                             <option value="">— Link an asset (type ID or name) —</option>
                                             @foreach($slotChoices as $asset)
-                                                <option value="{{ $asset->id }}">{{ $asset->asset_tag }} — {{ $asset->name }}</option>
+                                                <option value="{{ $asset->id }}">{{ $asset->asset_tag ? $asset->asset_tag." — " : "" }}{{ $asset->name }}</option>
                                             @endforeach
                                         </x-searchable-select>
                                     </div>

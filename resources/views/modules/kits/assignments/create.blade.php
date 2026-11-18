@@ -50,7 +50,7 @@
                     <x-input-label for="asset_ids" value="Assets" />
                     <x-searchable-select id="asset_ids" name="asset_ids[]" multiple x-bind:disabled="source !== 'adhoc'">
                         @foreach($assets as $asset)
-                            <option value="{{ $asset->id }}">{{ $asset->name }} ({{ $asset->asset_tag }})</option>
+                            <option value="{{ $asset->id }}">{{ $asset->asset_tag ? $asset->asset_tag." — " : "" }}{{ $asset->name }}</option>
                         @endforeach
                     </x-searchable-select>
                     <p class="text-xs text-gray-400 mt-1">Type to search; click to add multiple.</p>

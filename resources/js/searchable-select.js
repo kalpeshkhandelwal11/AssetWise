@@ -58,7 +58,14 @@ export default function registerSearchableSelect(Alpine) {
             // otherwise re-trigger this observer forever and hang the page before it paints.
             const optionObserver = new MutationObserver(() => {
                 optionObserver.disconnect();
-                const keep = el.value;
+                // A multi-select's el.value is only its FIRST selected option. Tom Select itself
+                // appends <option>s to the <select> as items are picked, which lands here, so
+                // restoring el.value collapsed every multi-pick back to one item. Keep the whole
+                // selection for multi-selects; single selects keep the DOM value as before
+                // (x-for cascades set it there). Copy it: getValue() hands back Tom Select's live
+                // items array, which setValue() empties before re-adding — restoring the live
+                // array itself would wipe the selection.
+                const keep = el.multiple ? [...ts.getValue()] : el.value;
                 try {
                     ts.sync();
                     ts.setValue(keep, true);
