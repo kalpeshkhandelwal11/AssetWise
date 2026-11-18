@@ -102,4 +102,48 @@ class KitTemplateTest extends TestCase
         $item->kitAssets()->create(['asset_id' => Asset::factory()->create()->id]);
         $this->assertTrue($service->isReady($kit->fresh())); // 2 of 2
     }
+
+    public function test_an_asset_cannot_be_linked_twice_in_the_same_kit(): void
+    {
+        $manager = $this->createUserWithRole('Asset Manager');
+        $laptops = AssetCategory::factory()->create();
+        $asset = Asset::factory()->create(['category_id' => $laptops->id]);
+        $kit = Kit::create(['name' => 'K', 'code' => 'K1', 'is_active' => true, 'created_by' => $manager->id]);
+        $first = $kit->items()->create(['label' => 'Laptop', 'category_id' => $laptops->id, 'quantity' => 1]);
+        $second = $kit->items()->create(['label' => 'Spare laptop', 'category_id' => $laptops->id, 'quantity' => 1]);
+
+        $this->actingAs($manager)->post(route('kits.items.assets.store', [$kit, $first]), ['asset_id' => $asset->id])
+            ->assertSessionHasNoErrors();
+
+        // Neither the same slot nor another slot of this kit can take it again.
+        $this->actingAs($manager)->post(route('kits.items.assets.store', [$kit, $second]), ['asset_id' => $asset->id])
+            ->assertSessionHasErrors('asset_id');
+        $this->actingAs($manager)->post(route('kits.items.assets.store', [$kit, $first]), ['asset_id' => $asset->id])
+            ->assertSessionHasErrors('asset_id');
+
+        $this->assertDatabaseCount('kit_assets', 1);
+    }
+
+    public function test_slot_picker_shows_ids_offers_only_its_category_and_hides_assets_already_in_the_kit(): void
+    {
+        $manager = $this->createUserWithRole('Asset Manager');
+        $laptops = AssetCategory::factory()->create();
+        $phones = AssetCategory::factory()->create();
+        $linked = Asset::factory()->create(['category_id' => $laptops->id, 'name' => 'Linked Laptop', 'asset_tag' => 'LAP-0001']);
+        Asset::factory()->create(['category_id' => $laptops->id, 'name' => 'Spare Laptop', 'asset_tag' => 'LAP-0002']);
+        Asset::factory()->create(['category_id' => $phones->id, 'name' => 'Some Phone', 'asset_tag' => 'PHN-0001']);
+
+        $kit = Kit::create(['name' => 'K', 'code' => 'K1', 'is_active' => true, 'created_by' => $manager->id]);
+        $item = $kit->items()->create(['label' => 'Laptop', 'category_id' => $laptops->id, 'quantity' => 2]);
+        $this->actingAs($manager)->post(route('kits.items.assets.store', [$kit, $item]), ['asset_id' => $linked->id]);
+
+        $page = $this->actingAs($manager)->get(route('kits.edit', $kit))->assertOk();
+
+        // Linked list shows the asset ID with the name, linking to the asset.
+        $page->assertSee('LAP-0001')->assertSee(route('assets.show', $linked), false);
+        // Picker: "ID — name", only this slot's category, and not the one already linked.
+        $page->assertSee('LAP-0002 — Spare Laptop')
+            ->assertDontSee('LAP-0001 — Linked Laptop')
+            ->assertDontSee('PHN-0001');
+    }
 }

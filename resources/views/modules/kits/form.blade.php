@@ -50,6 +50,10 @@
                     <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Slots</p>
                     <x-status-badge :color="$isReady ? 'green' : 'amber'" :label="$isReady ? 'Ready to assign' : 'Incomplete'" />
                 </div>
+                {{-- A refused link (wrong category, already in this kit) is reported here. --}}
+                @error('asset_id')
+                    <div class="mb-4 rounded-lg border border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-400">{{ $message }}</div>
+                @enderror
 
                 <div class="space-y-4">
                     @foreach($kit->items as $item)
@@ -71,7 +75,13 @@
                             <div class="mt-3 space-y-1">
                                 @foreach($item->kitAssets as $kitAsset)
                                     <div class="flex items-center justify-between text-sm">
-                                        <span class="text-gray-700 dark:text-gray-300">{{ \App\Models\Asset::labelFor($kitAsset->asset) }}</span>
+                                        @if($kitAsset->asset)
+                                            <a href="{{ route('assets.show', $kitAsset->asset) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
+                                                <span class="font-mono text-xs">{{ $kitAsset->asset->asset_tag }}</span> — {{ $kitAsset->asset->name }}
+                                            </a>
+                                        @else
+                                            <span class="text-gray-400">{{ \App\Models\Asset::labelFor(null) }}</span>
+                                        @endif
                                         <form method="POST" action="{{ route('kits.items.assets.destroy', [$kit, $item, $kitAsset]) }}">
                                             @csrf @method('DELETE')
                                             <button class="text-xs text-gray-400 hover:text-red-600">Unlink</button>
@@ -80,17 +90,30 @@
                                 @endforeach
                             </div>
 
-                            <form method="POST" action="{{ route('kits.items.assets.store', [$kit, $item]) }}" class="mt-3 flex gap-2">
-                                @csrf
-                                <select name="asset_id" required
-                                        class="flex-1 text-sm rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                                    <option value="">— Link an asset —</option>
-                                    @foreach($assets as $asset)
-                                        <option value="{{ $asset->id }}">{{ $asset->name }} ({{ $asset->asset_tag }})</option>
-                                    @endforeach
-                                </select>
-                                <button class="px-3 py-1.5 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-800">Link</button>
-                            </form>
+                            @php
+                                // Only assets this slot can take: its category (when set), and not
+                                // already anywhere in this kit.
+                                $inThisKit = $kit->items->flatMap->kitAssets->pluck('asset_id')->all();
+                                $slotChoices = $assets
+                                    ->when($item->category_id, fn ($c) => $c->where('category_id', $item->category_id))
+                                    ->whereNotIn('id', $inThisKit);
+                            @endphp
+                            @if($slotChoices->isEmpty())
+                                <p class="mt-3 text-xs text-gray-400">No more {{ $item->category?->name ?? '' }} assets available to link — every match is already in this kit.</p>
+                            @else
+                                <form method="POST" action="{{ route('kits.items.assets.store', [$kit, $item]) }}" class="mt-3 flex gap-2" x-data>
+                                    @csrf
+                                    <div class="flex-1">
+                                        <x-searchable-select name="asset_id" required data-placeholder="— Link an asset (type ID or name) —">
+                                            <option value="">— Link an asset (type ID or name) —</option>
+                                            @foreach($slotChoices as $asset)
+                                                <option value="{{ $asset->id }}">{{ $asset->asset_tag }} — {{ $asset->name }}</option>
+                                            @endforeach
+                                        </x-searchable-select>
+                                    </div>
+                                    <button class="px-3 py-1.5 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-800 self-start mt-1">Link</button>
+                                </form>
+                            @endif
                         </div>
                     @endforeach
                     @if($kit->items->isEmpty())

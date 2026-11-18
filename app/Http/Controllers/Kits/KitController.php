@@ -138,7 +138,9 @@ class KitController extends Controller
     {
         return [
             'categories' => AssetCategory::orderBy('name')->get(),
-            'assets'     => Asset::where('is_active', true)->operable()->orderBy('name')->get(),
+            // Sorted by asset ID so the picker reads like the register; each slot then narrows
+            // this to its category and drops assets already in the kit (kits/form.blade.php).
+            'assets'     => Asset::where('is_active', true)->operable()->orderBy('asset_tag')->get(['id', 'name', 'asset_tag', 'category_id']),
         ];
     }
 }

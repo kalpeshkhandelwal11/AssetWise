@@ -64,7 +64,17 @@ class KitService
             ]);
         }
 
-        return KitAsset::firstOrCreate([
+        // One asset, one place in a kit: refuse it in a second slot of the same kit.
+        $inKit = KitAsset::where('asset_id', $asset->id)
+            ->whereHas('kitItem', fn ($q) => $q->where('kit_id', $item->kit_id))
+            ->exists();
+        if ($inKit) {
+            throw ValidationException::withMessages([
+                'asset_id' => "\"{$asset->name}\" ({$asset->asset_tag}) is already in this kit.",
+            ]);
+        }
+
+        return KitAsset::create([
             'kit_item_id' => $item->id,
             'asset_id'    => $asset->id,
         ]);
