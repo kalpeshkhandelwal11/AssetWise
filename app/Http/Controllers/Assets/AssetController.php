@@ -76,6 +76,12 @@ class AssetController extends Controller
             $query->pastEol();
         }
 
+        // Dashboard "Expiring Warranties / AMC (30d)" cards: the same window as the card's count
+        // (DashboardService), so the list always matches the number that was clicked.
+        if ($column = ['warranty' => 'warranty_expiry', 'amc' => 'amc_expiry'][$request->input('expiring')] ?? null) {
+            $query->whereBetween($column, [now(), now()->addDays(30)]);
+        }
+
         if ($request->filled('date_from')) {
             $query->whereDate('purchase_date', '>=', $request->date_from);
         }

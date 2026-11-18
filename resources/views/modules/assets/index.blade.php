@@ -78,6 +78,13 @@
     </form>
 
     {{-- Filters --}}
+    @if(in_array(request('expiring'), ['warranty', 'amc'], true))
+        <div class="mb-4 flex items-center justify-between gap-3 rounded-lg border border-purple-200 dark:border-purple-800/50 bg-purple-50 dark:bg-purple-900/20 px-4 py-2.5 text-sm text-purple-800 dark:text-purple-300">
+            <span>Showing assets whose {{ request('expiring') === 'amc' ? 'AMC' : 'warranty' }} expires in the next 30 days.</span>
+            <a href="{{ route('assets.index') }}" class="text-xs font-medium hover:underline">Show all assets</a>
+        </div>
+    @endif
+
     <x-filter-bar :clear="route('assets.index')">
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search tag, name, serial…"
                class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-indigo-500">
