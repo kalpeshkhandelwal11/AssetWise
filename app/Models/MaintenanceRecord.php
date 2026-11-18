@@ -20,6 +20,29 @@ class MaintenanceRecord extends Model
         'previous_status_id', 'logged_by',
     ];
 
+    /** The depreciation change this record raised by being capitalised (latest attempt). */
+    public function capitalizationRequest(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(DepreciationSettingRequest::class, 'source_maintenance_id')->latestOfMany();
+    }
+
+    /** pending | applied | rejected, or null when not capitalised / not submitted yet. */
+    public function capitalizationStatus(): ?string
+    {
+        return match ($this->capitalizationRequest?->status) {
+            'pending_approval', 'approved' => 'pending',
+            'applied'                      => 'applied',
+            'rejected'                     => 'rejected',
+            default                        => null,
+        };
+    }
+
+    /** Once a capitalisation is pending or applied its amount and extra life are fixed. */
+    public function capitalizationLocked(): bool
+    {
+        return in_array($this->capitalizationStatus(), ['pending', 'applied'], true);
+    }
+
     protected function casts(): array
     {
         return [

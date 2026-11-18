@@ -504,7 +504,15 @@
                                         <x-status-badge :color="$maintStatusColor" :label="ucwords(str_replace('_', ' ', $record->status))" />
                                     </td>
                                     <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $record->vendor ?? '—' }}</td>
-                                    <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $record->cost !== null ? number_format($record->cost, 2) : '—' }}</td>
+                                    <td class="px-4 py-2 text-gray-700 dark:text-gray-300">
+                                        {{ $record->cost !== null ? number_format($record->cost, 2) : '—' }}
+                                        @if($record->is_capitalized && ($capState = $record->capitalizationStatus()))
+                                            <div class="text-xs {{ $capState === 'rejected' ? 'text-red-600' : ($capState === 'pending' ? 'text-amber-600' : 'text-green-600') }}">
+                                                Capitalised ₹ {{ number_format((float) $record->capitalized_amount, 2) }} ·
+                                                {{ ['pending' => 'awaiting approval', 'applied' => 'in depreciation', 'rejected' => 'rejected'][$capState] }}
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-2 text-gray-500 dark:text-gray-400">{{ $record->created_at->format('d M Y') }}</td>
                                     @can('maintenance.manage')
                                     <td class="px-4 py-2 text-right">

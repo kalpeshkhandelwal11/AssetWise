@@ -56,8 +56,14 @@ class MaintenanceService
                 $this->restoreAssetStatus($record->asset, $record, $actor);
             }
 
-            if ($previousStatus !== 'completed' && $newStatus === 'completed') {
+            // Capitalisation may be ticked when the work is completed, or later on an already
+            // completed record; capitalizeIfFlagged() submits it at most once.
+            if ($newStatus === 'completed') {
                 $this->capitalizeIfFlagged($record, $actor);
+            }
+
+            // The next recurring occurrence is scheduled once, on the move into Completed.
+            if ($previousStatus !== 'completed' && $newStatus === 'completed') {
                 $this->scheduleNext($record, $actor);
             }
 
@@ -113,10 +119,29 @@ class MaintenanceService
      * approval-gated, so this just raises the depreciation request (no-op if the asset isn't
      * being depreciated or nothing was capitalized).
      */
+    /**
+     * Capitalise a completed repair: the amount is added to the asset's book value and
+     * depreciated over the remaining life (plus any extra life), via the depreciation approval.
+     * Submits once — not again while a request is pending or after it was applied; a rejected
+     * one can be resubmitted by saving the record again. Refuses (rolling the save back) when
+     * the asset is not being depreciated, rather than ticking a box that does nothing.
+     */
     private function capitalizeIfFlagged(MaintenanceRecord $record, User $actor): void
     {
         if (! $record->is_capitalized || (float) $record->capitalized_amount <= 0) {
             return;
+        }
+
+        $record->unsetRelation('capitalizationRequest');
+        if ($record->capitalizationLocked()) {
+            return;
+        }
+
+        $asset = $record->asset;
+        if (! $asset?->activeDepreciationSetting()) {
+            throw ValidationException::withMessages([
+                'is_capitalized' => 'This asset is not being depreciated, so a cost cannot be capitalised onto it. Set up its depreciation first.',
+            ]);
         }
 
         $this->depreciation->capitalize($record, $actor);

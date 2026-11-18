@@ -72,6 +72,16 @@ class DepreciationSettingRequest extends Model
                 . "date {$date($this->asset->purchase_date)} → {$date($this->start_date)}";
         }
 
+        if ($this->change_type === 'capitalization' && $this->asset) {
+            $source = $this->sourceMaintenance;
+            $amount = $source?->capitalized_amount !== null ? number_format((float) $source->capitalized_amount, 2) : '—';
+            $extra = (int) ($source?->additional_useful_life_months ?? 0);
+
+            return "Capitalisation — {$label}: ₹ {$amount} added to book value"
+                . ($extra > 0 ? ", life +{$extra} month(s)" : '')
+                . ($source?->maintenanceType ? " ({$source->maintenanceType->name})" : '');
+        }
+
         if ($this->change_type === 'revaluation' && $this->asset) {
             $from = $this->asset->activeDepreciationSetting()?->current_book_value;
             $word = $from !== null && (float) $this->cost_basis < (float) $from ? 'Impairment' : 'Revaluation';

@@ -72,6 +72,61 @@
                     <x-input-error :messages="$errors->get('description')" class="mt-1" />
                 </div>
 
+                {{-- Capitalisation: a repair that adds value or life goes onto the asset's book value
+                     and is depreciated with it, via the depreciation approval. --}}
+                <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
+                    @foreach(['workflow', 'asset'] as $formError)
+                        @error($formError)
+                            <div class="mb-3 rounded-lg border border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-400">{{ $message }}</div>
+                        @enderror
+                    @endforeach
+
+                    @php $capStatus = $record->exists ? $record->capitalizationStatus() : null; @endphp
+                    @if($capStatus === 'pending' || $capStatus === 'applied')
+                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Capitalised</p>
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                            ₹ {{ number_format((float) $record->capitalized_amount, 2) }} added to the book value
+                            @if((int) $record->additional_useful_life_months > 0), life +{{ $record->additional_useful_life_months }} month(s)@endif —
+                            {{ $capStatus === 'pending' ? 'waiting for depreciation approval.' : 'approved and in the depreciation schedule.' }}
+                        </p>
+                    @elseif(! ($canCapitalize ?? false))
+                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Capitalise this cost</p>
+                        <p class="mt-1 text-xs text-gray-400">Not available: this asset is not being depreciated, so there is no book value to add the cost to.</p>
+                    @else
+                        <div x-data="{ on: {{ old('is_capitalized', $record->is_capitalized) ? 'true' : 'false' }} }">
+                            <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <input type="hidden" name="is_capitalized" value="0">
+                                <input type="checkbox" name="is_capitalized" value="1" x-model="on" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                Capitalise this cost (adds value or extends the life)
+                            </label>
+                            @if($capStatus === 'rejected')
+                                <p class="mt-1 text-xs text-red-600 dark:text-red-400">The last capitalisation was rejected. Save again to resubmit it.</p>
+                            @endif
+                            <x-input-error :messages="$errors->get('is_capitalized')" class="mt-1" />
+
+                            <div x-show="on" x-cloak class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div>
+                                    <x-input-label for="capitalized_amount" value="Amount to capitalise *" />
+                                    <x-text-input id="capitalized_amount" type="number" step="0.01" min="0.01" name="capitalized_amount" class="mt-1 block w-full" :value="old('capitalized_amount', $record->capitalized_amount)" />
+                                    <p class="mt-1 text-xs text-gray-400">Up to the cost above. The rest is treated as an expense.</p>
+                                    <x-input-error :messages="$errors->get('capitalized_amount')" class="mt-1" />
+                                </div>
+                                <div>
+                                    <x-input-label for="additional_useful_life_months" value="Extra useful life (months)" />
+                                    <x-text-input id="additional_useful_life_months" type="number" min="0" max="600" name="additional_useful_life_months" class="mt-1 block w-full" :value="old('additional_useful_life_months', $record->additional_useful_life_months ?? 0)" />
+                                    <p class="mt-1 text-xs text-gray-400">0 if the work does not extend the life.</p>
+                                    <x-input-error :messages="$errors->get('additional_useful_life_months')" class="mt-1" />
+                                </div>
+                                <p class="sm:col-span-2 text-xs text-gray-500 dark:text-gray-400">
+                                    Applies when the record is <strong>Completed</strong> and goes for depreciation approval.
+                                    Once approved, from the performed date the new book value (current value + this amount)
+                                    is depreciated over the remaining life plus any extra months.
+                                </p>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                     <a href="{{ route('assets.show', $asset) }}"
                        class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg border border-gray-300 dark:border-gray-700 transition-colors">

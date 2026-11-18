@@ -53,14 +53,14 @@ class MaintenanceController extends Controller
             'asset'            => $asset,
             'record'           => new MaintenanceRecord(),
             'maintenanceTypes' => MaintenanceType::where('is_active', true)->orderBy('name')->get(),
-        ]);
+        ] + $this->capitalizationContext($asset));
     }
 
     public function store(Request $request, Asset $asset): RedirectResponse
     {
         $this->authorize('maintenance.manage');
 
-        $data = $request->validate($this->rules());
+        $data = $this->capitalizationInput($request, $request->validate($this->rules()), null);
 
         $this->maintenance->log($asset, $data, $request->user());
 
@@ -75,14 +75,14 @@ class MaintenanceController extends Controller
             'asset'            => $asset,
             'record'           => $maintenance,
             'maintenanceTypes' => MaintenanceType::where('is_active', true)->orderBy('name')->get(),
-        ]);
+        ] + $this->capitalizationContext($asset));
     }
 
     public function update(Request $request, Asset $asset, MaintenanceRecord $maintenance): RedirectResponse
     {
         $this->authorize('maintenance.manage');
 
-        $data = $request->validate($this->rules());
+        $data = $this->capitalizationInput($request, $request->validate($this->rules()), $maintenance);
 
         $this->maintenance->update($maintenance, $data, $request->user());
 
@@ -109,8 +109,43 @@ class MaintenanceController extends Controller
             // Work can be scheduled for the future, but it can't have been performed in the future.
             'performed_date'      => 'nullable|date|before_or_equal:today',
             'vendor'              => 'nullable|string|max:255',
-            'cost'                => 'nullable|numeric|min:0',
+            'cost'                => 'nullable|required_if:is_capitalized,1|numeric|min:0',
             'description'         => 'nullable|string',
+            // Capitalisation: the amount added to the asset's book value (at most the cost
+            // when a cost is entered) and any extra useful life the work gives.
+            'is_capitalized'                => 'sometimes|boolean',
+            'capitalized_amount'            => 'nullable|required_if:is_capitalized,1|numeric|min:0.01|lte:cost',
+            'additional_useful_life_months' => 'nullable|integer|min:0|max:600',
+        ];
+    }
+
+    /**
+     * Normalise the capitalisation fields: an unticked box clears them, and once a
+     * capitalisation is pending or applied the posted values are ignored (it is in the
+     * depreciation approval, or already in the schedule).
+     */
+    private function capitalizationInput(Request $request, array $data, ?MaintenanceRecord $record): array
+    {
+        if ($record?->capitalizationLocked()) {
+            unset($data['is_capitalized'], $data['capitalized_amount'], $data['additional_useful_life_months']);
+
+            return $data;
+        }
+
+        $data['is_capitalized'] = $request->boolean('is_capitalized');
+        if (! $data['is_capitalized']) {
+            $data['capitalized_amount'] = null;
+            $data['additional_useful_life_months'] = null;
+        }
+
+        return $data;
+    }
+
+    /** Whether this asset can take a capitalisation at all (it must be depreciating). */
+    private function capitalizationContext(Asset $asset): array
+    {
+        return [
+            'canCapitalize' => $asset->activeDepreciationSetting() !== null && ! $asset->isExternallyOwned(),
         ];
     }
 }
