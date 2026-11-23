@@ -99,7 +99,7 @@
                         <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asset</dt>
                         <dd class="mt-1">
                             @if($mv->asset)
-                                <a href="{{ route('assets.show', $mv->asset) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $mv->asset->asset_tag }} — {{ $mv->asset->name }}</a>
+                                <a href="{{ $mv->asset ? route('assets.show', $mv->asset) : '#' }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $mv->asset->asset_tag }} — {{ $mv->asset->name }}</a>
                                 <span class="text-xs text-gray-400">· {{ $mv->asset->category?->name }}</span>
                             @else
                                 {{ \App\Models\Asset::labelFor(null) }}

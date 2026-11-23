@@ -26,7 +26,7 @@
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                         <td class="px-4 py-3">
                             @if($record->asset)
-                            <a href="{{ route('assets.show', $record->asset) }}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+                            <a href="{{ $record->asset ? route('assets.show', $record->asset) : '#' }}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
                                 {{ \App\Models\Asset::labelFor($record->asset) }}
                             </a>
                             @else

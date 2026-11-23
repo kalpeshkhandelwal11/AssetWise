@@ -76,7 +76,7 @@
                                 @foreach($item->kitAssets as $kitAsset)
                                     <div class="flex items-center justify-between text-sm">
                                         @if($kitAsset->asset)
-                                            <a href="{{ route('assets.show', $kitAsset->asset) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
+                                            <a href="{{ $kitAsset->asset ? route('assets.show', $kitAsset->asset) : '#' }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
                                                 <span class="font-mono text-xs">{{ $kitAsset->asset->asset_tag }}</span> — {{ $kitAsset->asset->name }}
                                             </a>
                                         @else

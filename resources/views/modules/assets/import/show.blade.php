@@ -96,7 +96,7 @@
                             </td>
                             <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
                                 @if($row->status === 'success' && $row->asset)
-                                    <a href="{{ route('assets.show', $row->asset) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $row->asset->name }}</a>
+                                    <a href="{{ $row->asset ? route('assets.show', $row->asset) : '#' }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $row->asset->name }}</a>
                                 @elseif($row->errors)
                                     <ul class="list-disc list-inside text-xs text-red-600 dark:text-red-400">
                                         @foreach($row->errors as $field => $messages)

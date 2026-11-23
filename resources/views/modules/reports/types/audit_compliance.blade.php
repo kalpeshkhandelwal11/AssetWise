@@ -14,7 +14,7 @@
             @forelse($rows as $history)
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                     <td class="px-4 py-3">
-                        <a href="{{ route('assets.show', $history->asset) }}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+                        <a href="{{ $history->asset ? route('assets.show', $history->asset) : '#' }}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
                             {{ \App\Models\Asset::labelFor($history->asset) }}
                         </a>
                     </td>

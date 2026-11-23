@@ -22,7 +22,8 @@ class MaintenanceController extends Controller
     {
         $this->authorize('maintenance.manage');
 
-        $query = MaintenanceRecord::query()->with(['asset.company', 'maintenanceType', 'loggedBy']);
+        // Only records whose asset still exists (a deleted asset's history returns if it is restored).
+        $query = MaintenanceRecord::query()->whereHas('asset')->with(['asset.company', 'maintenanceType', 'loggedBy']);
 
         if ($request->filled('maintenance_type_id')) {
             $query->where('maintenance_type_id', $request->input('maintenance_type_id'));
