@@ -38,9 +38,15 @@ class LocationController extends Controller
         ]);
 
         $data['is_toll_plaza'] = $request->boolean('is_toll_plaza');
+        // Works with NHAI: only meaningful for a toll plaza (drives the Handover / Takeover dashboard).
+        $data['is_nhai_plaza'] = $data['is_toll_plaza'] && $request->boolean('is_nhai_plaza');
 
         $data['code'] = strtoupper($data['code']);
         Location::create($data);
+
+        if ($request->input('return_to') === 'nhai') {
+            return redirect()->route('nhai.index', ['tab' => 'plazas'])->with('success', 'Toll plaza created.');
+        }
 
         return redirect()->route('admin.locations.index')
             ->with('success', 'Location created.');
@@ -59,9 +65,15 @@ class LocationController extends Controller
         ]);
 
         $data['is_toll_plaza'] = $request->boolean('is_toll_plaza');
+        // Works with NHAI: only meaningful for a toll plaza (drives the Handover / Takeover dashboard).
+        $data['is_nhai_plaza'] = $data['is_toll_plaza'] && $request->boolean('is_nhai_plaza');
 
         $data['code'] = strtoupper($data['code']);
         $location->update($data);
+
+        if ($request->input('return_to') === 'nhai') {
+            return redirect()->route('nhai.index', ['tab' => 'plazas'])->with('success', 'Toll plaza updated.');
+        }
 
         return redirect()->route('admin.locations.index')
             ->with('success', 'Location updated.');

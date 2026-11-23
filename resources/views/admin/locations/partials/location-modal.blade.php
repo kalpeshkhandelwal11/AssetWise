@@ -1,12 +1,17 @@
 <div x-data="{
         showModal: false,
         editId: null,
-        form: { name: '', code: '', address: '', manager_employee_id: '', is_toll_plaza: false, chainage: '' },
+        returnTo: '',
+        form: { name: '', code: '', address: '', manager_employee_id: '', is_toll_plaza: false, is_nhai_plaza: false, chainage: '' },
         open(data = null) {
-            this.editId = data ? data.id : null;
-            this.form = data
-                ? { name: data.name, code: data.code, address: data.address ?? '', manager_employee_id: data.manager_employee_id ? String(data.manager_employee_id) : '', is_toll_plaza: !! data.is_toll_plaza, chainage: data.chainage ?? '' }
-                : { name: '', code: '', address: '', manager_employee_id: '', is_toll_plaza: false, chainage: '' };
+            {{-- data.id = edit an existing location; data without id = new one with presets (e.g. from the NHAI dashboard). --}}
+            this.editId = data && data.id ? data.id : null;
+            this.returnTo = data && data.return_to ? data.return_to : '';
+            this.form = {
+                name: data?.name ?? '', code: data?.code ?? '', address: data?.address ?? '',
+                manager_employee_id: data?.manager_employee_id ? String(data.manager_employee_id) : '',
+                is_toll_plaza: !! data?.is_toll_plaza, is_nhai_plaza: !! data?.is_nhai_plaza, chainage: data?.chainage ?? '',
+            };
             this.showModal = true;
         }
      }"
@@ -52,6 +57,11 @@
                     </label>
                     <x-text-input name="chainage" class="block w-full" x-model="form.chainage" placeholder="Chainage, e.g. 3+445" />
                 </div>
+                <label x-show="form.is_toll_plaza" class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" name="is_nhai_plaza" value="1" x-model="form.is_nhai_plaza" class="mt-0.5 rounded border-gray-300 text-indigo-600">
+                    <span>Works with NHAI <span class="block text-xs text-gray-400">Shown on the Handover / Takeover toll-plaza dashboard.</span></span>
+                </label>
+                <input type="hidden" name="return_to" :value="returnTo">
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" @click="showModal = false" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
                     <x-primary-button>Create</x-primary-button>
@@ -92,6 +102,11 @@
                     </label>
                     <x-text-input name="chainage" class="block w-full" x-model="form.chainage" placeholder="Chainage, e.g. 3+445" />
                 </div>
+                <label x-show="form.is_toll_plaza" class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" name="is_nhai_plaza" value="1" x-model="form.is_nhai_plaza" class="mt-0.5 rounded border-gray-300 text-indigo-600">
+                    <span>Works with NHAI <span class="block text-xs text-gray-400">Shown on the Handover / Takeover toll-plaza dashboard.</span></span>
+                </label>
+                <input type="hidden" name="return_to" :value="returnTo">
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" @click="showModal = false" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
                     <x-primary-button>Update</x-primary-button>

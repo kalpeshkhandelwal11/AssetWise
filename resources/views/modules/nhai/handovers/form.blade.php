@@ -21,7 +21,7 @@
                     <select id="location_id" name="location_id" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-sm">
                         <option value="">— Select —</option>
                         @foreach($locations as $location)
-                            <option value="{{ $location->id }}" @selected(old('location_id') == $location->id)>{{ $location->name }}</option>
+                            <option value="{{ $location->id }}" @selected(old('location_id', request('location_id')) == $location->id)>{{ $location->name }}</option>
                         @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('location_id')" class="mt-1" />

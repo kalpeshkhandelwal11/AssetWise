@@ -114,6 +114,9 @@ class TakeoverTest extends TestCase
         $this->assertSame('approved', $takeover->fresh()->status);
         $this->assertTrue($live->every(fn ($a) => $a->status->code === 'ASSIGNED')); // custodian = plaza manager
         $this->assertTrue($live->every(fn ($a) => $a->activeDepreciationSetting() === null), 'NHAI assets are never depreciated');
+
+        // The plaza now works with NHAI, so it appears on the Handover / Takeover dashboard.
+        $this->assertTrue($this->plaza->fresh()->is_nhai_plaza);
     }
 
     public function test_nhai_takeover_never_carries_a_price(): void

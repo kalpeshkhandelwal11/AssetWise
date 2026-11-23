@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Location extends Model
 {
-    protected $fillable = ['name', 'code', 'address', 'is_active', 'manager_employee_id', 'is_toll_plaza', 'chainage'];
+    protected $fillable = ['name', 'code', 'address', 'is_active', 'manager_employee_id', 'is_toll_plaza', 'is_nhai_plaza', 'chainage'];
 
     /** Receives location transfers by scanning at this location; default plaza custodian. */
     public function manager(): \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -17,7 +17,7 @@ class Location extends Model
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'is_toll_plaza' => 'boolean'];
+        return ['is_active' => 'boolean', 'is_toll_plaza' => 'boolean', 'is_nhai_plaza' => 'boolean'];
     }
 
     public function buildings(): HasMany

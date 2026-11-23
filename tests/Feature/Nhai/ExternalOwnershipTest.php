@@ -116,10 +116,10 @@ class ExternalOwnershipTest extends TestCase
         $user = User::factory()->restrictedTo($this->ours->id)->create();
         $user->assignRole('Asset Manager');
 
-        $this->actingAs($user)->get(route('nhai.index'))->assertOk()->assertSee('NHAI-BARRIER');
+        $this->actingAs($user)->get(route('nhai.index', ['tab' => 'assets']))->assertOk()->assertSee('NHAI-BARRIER');
 
         $stranger = User::factory()->restrictedTo(Company::factory()->create()->id)->create();
         $stranger->assignRole('Asset Manager');
-        $this->actingAs($stranger)->get(route('nhai.index'))->assertOk()->assertDontSee('NHAI-BARRIER');
+        $this->actingAs($stranger)->get(route('nhai.index', ['tab' => 'assets']))->assertOk()->assertDontSee('NHAI-BARRIER');
     }
 }

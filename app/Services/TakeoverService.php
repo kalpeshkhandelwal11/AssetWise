@@ -155,6 +155,11 @@ class TakeoverService
                     app(\App\Services\OpeningAssignmentService::class)->record($asset->fresh(), $approver->id);
                 }
 
+                // A plaza taken over from NHAI is, from now on, a toll plaza working with NHAI.
+                if ($takeover->isNhai()) {
+                    \App\Models\Location::whereKey($takeover->location_id)->update(['is_toll_plaza' => true, 'is_nhai_plaza' => true]);
+                }
+
                 $takeover->update(['status' => 'approved', 'approved_at' => now()]);
             });
         });
