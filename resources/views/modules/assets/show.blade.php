@@ -91,7 +91,7 @@
                     </svg>
                 </a>
                 <div>
-                    <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ $asset->name }}</h1>
+                    <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ $asset->name }} @include('modules.assets.partials.kit-badge', ['asset' => $asset])</h1>
                     <p class="text-xs text-gray-400 font-mono">{{ $asset->asset_tag ?? $asset->serial_number ?? 'No tag assigned' }}</p>
                 </div>
             </div>

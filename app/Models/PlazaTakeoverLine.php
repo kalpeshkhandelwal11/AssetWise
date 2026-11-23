@@ -21,7 +21,7 @@ class PlazaTakeoverLine extends Model
         'takeover_id', 'line_no', 'section', 'item_name', 'category_id', 'asset_type_id',
         'manufacturer', 'model', 'quantity', 'serial_number', 'position_label', 'unit_price',
         'building_id', 'floor_id', 'room_id', 'location_note', 'condition', 'not_functional_qty',
-        'warranty_years', 'remarks',
+        'warranty_years', 'remarks', 'field_values', 'photo_paths',
     ];
 
     protected function casts(): array
@@ -31,6 +31,8 @@ class PlazaTakeoverLine extends Model
             'not_functional_qty' => 'integer',
             'unit_price'         => 'decimal:2',
             'warranty_years'     => 'decimal:1',
+            'field_values'       => 'array',
+            'photo_paths'        => 'array',
         ];
     }
 

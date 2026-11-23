@@ -212,4 +212,92 @@ class TakeoverTest extends TestCase
         $this->actingAs($this->manager)->get(route('nhai.takeovers.certificate', $takeover))->assertOk()->assertHeader('content-type', 'application/pdf');
         $this->actingAs($this->manager)->get(route('nhai.index', ['tab' => 'takeovers']))->assertOk()->assertSee($takeover->reference_no);
     }
+
+    private function field(string $key, string $type, array $extra = []): \App\Models\CategoryField
+    {
+        return \App\Models\CategoryField::create($extra + [
+            'category_id' => $this->furniture->id, 'field_key' => $key, 'label' => \Illuminate\Support\Str::headline($key),
+            'field_type' => $type, 'is_required' => false, 'display_order' => 1, 'is_active' => true,
+        ]);
+    }
+
+    private function linePayload(array $extra = []): array
+    {
+        return $extra + [
+            'item_name' => 'Revolving chair', 'category_id' => $this->furniture->id,
+            'quantity' => 3, 'condition' => 'functional',
+        ];
+    }
+
+    public function test_a_line_carries_custom_attributes_and_photos_onto_every_unit(): void
+    {
+        Storage::fake('public');
+        $this->field('colour', 'text');
+        $this->field('has_wheels', 'boolean');
+        $takeover = $this->draft('nhai');
+
+        $this->actingAs($this->manager)->post(route('nhai.takeovers.lines.store', $takeover), $this->linePayload([
+            'fields' => ['colour' => 'Black', 'has_wheels' => '1'],
+            'photos' => [UploadedFile::fake()->image('front.jpg'), UploadedFile::fake()->image('back.jpg')],
+        ]))->assertSessionHasNoErrors();
+
+        $line = $takeover->lines()->sole();
+        $this->assertSame('Black', $line->field_values['colour']);
+        $this->assertCount(2, $line->photo_paths);
+
+        app(TakeoverService::class)->submit($takeover->fresh(), $this->manager);
+        $assets = $takeover->assets()->with('fieldValues.categoryField', 'photos')->get();
+        $this->assertCount(3, $assets);
+
+        foreach ($assets as $asset) {
+            $values = $asset->fieldValues->mapWithKeys(fn ($v) => [$v->categoryField->field_key => $v->rawValue()]);
+            $this->assertSame('Black', $values['colour']);
+            $this->assertSame('1', $values['has_wheels']);
+            $this->assertCount(2, $asset->photos);
+            $this->assertTrue((bool) $asset->photos->firstWhere('sort_order', 0)->is_primary);
+            Storage::disk('public')->assertExists($asset->photos->first()->path);
+        }
+        // Each asset has its own copy of the files.
+        $this->assertSame(6, $assets->flatMap->photos->pluck('path')->unique()->count());
+    }
+
+    public function test_required_attributes_are_enforced_on_a_line(): void
+    {
+        $this->field('colour', 'text', ['is_required' => true]);
+        $takeover = $this->draft('nhai');
+
+        $this->actingAs($this->manager)->post(route('nhai.takeovers.lines.store', $takeover), $this->linePayload())
+            ->assertSessionHasErrors('fields.colour');
+        $this->assertSame(0, $takeover->lines()->count());
+    }
+
+    public function test_a_unique_attribute_needs_quantity_one(): void
+    {
+        $this->field('imei', 'text', ['is_unique' => true]);
+        $takeover = $this->draft('nhai');
+
+        $this->actingAs($this->manager)->post(route('nhai.takeovers.lines.store', $takeover), $this->linePayload([
+            'fields' => ['imei' => '356938035643809'],
+        ]))->assertSessionHasErrors('quantity');
+
+        $this->actingAs($this->manager)->post(route('nhai.takeovers.lines.store', $takeover), $this->linePayload([
+            'quantity' => 1, 'fields' => ['imei' => '356938035643809'],
+        ]))->assertSessionHasNoErrors();
+    }
+
+    public function test_rejection_removes_the_copied_photos_but_the_line_keeps_its_own(): void
+    {
+        Storage::fake('public');
+        $takeover = $this->draft('nhai');
+        $this->actingAs($this->manager)->post(route('nhai.takeovers.lines.store', $takeover), $this->linePayload([
+            'quantity' => 1, 'photos' => [UploadedFile::fake()->image('a.jpg')],
+        ]));
+        app(TakeoverService::class)->submit($takeover->fresh(), $this->manager);
+        $copy = $takeover->assets()->with('photos')->first()->photos->first()->path;
+
+        app(TakeoverService::class)->markRejected($takeover->fresh());
+
+        Storage::disk('public')->assertMissing($copy);
+        Storage::disk('public')->assertExists($takeover->lines()->sole()->photo_paths[0]);
+    }
 }

@@ -173,7 +173,7 @@
                             </td>
                             @endif
                             <td class="px-4 py-3">
-                                <p class="font-medium text-gray-900 dark:text-gray-100">{{ $asset->name }}</p>
+                                <p class="font-medium text-gray-900 dark:text-gray-100">{{ $asset->name }} @include('modules.assets.partials.kit-badge', ['asset' => $asset])</p>
                                 @if($asset->serial_number)
                                     <p class="text-xs text-gray-400">SN: {{ $asset->serial_number }}</p>
                                 @endif

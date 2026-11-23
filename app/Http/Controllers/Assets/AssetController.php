@@ -46,7 +46,7 @@ class AssetController extends Controller
     {
         $this->authorize('viewAny', Asset::class);
 
-        $query = Asset::query()->with(['company', 'category', 'assetType', 'status', 'location', 'building', 'room', 'custodian']);
+        $query = Asset::query()->with(['company', 'category', 'assetType', 'status', 'location', 'building', 'room', 'custodian', 'kitAssets.kitItem.kit']);
 
         if ($request->boolean('show_deleted') && $request->user()->can('assets.delete')) {
             $query->onlyTrashed();
@@ -107,7 +107,10 @@ class AssetController extends Controller
 
         $assets = $query->orderBy($sortColumn, $sortDirection)->paginate($perPage)->withQueryString();
 
+        $bundles = \App\Models\KitAssignment::heldBundlesFor($assets->pluck('id')->all());
+
         return view('modules.assets.index', [
+            'bundles' => $bundles,
             'assets'     => $assets,
             'companies'  => Company::visible()->orderBy('name')->get(),
             'statuses'   => AssetStatus::orderBy('name')->get(),
@@ -292,7 +295,7 @@ class AssetController extends Controller
 
         $asset->load([
             'company', 'category', 'assetType', 'status', 'location', 'building', 'room', 'floor',
-            'custodian', 'department', 'branch', 'photos', 'attachments', 'creator', 'updater',
+            'custodian', 'department', 'branch', 'photos', 'attachments', 'creator', 'updater', 'kitAssets.kitItem.kit',
             'fieldValues.categoryField.options',
             'tagAssignments.tag', 'tagAssignments.assignedBy',
             'movements.movementType', 'movements.toCompany', 'movements.toLocation',
@@ -311,7 +314,9 @@ class AssetController extends Controller
             ? Tag::where('status', 'available')->orderBy('tag_number')->get()
             : collect();
 
-        return view('modules.assets.show', compact('asset', 'activities', 'availableTags'));
+        $bundles = \App\Models\KitAssignment::heldBundlesFor([$asset->id]);
+
+        return view('modules.assets.show', compact('asset', 'activities', 'availableTags', 'bundles'));
     }
 
     public function edit(Asset $asset): View

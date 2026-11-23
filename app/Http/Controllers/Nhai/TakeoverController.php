@@ -113,6 +113,37 @@ class TakeoverController extends Controller
             $data['building_id'] = $room->floor?->building_id;
         }
 
+        // The category's custom attributes, validated exactly as on Add Asset (required fields,
+        // types, dropdown options, uniqueness), plus photos — both copied to every unit.
+        $request->validate([
+            'photos'   => 'nullable|array|max:8',
+            'photos.*' => ['image', new \App\Rules\ImageUnderSize(2048)], // compressed client-side first
+        ]);
+
+        $fieldService = app(\App\Services\DynamicFieldService::class);
+        $resolved = $fieldService->resolveForCategory((int) $data['category_id']);
+        try {
+            $fieldValues = $fieldService->validate($request->input('fields', []), $resolved);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw \Illuminate\Validation\ValidationException::withMessages(
+                collect($e->errors())->mapWithKeys(fn ($m, $k) => ["fields.{$k}" => $m])->all()
+            );
+        }
+        $fieldValues = array_filter($fieldValues, fn ($v) => $v !== null && $v !== '');
+
+        // A "must be unique" attribute (IMEI, MAC…) cannot be shared by several units.
+        $uniqueFilled = $resolved->filter(fn ($f) => $f->isUnique && array_key_exists($f->fieldKey, $fieldValues));
+        if ((int) $data['quantity'] > 1 && $uniqueFilled->isNotEmpty()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'quantity' => $uniqueFilled->pluck('label')->join(', ') . ' must be unique per asset — add these units as separate lines (quantity 1 each).',
+            ]);
+        }
+
+        $data['field_values'] = $fieldValues ?: null;
+        $data['photo_paths'] = collect($request->file('photos', []))
+            ->map(fn ($file) => $file->store("takeovers/{$takeover->id}/lines", 'public'))
+            ->values()->all() ?: null;
+
         $this->takeovers->addLine($takeover, $data);
 
         return back()->with('success', 'Line added.');

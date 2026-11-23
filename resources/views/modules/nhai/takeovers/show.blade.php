@@ -81,7 +81,13 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                @php $section = null; @endphp
+                @php
+                    $section = null;
+                    // Labels for the custom attributes the lines carry, resolved once per category.
+                    $fieldLabels = $takeover->lines->whereNotNull('field_values')->pluck('category_id')->unique()
+                        ->flatMap(fn ($cid) => app(\App\Services\DynamicFieldService::class)->resolveForCategory((int) $cid)
+                            ->mapWithKeys(fn ($f) => [$cid.'.'.$f->fieldKey => $f->label]));
+                @endphp
                 @forelse($takeover->lines as $line)
                     @if($line->section && $line->section !== $section)
                         @php $section = $line->section; @endphp
@@ -89,7 +95,23 @@
                     @endif
                     <tr>
                         <td class="px-3 py-2 text-gray-400">{{ $loop->iteration }}</td>
-                        <td class="px-3 py-2 text-gray-900 dark:text-gray-100">{{ $line->item_name }} <span class="block text-xs text-gray-400">{{ $line->category?->name }}</span></td>
+                        <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
+                            {{ $line->item_name }} <span class="block text-xs text-gray-400">{{ $line->category?->name }}</span>
+                            @if($line->field_values)
+                                <span class="block text-xs text-gray-500">
+                                    @foreach($line->field_values as $key => $value){{ $fieldLabels[$line->category_id.'.'.$key] ?? \Illuminate\Support\Str::headline($key) }}: {{ is_bool($value) ? ($value ? 'Yes' : 'No') : $value }}@if(! $loop->last) · @endif @endforeach
+                                </span>
+                            @endif
+                            @if($line->photo_paths)
+                                <span class="mt-1 flex gap-1">
+                                    @foreach($line->photo_paths as $photoPath)
+                                        <a href="{{ \Illuminate\Support\Facades\Storage::url($photoPath) }}" target="_blank" rel="noopener">
+                                            <img src="{{ \Illuminate\Support\Facades\Storage::url($photoPath) }}" alt="" class="w-8 h-8 rounded object-cover border border-gray-200 dark:border-gray-700">
+                                        </a>
+                                    @endforeach
+                                </span>
+                            @endif
+                        </td>
                         <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ collect([$line->manufacturer, $line->model])->filter()->join(' · ') ?: '—' }}</td>
                         <td class="px-3 py-2 text-gray-600 dark:text-gray-400 text-xs"><span class="font-mono">{{ $line->serial_number }}</span> {{ $line->position_label }}</td>
                         <td class="px-3 py-2 text-right">{{ $line->quantity }}</td>
@@ -120,8 +142,20 @@
     @if($draft)
         @can('takeover.manage')
             <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <form method="POST" action="{{ route('nhai.takeovers.lines.store', $takeover) }}"
-                      class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
+                <form method="POST" action="{{ route('nhai.takeovers.lines.store', $takeover) }}" enctype="multipart/form-data"
+                      class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4"
+                      x-data="{
+                          categoryId: @js((string) old('category_id', $categories->first()?->id)),
+                          dynamicFields: [],
+                          fieldValues: @js(old('fields', (object) [])),
+                          async loadDynamicFields(keep = false) {
+                              if (! this.categoryId) { this.dynamicFields = []; return; }
+                              const res = await fetch(`{{ url('/api/categories') }}/${this.categoryId}/fields`);
+                              this.dynamicFields = await res.json();
+                              if (! keep) { this.fieldValues = {}; }
+                          },
+                      }"
+                      x-init="loadDynamicFields(true)">
                     @csrf
                     <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Add a line</p>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -129,7 +163,7 @@
                         <div><x-input-label value="Section" /><x-text-input name="section" class="mt-1 block w-full" :value="old('section')" placeholder="Toll Building / ETC Lanes" /></div>
                         <div>
                             <x-input-label value="Category *" />
-                            <select name="category_id" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-sm">
+                            <select name="category_id" required x-model="categoryId" @change="loadDynamicFields()" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-sm">
                                 @foreach($categories as $category)<option value="{{ $category->id }}" @selected(old('category_id') == $category->id)>{{ $category->name }}</option>@endforeach
                             </select>
                         </div>
@@ -166,7 +200,22 @@
                         @endunless
                         <div class="sm:col-span-3"><x-input-label value="Remarks" /><x-text-input name="remarks" class="mt-1 block w-full" :value="old('remarks')" placeholder="e.g. Lane 1,2,3 & 4 not working due to lane closed" /></div>
                     </div>
-                    <x-input-error :messages="collect(['item_name', 'category_id', 'quantity', 'serial_number', 'unit_price', 'condition'])->flatMap(fn ($k) => $errors->get($k))->all()" class="mt-1" />
+                    {{-- The category's custom attributes (same fields and rules as Add Asset), applied to every unit. --}}
+                    <x-dynamic-fields />
+                    @if($errors->get('fields.*'))
+                        <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-sm text-red-700 dark:text-red-400 space-y-1">
+                            @foreach($errors->get('fields.*') as $messages)<p>{{ implode(' ', $messages) }}</p>@endforeach
+                        </div>
+                    @endif
+
+                    <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <x-input-label value="Photos (up to 8)" />
+                        <input type="file" name="photos[]" accept="image/*" multiple data-compress
+                               class="mt-1 block w-full text-sm text-gray-600 dark:text-gray-400">
+                        <p class="mt-1 text-xs text-gray-400">Every asset created from this line gets these photos. On a phone this offers the camera.</p>
+                    </div>
+
+                    <x-input-error :messages="collect(['item_name', 'category_id', 'quantity', 'serial_number', 'unit_price', 'condition', 'photos'])->flatMap(fn ($k) => $errors->get($k))->merge($errors->get('photos.*'))->flatten()->all()" class="mt-1" />
                     <x-primary-button>Add line</x-primary-button>
                 </form>
 

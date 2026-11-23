@@ -84,6 +84,38 @@ class KitAssignment extends Model
         return $this->hasMany(AssetMovement::class, 'kit_assignment_id');
     }
 
+    /**
+     * Ad-hoc bundles still out with these assets: completed "out" assignments without a kit
+     * template that have no completed return. Keyed by asset id (template kits are shown from
+     * kit_assets instead). One query for a whole page of assets.
+     *
+     * @param  array<int>  $assetIds
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public static function heldBundlesFor(array $assetIds): \Illuminate\Support\Collection
+    {
+        if ($assetIds === []) {
+            return collect();
+        }
+
+        $bundles = self::query()
+            ->whereNull('kit_id')->where('direction', 'out')->where('status', 'completed')
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('kit_assignments as r')
+                ->whereColumn('r.parent_assignment_id', 'kit_assignments.id')->where('r.status', 'completed'))
+            ->whereHas('movements', fn ($q) => $q->whereIn('asset_id', $assetIds))
+            ->with(['movements' => fn ($q) => $q->whereIn('asset_id', $assetIds)->select('id', 'asset_id', 'kit_assignment_id')])
+            ->latest('id')->get();
+
+        $byAsset = collect();
+        foreach ($bundles as $bundle) {
+            foreach ($bundle->movements as $movement) {
+                $byAsset->put($movement->asset_id, $byAsset->get($movement->asset_id, $bundle));
+            }
+        }
+
+        return $byAsset;
+    }
+
     /** Consumed by ApprovalRequest::getApprovableLabelAttribute() for the approver inbox. */
     public function getApprovalLabel(): string
     {

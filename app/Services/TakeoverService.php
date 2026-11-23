@@ -36,6 +36,7 @@ class TakeoverService
         private readonly WorkflowService $workflows,
         private readonly AssetService $assets,
         private readonly DepreciationService $depreciation,
+        private readonly DynamicFieldService $fields,
     ) {
     }
 
@@ -71,6 +72,9 @@ class TakeoverService
     {
         $this->assertDraft($takeover);
         abort_unless($line->takeover_id === $takeover->id, 404);
+        foreach ($line->photo_paths ?? [] as $path) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+        }
         $line->delete();
     }
 
@@ -171,6 +175,9 @@ class TakeoverService
         CompanyVisibility::unrestricted(function () use ($takeover) {
             DB::transaction(function () use ($takeover) {
                 foreach ($takeover->assets()->get() as $asset) {
+                    // Photo rows cascade with the asset; the copied files are removed here. The
+                    // line keeps its originals, so a reopened takeover can be resubmitted.
+                    \Illuminate\Support\Facades\Storage::disk('public')->deleteDirectory("assets/{$asset->id}");
                     $asset->fieldValues()->delete();
                     $asset->statusHistories()->delete();
                     $asset->forceDelete();
@@ -199,6 +206,9 @@ class TakeoverService
         $warrantyExpiry = $line->warranty_years
             ? Carbon::parse($takeover->takeover_date)->addMonths((int) round((float) $line->warranty_years * 12))->toDateString()
             : null;
+
+        // The line's custom attributes and photos go onto every unit it expands into.
+        $resolved = $line->field_values ? $this->fields->resolveForCategory((int) $line->category_id) : null;
 
         for ($i = 1; $i <= max(1, $line->quantity); $i++) {
             $notFunctional = $i <= $line->not_functional_qty;
@@ -229,6 +239,19 @@ class TakeoverService
                 'notes'                => trim(implode(' · ', array_filter([$line->section, $line->location_note]))) ?: null,
                 'takeover_line_id'     => $line->id,
             ], $actor);
+
+            if ($resolved) {
+                $this->fields->saveValues($asset, $line->field_values, $resolved);
+            }
+
+            foreach (array_values($line->photo_paths ?? []) as $n => $path) {
+                // Each asset gets its own copy, so deleting a photo on one leaves the others.
+                $copy = "assets/{$asset->id}/photos/" . basename($path);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->copy($path, $copy);
+                    $asset->photos()->create(['path' => $copy, 'is_primary' => $n === 0, 'sort_order' => $n]);
+                }
+            }
         }
     }
 
